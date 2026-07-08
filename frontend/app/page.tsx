@@ -10,10 +10,22 @@ import { SprintProgress } from '@/components/dashboard/sprint-progress'
 import { TeamActivity } from '@/components/dashboard/team-activity'
 import { QuickActions } from '@/components/dashboard/quick-actions'
 import { WorkspaceHealth } from '@/components/dashboard/workspace-health'
+import { useAuth } from '@/hooks/useAuth'
 
 export default function Page() {
+  const { user, isLoading } = useAuth()
   const currentHour = new Date().getHours()
   const greeting = currentHour < 12 ? 'Good morning' : currentHour < 18 ? 'Good afternoon' : 'Good evening'
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#09090b] flex items-center justify-center">
+        <div className="h-8 w-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  const displayName = user?.full_name || 'Engineer'
 
   return (
     <MainLayout>
@@ -34,7 +46,7 @@ export default function Page() {
         >
           <div className="space-y-3">
             <h1 className="text-5xl font-bold text-foreground tracking-tight">
-              {greeting}, Archi 👋
+              {greeting}, {displayName} 👋
             </h1>
             <p className="text-lg text-muted-foreground max-w-xl">
               Welcome back. Here&apos;s what&apos;s happening in your workspace.
