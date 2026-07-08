@@ -14,23 +14,46 @@ router = APIRouter(prefix="/projects", tags=["Projects"])
     "",
     response_model=List[ProjectResponse],
     summary="Get user projects",
-    description="Loads all projects that the logged-in user owns or is a member of, with optional search query parameter."
+    description="Loads all projects for the user with support for search, archiving status filters, and sorting parameters."
 )
 def get_projects(
     search: Optional[str] = None,
+    is_archived: bool = False,
+    status_filter: Optional[str] = None,
+    sort_by: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
-    List user projects with optional case-insensitive search filter.
+    List user projects with optional filters and sorting options.
     """
     query = db.query(Project).filter(
         (Project.owner_id == current_user.id) |
         (Project.members.any(id=current_user.id))
     )
     
+    # Filter by archive status
+    query = query.filter(Project.is_archived == is_archived)
+    
     if search:
         query = query.filter(Project.name.ilike(f"%{search}%"))
+        
+    if status_filter:
+        query = query.filter(Project.status == status_filter)
+        
+    # Sort criteria
+    if sort_by == "newest":
+        query = query.order_by(Project.created_at.desc())
+    elif sort_by == "oldest":
+        query = query.order_by(Project.created_at.asc())
+    elif sort_by == "most_progress":
+        query = query.order_by(Project.progress.desc())
+    elif sort_by == "least_progress":
+        query = query.order_by(Project.progress.asc())
+    elif sort_by == "alphabetical":
+        query = query.order_by(Project.name.asc())
+    else:
+        query = query.order_by(Project.updated_at.desc())
         
     return query.all()
 
@@ -38,18 +61,20 @@ def get_projects(
     "/recent",
     response_model=List[ProjectResponse],
     summary="Get recent projects",
-    description="Loads the 5 most recently updated projects for the user."
+    description="Loads the 5 most recently updated unarchived projects for the user."
 )
 def get_recent_projects(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
-    List the user's recently modified projects sorted by updated_at.
+    List user's recently modified projects sorted by updated_at (unarchived only).
     """
     projects = db.query(Project).filter(
         (Project.owner_id == current_user.id) |
         (Project.members.any(id=current_user.id))
+    ).filter(
+        Project.is_archived == False
     ).order_by(Project.updated_at.desc()).limit(5).all()
     
     return projects
@@ -88,7 +113,9 @@ def create_project(
         color=project_data.color,
         status=project_data.status or "Pending",
         progress=0,
-        owner_id=current_user.id
+        owner_id=current_user.id,
+        visibility=project_data.visibility or "Workspace",
+        workspace_id=project_data.workspace_id
     )
     db_project.members.append(current_user)
     
@@ -176,6 +203,38 @@ def update_project(
     for key, value in update_data.items():
         setattr(project, key, value)
         
+    db.commit()
+    db.refresh(project)
+    return project
+
+@router.patch(
+    "/archive/{project_id}",
+    response_model=ProjectResponse,
+    summary="Toggle project archived state",
+    description="Toggles the archive flag of a project. Only the project owner can change this."
+)
+def toggle_project_archive(
+    project_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Toggles the is_archived state of a project.
+    """
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found"
+        )
+        
+    if project.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the project owner can archive or unarchive this project"
+        )
+        
+    project.is_archived = not project.is_archived
     db.commit()
     db.refresh(project)
     return project
