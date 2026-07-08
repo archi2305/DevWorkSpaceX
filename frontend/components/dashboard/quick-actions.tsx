@@ -3,7 +3,10 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, CheckSquare, FileText, Sparkles, X } from 'lucide-react'
-import { useProjectStore } from '@/store/useProjectStore'
+import { useQueryClient } from '@tanstack/react-query'
+import { projectService } from '@/services/project'
+import { taskService } from '@/services/task'
+import { useDashboardData } from '@/hooks/useDashboardData'
 
 const actions = [
   {
@@ -48,56 +51,98 @@ const colorClasses: Record<string, string> = {
 }
 
 export function QuickActions() {
-  const { createProject } = useProjectStore()
+  const queryClient = useQueryClient()
+  const { data: dashboardData } = useDashboardData()
+  const projects = dashboardData?.recentProjects || []
   
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [color, setColor] = useState('blue')
-  const [icon, setIcon] = useState('🚀')
+  const [activeModal, setActiveModal] = useState<'project' | 'task' | null>(null)
   
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  // Project creation fields
+  const [pName, setPName] = useState('')
+  const [pDesc, setPDesc] = useState('')
+  const [pColor, setPColor] = useState('blue')
+  const [pIcon, setPIcon] = useState('🚀')
+  const [pError, setPError] = useState<string | null>(null)
+  const [pLoading, setPLoading] = useState(false)
+
+  // Task creation fields
+  const [tTitle, setTTitle] = useState('')
+  const [tPriority, setTPriority] = useState('medium')
+  const [tDueDate, setTDueDate] = useState('')
+  const [tProjectId, setTProjectId] = useState('')
+  const [tError, setTError] = useState<string | null>(null)
+  const [tLoading, setTLoading] = useState(false)
 
   const handleActionClick = (id: number) => {
     if (id === 1) {
-      setIsModalOpen(true)
+      setActiveModal('project')
+    } else if (id === 2) {
+      setActiveModal('task')
     } else {
       alert(`${actions.find((a) => a.id === id)?.label} is currently a placeholder action.`)
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleProjectSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name.trim()) return
+    if (!pName.trim()) return
 
-    setError(null)
-    setLoading(true)
+    setPError(null)
+    setPLoading(true)
 
     try {
-      await createProject({
-        name,
-        description: description || undefined,
-        color,
-        icon,
+      await projectService.createProject({
+        name: pName,
+        description: pDesc || undefined,
+        color: pColor,
+        icon: pIcon,
         status: 'In Progress',
       })
-      setIsModalOpen(false)
-      setName('')
-      setDescription('')
-      setColor('blue')
-      setIcon('🚀')
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      setActiveModal(null)
+      setPName('')
+      setPDesc('')
+      setPColor('blue')
+      setPIcon('🚀')
     } catch (err: any) {
       const errMsg = err.response?.data?.detail || 'Failed to create project.'
-      setError(errMsg)
+      setPError(errMsg)
     } finally {
-      setLoading(false)
+      setPLoading(false)
+    }
+  }
+
+  const handleTaskSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!tTitle.trim()) return
+
+    setTError(null)
+    setTLoading(true)
+
+    try {
+      await taskService.createTask({
+        title: tTitle,
+        priority: tPriority,
+        due_date: tDueDate || undefined,
+        project_id: tProjectId || undefined,
+      })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      setActiveModal(null)
+      setTTitle('')
+      setTPriority('medium')
+      setTDueDate('')
+      setTProjectId('')
+    } catch (err: any) {
+      const errMsg = err.response?.data?.detail || 'Failed to create task.'
+      setTError(errMsg)
+    } finally {
+      setTLoading(false)
     }
   }
 
   return (
     <div>
-      <h2 className="mb-4 text-lg font-semibold text-foreground">Quick Actions</h2>
+      <h2 className="mb-4 text-lg font-semibold text-foreground text-left">Quick Actions</h2>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {actions.map((action, i) => {
           const Icon = action.icon
@@ -140,9 +185,9 @@ export function QuickActions() {
         })}
       </div>
 
-      {/* Create Project Modal Overlay */}
+      {/* Create Project Modal */}
       <AnimatePresence>
-        {isModalOpen && (
+        {activeModal === 'project' && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
@@ -150,9 +195,8 @@ export function QuickActions() {
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               className="w-full max-w-md rounded-2xl border border-white/5 bg-[#09090b] p-6 shadow-2xl relative"
             >
-              {/* Close button */}
               <button
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => setActiveModal(null)}
                 className="absolute right-4 top-4 rounded-lg p-1 text-muted-foreground hover:bg-white/5 hover:text-white transition-all cursor-pointer"
               >
                 <X className="h-4 w-4" />
@@ -163,55 +207,54 @@ export function QuickActions() {
                 Define your workspace project attributes to organize your sprint cycle.
               </p>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {error && (
+              <form onSubmit={handleProjectSubmit} className="space-y-4">
+                {pError && (
                   <div className="p-3 text-xs font-medium rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
-                    {error}
+                    {pError}
                   </div>
                 )}
 
                 <div className="space-y-1.5">
-                  <label htmlFor="pname" className="text-xs font-medium text-white">
+                  <label htmlFor="pname" className="text-xs font-medium text-white block text-left">
                     Project Name
                   </label>
                   <input
                     id="pname"
                     type="text"
                     required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    value={pName}
+                    onChange={(e) => setPName(e.target.value)}
                     placeholder="e.g. Mobile Client Redesign"
-                    disabled={loading}
+                    disabled={pLoading}
                     className="w-full px-3.5 py-2 rounded-lg border border-white/10 bg-white/[0.02] text-sm text-white placeholder-[#52525b] outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 disabled:opacity-50"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label htmlFor="pdesc" className="text-xs font-medium text-white">
+                  <label htmlFor="pdesc" className="text-xs font-medium text-white block text-left">
                     Description (Optional)
                   </label>
                   <textarea
                     id="pdesc"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                    value={pDesc}
+                    onChange={(e) => setPDesc(e.target.value)}
                     placeholder="e.g. Scope outlines user dashboard and navigation flows."
-                    disabled={loading}
+                    disabled={pLoading}
                     rows={3}
                     className="w-full px-3.5 py-2 rounded-lg border border-white/10 bg-white/[0.02] text-sm text-white placeholder-[#52525b] outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 disabled:opacity-50 resize-none"
                   />
                 </div>
 
-                {/* Project Icon */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-white block">Project Icon</label>
+                  <label className="text-xs font-medium text-white block text-left">Project Icon</label>
                   <div className="flex gap-2">
                     {icons.map((ico) => (
                       <button
                         key={ico}
                         type="button"
-                        onClick={() => setIcon(ico)}
+                        onClick={() => setPIcon(ico)}
                         className={`text-xl p-2 rounded-lg border transition-all cursor-pointer ${
-                          icon === ico ? 'border-primary bg-primary/10' : 'border-white/5 bg-white/[0.01] hover:bg-white/5'
+                          pIcon === ico ? 'border-primary bg-primary/10' : 'border-white/5 bg-white/[0.01] hover:bg-white/5'
                         }`}
                       >
                         {ico}
@@ -220,19 +263,18 @@ export function QuickActions() {
                   </div>
                 </div>
 
-                {/* Project Color Theme */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-white block">Project Color Theme</label>
+                  <label className="text-xs font-medium text-white block text-left">Project Color Theme</label>
                   <div className="flex gap-2">
                     {colors.map((col) => (
                       <button
                         key={col}
                         type="button"
-                        onClick={() => setColor(col)}
+                        onClick={() => setPColor(col)}
                         className={`h-6 w-6 rounded-full border-2 transition-all cursor-pointer ${
                           colorClasses[col]
                         } ${
-                          color === col ? 'border-white scale-110 shadow-md' : 'border-transparent opacity-60 hover:opacity-100'
+                          pColor === col ? 'border-white scale-110 shadow-md' : 'border-transparent opacity-60 hover:opacity-100'
                         }`}
                       />
                     ))}
@@ -242,18 +284,137 @@ export function QuickActions() {
                 <div className="flex justify-end gap-2 pt-2 border-t border-white/5">
                   <button
                     type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    disabled={loading}
+                    onClick={() => setActiveModal(null)}
+                    disabled={pLoading}
                     className="rounded-lg px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-white/5 hover:text-white transition-all disabled:opacity-50 cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    disabled={loading}
+                    disabled={pLoading}
                     className="rounded-lg bg-primary hover:bg-primary/95 text-primary-foreground font-semibold px-4 py-2 text-xs transition-all disabled:opacity-50 cursor-pointer"
                   >
-                    {loading ? 'Creating...' : 'Create Project'}
+                    {pLoading ? 'Creating...' : 'Create Project'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Create Task Modal */}
+      <AnimatePresence>
+        {activeModal === 'task' && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="w-full max-w-md rounded-2xl border border-white/5 bg-[#09090b] p-6 shadow-2xl relative"
+            >
+              <button
+                onClick={() => setActiveModal(null)}
+                className="absolute right-4 top-4 rounded-lg p-1 text-muted-foreground hover:bg-white/5 hover:text-white transition-all cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+
+              <h3 className="text-lg font-semibold text-white mb-2">Create New Task</h3>
+              <p className="text-xs text-muted-foreground mb-4">
+                Add an upcoming action item to organize your workflow deadlines.
+              </p>
+
+              <form onSubmit={handleTaskSubmit} className="space-y-4">
+                {tError && (
+                  <div className="p-3 text-xs font-medium rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
+                    {tError}
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  <label htmlFor="tname" className="text-xs font-medium text-white block text-left">
+                    Task Title
+                  </label>
+                  <input
+                    id="tname"
+                    type="text"
+                    required
+                    value={tTitle}
+                    onChange={(e) => setTTitle(e.target.value)}
+                    placeholder="e.g. Implement unified endpoint"
+                    disabled={tLoading}
+                    className="w-full px-3.5 py-2 rounded-lg border border-white/10 bg-white/[0.02] text-sm text-white placeholder-[#52525b] outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 disabled:opacity-50"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="tprio" className="text-xs font-medium text-white block text-left">
+                    Priority
+                  </label>
+                  <select
+                    id="tprio"
+                    value={tPriority}
+                    onChange={(e) => setTPriority(e.target.value)}
+                    disabled={tLoading}
+                    className="w-full px-3.5 py-2 rounded-lg border border-white/10 bg-[#18181b] text-sm text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 disabled:opacity-50"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="tdate" className="text-xs font-medium text-white block text-left">
+                    Due Date (Optional)
+                  </label>
+                  <input
+                    id="tdate"
+                    type="date"
+                    value={tDueDate}
+                    onChange={(e) => setTDueDate(e.target.value)}
+                    disabled={tLoading}
+                    className="w-full px-3.5 py-2 rounded-lg border border-white/10 bg-white/[0.02] text-sm text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 disabled:opacity-50"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="tproject" className="text-xs font-medium text-white block text-left">
+                    Associate with Project (Optional)
+                  </label>
+                  <select
+                    id="tproject"
+                    value={tProjectId}
+                    onChange={(e) => setTProjectId(e.target.value)}
+                    disabled={tLoading}
+                    className="w-full px-3.5 py-2 rounded-lg border border-white/10 bg-[#18181b] text-sm text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 disabled:opacity-50"
+                  >
+                    <option value="">No Project Relation</option>
+                    {projects.map((proj) => (
+                      <option key={proj.id} value={proj.id}>
+                        {proj.icon || '🚀'} {proj.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2 border-t border-white/5">
+                  <button
+                    type="button"
+                    onClick={() => setActiveModal(null)}
+                    disabled={tLoading}
+                    className="rounded-lg px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-white/5 hover:text-white transition-all disabled:opacity-50 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={tLoading}
+                    className="rounded-lg bg-primary hover:bg-primary/95 text-primary-foreground font-semibold px-4 py-2 text-xs transition-all disabled:opacity-50 cursor-pointer"
+                  >
+                    {tLoading ? 'Creating...' : 'Create Task'}
                   </button>
                 </div>
               </form>
