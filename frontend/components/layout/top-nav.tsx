@@ -5,12 +5,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Search, Plus, Bell, Moon, Sun, Folder, CheckSquare, FileText, User as UserIcon } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useAuth } from '@/hooks/useAuth'
+import { useProjectStore } from '@/store/useProjectStore'
 import { dashboardService, SearchResultsResponse } from '@/services/dashboard'
 
 export function TopNav() {
   const { theme, setTheme } = useTheme()
   const [isMounted, setIsMounted] = useState(false)
   const { user } = useAuth()
+  const { fetchProjects } = useProjectStore()
   
   // Search states
   const [searchQuery, setSearchQuery] = useState('')
@@ -37,6 +39,8 @@ export function TopNav() {
     if (!searchQuery.trim()) {
       setSearchResults(null)
       setShowDropdown(false)
+      // Reset dashboard project cards to list all records
+      fetchProjects()
       return
     }
 
@@ -44,8 +48,12 @@ export function TopNav() {
       setSearching(true)
       setShowDropdown(true)
       try {
+        // 1. Fetch global database matches for the portal dropdown list
         const data = await dashboardService.searchWorkspace(searchQuery)
         setSearchResults(data)
+
+        // 2. Filter projects listed on the dashboard background matching the query
+        fetchProjects(searchQuery)
       } catch (error) {
         console.error('Search query execution failed', error)
       } finally {
@@ -54,7 +62,7 @@ export function TopNav() {
     }, 300)
 
     return () => clearTimeout(delayDebounceFn)
-  }, [searchQuery])
+  }, [searchQuery, fetchProjects])
 
   const getInitials = (name: string) => {
     return name
