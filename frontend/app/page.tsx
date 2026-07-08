@@ -11,13 +11,17 @@ import { TeamActivity } from '@/components/dashboard/team-activity'
 import { QuickActions } from '@/components/dashboard/quick-actions'
 import { WorkspaceHealth } from '@/components/dashboard/workspace-health'
 import { useAuth } from '@/hooks/useAuth'
+import { useDashboardData } from '@/hooks/useDashboardData'
 
 export default function Page() {
-  const { user, isLoading } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
+  // Mount unified dashboard React Query fetcher
+  const { data: dashboardData, isLoading: dashLoading } = useDashboardData()
+  
   const currentHour = new Date().getHours()
   const greeting = currentHour < 12 ? 'Good morning' : currentHour < 18 ? 'Good afternoon' : 'Good evening'
 
-  if (isLoading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-[#09090b] flex items-center justify-center">
         <div className="h-8 w-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
@@ -25,7 +29,7 @@ export default function Page() {
     )
   }
 
-  const displayName = user?.full_name || 'Engineer'
+  const displayName = dashboardData?.user?.full_name || user?.full_name || 'Engineer'
 
   return (
     <MainLayout>
