@@ -16,6 +16,7 @@ import {
   LogOut,
 } from 'lucide-react'
 import { useState } from 'react'
+import { useAuth } from '@/hooks/useAuth'
 
 const navItems = [
   { icon: Home, label: 'Home', href: '#' },
@@ -33,6 +34,18 @@ const navItems = [
 
 export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const { user, logout } = useAuth()
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2)
+  }
+
+  const userInitials = user ? getInitials(user.full_name) : 'U'
 
   return (
     <motion.aside
@@ -108,21 +121,30 @@ export function Sidebar() {
               ${isCollapsed ? 'justify-center' : ''}
             `}
           >
-            <motion.div
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/10 text-xs font-bold text-primary"
-              whileHover={{ scale: 1.1 }}
-            >
-              AR
-            </motion.div>
-            {!isCollapsed && (
-              <div className="flex-1 text-left">
-                <p className="text-sm font-medium text-sidebar-foreground">Archi Dev</p>
-                <p className="text-xs text-muted-foreground">@archi</p>
+            {user?.profile_image ? (
+              <img
+                src={user.profile_image}
+                alt={user.full_name}
+                className="h-8 w-8 rounded-full object-cover"
+              />
+            ) : (
+              <motion.div
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/10 text-xs font-bold text-primary"
+                whileHover={{ scale: 1.1 }}
+              >
+                {userInitials}
+              </motion.div>
+            )}
+            {!isCollapsed && user && (
+              <div className="flex-1 text-left truncate">
+                <p className="text-sm font-medium text-sidebar-foreground truncate">{user.full_name}</p>
+                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
               </div>
             )}
           </motion.button>
 
           <motion.button
+            onClick={logout}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className={`
