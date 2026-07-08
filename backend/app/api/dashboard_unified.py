@@ -133,10 +133,11 @@ def get_unified_dashboard(
     # Seed default stats to avoid layout blanks
     seed_default_data_if_needed(db, current_user)
 
-    # 1. Projects (limit 10)
+    # 1. Projects (limit 10, unarchived only)
     projects = db.query(Project).filter(
-        (Project.owner_id == current_user.id) |
-        (Project.members.any(id=current_user.id))
+        ((Project.owner_id == current_user.id) |
+        (Project.members.any(id=current_user.id))) &
+        (Project.is_archived == False)
     ).all()
 
     # 2. Upcoming tasks (limit 10)
