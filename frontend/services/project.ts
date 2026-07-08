@@ -6,6 +6,8 @@ export interface ProjectCreateInput {
   icon?: string
   color?: string
   status?: string
+  visibility?: string
+  workspace_id?: string
 }
 
 export interface ProjectResponse {
@@ -17,6 +19,9 @@ export interface ProjectResponse {
   status: string
   progress: number
   owner_id: string
+  workspace_id: string | null
+  visibility: string
+  is_archived: boolean
   created_at: string
   updated_at: string
   members: Array<{
@@ -26,12 +31,18 @@ export interface ProjectResponse {
   }>
 }
 
+export interface ProjectListParams {
+  search?: string
+  is_archived?: boolean
+  status_filter?: string
+  sort_by?: string
+}
+
 export const projectService = {
   /**
-   * Load user projects list with optional search query filtering.
+   * Load user projects list with optional search query, archive state filter, and sorting.
    */
-  async getProjects(search?: string): Promise<ProjectResponse[]> {
-    const params = search ? { search } : undefined
+  async getProjects(params?: ProjectListParams): Promise<ProjectResponse[]> {
     const response = await api.get<ProjectResponse[]>('/projects', { params })
     return response.data
   },
@@ -65,6 +76,14 @@ export const projectService = {
    */
   async updateProject(id: string, data: Partial<ProjectResponse>): Promise<ProjectResponse> {
     const response = await api.put<ProjectResponse>(`/projects/${id}`, data)
+    return response.data
+  },
+
+  /**
+   * Toggle project archive state.
+   */
+  async archiveProject(id: string): Promise<ProjectResponse> {
+    const response = await api.patch<ProjectResponse>(`/projects/archive/${id}`)
     return response.data
   },
 
