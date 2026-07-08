@@ -31,6 +31,12 @@ class Project(Base):
     # Optional project description
     description: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     
+    # Project icon (emoji or name)
+    icon: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    
+    # Project color code or theme token
+    color: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    
     # Project status (e.g. 'Pending', 'In Progress', 'Review')
     status: Mapped[str] = mapped_column(String(50), default="Pending", nullable=False)
     
