@@ -3,12 +3,12 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { PremiumCard } from '../ui/premium-card'
 import { AnimatedBadge } from '../ui/animated-badge'
-import { ChevronRight, FolderKanban, Trash2 } from 'lucide-react'
-import { useDashboardData } from '@/hooks/useDashboardData'
+import { FolderKanban, Trash2, Archive, ArchiveRestore } from 'lucide-react'
 import { projectService } from '@/services/project'
+import { useProjectStore } from '@/store/useProjectStore'
 import { useAuth } from '@/hooks/useAuth'
 
 const colorClasses: Record<string, { bg: string; text: string; border: string; dot: string; fromTo: string }> = {
@@ -28,14 +28,27 @@ export function ContinueWorking() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
   
-  // Consume dashboard unified query
-  const { data: dashboardData, isLoading, error } = useDashboardData()
-  const projects = dashboardData?.recentProjects || []
+  // Consume filters from global store
+  const { searchQuery, sortBy, statusFilter, viewArchived, setSortBy, setStatusFilter, setViewArchived } = useProjectStore()
+
+  // Dedicated query to list projects with active filters
+  const { data: projects = [], isLoading, error } = useQuery({
+    queryKey: ['projects', { search: searchQuery, sort_by: sortBy, status_filter: statusFilter, is_archived: viewArchived }],
+    queryFn: () => projectService.getProjects({
+      search: searchQuery || undefined,
+      sort_by: sortBy || undefined,
+      status_filter: statusFilter || undefined,
+      is_archived: viewArchived,
+    }),
+  })
 
   // Deletion Modal triggers
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
   const [deleteTargetName, setDeleteTargetName] = useState('')
   const [deleting, setDeleting] = useState(false)
+
+  // Archiving triggers
+  const [archivingId, setArchivingId] = useState<string | null>(null)
 
   const getInitials = (name: string) => {
     return name
@@ -52,12 +65,26 @@ export function ContinueWorking() {
     setDeleteTargetName(name)
   }
 
+  const handleArchiveTrigger = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation()
+    setArchivingId(id)
+    try {
+      await projectService.archiveProject(id)
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    } catch (err) {
+      console.error('Archive action failed', err)
+    } finally {
+      setArchivingId(null)
+    }
+  }
+
   const handleConfirmDelete = async () => {
     if (!deleteTargetId) return
     setDeleting(true)
     try {
       await projectService.deleteProject(deleteTargetId)
-      // Invalidate query to trigger unified re-fetch
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       setDeleteTargetId(null)
     } catch (err) {
@@ -69,18 +96,52 @@ export function ContinueWorking() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-foreground">Continue Where You Left Off</h2>
-          <p className="text-sm text-muted-foreground mt-1">Your active projects and latest updates</p>
+      {/* Filtering header controls */}
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4 mb-4">
+        <div className="text-left">
+          <h2 className="text-xl font-semibold text-foreground">Workspace Projects</h2>
+          <p className="text-sm text-muted-foreground mt-1">Manage, filter, and organize project milestones</p>
         </div>
-        <motion.button
-          whileHover={{ x: 4 }}
-          onClick={() => router.push('/')}
-          className="flex items-center gap-1 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
-        >
-          View all <ChevronRight className="h-4 w-4" />
-        </motion.button>
+        
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Archive Toggle */}
+          <button
+            onClick={() => setViewArchived(!viewArchived)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+              viewArchived
+                ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                : 'border-white/5 hover:bg-white/5 text-muted-foreground'
+            }`}
+          >
+            {viewArchived ? 'Viewing Archived' : 'View Archive'}
+          </button>
+
+          {/* Status Filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-1.5 rounded-lg border border-white/5 bg-[#18181b] text-xs text-white outline-none focus:border-primary cursor-pointer"
+          >
+            <option value="">All Statuses</option>
+            <option value="Pending">Pending</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Review">Review</option>
+            <option value="Completed">Completed</option>
+          </select>
+
+          {/* Sort Menu */}
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="px-3 py-1.5 rounded-lg border border-white/5 bg-[#18181b] text-xs text-white outline-none focus:border-primary cursor-pointer"
+          >
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="most_progress">Most Progress</option>
+            <option value="least_progress">Least Progress</option>
+            <option value="alphabetical">Alphabetical</option>
+          </select>
+        </div>
       </div>
 
       {isLoading ? (
@@ -107,19 +168,29 @@ export function ContinueWorking() {
         </div>
       ) : error ? (
         <div className="text-sm text-red-400 p-4 border border-red-500/10 bg-red-500/5 rounded-lg">
-          Failed to load projects.
+          Failed to load projects list.
         </div>
       ) : projects.length === 0 ? (
-        // Empty State
+        // Target Empty States
         <div className="flex flex-col items-center justify-center py-10 rounded-xl border border-white/5 bg-white/[0.01] p-6 text-center">
           <FolderKanban className="h-10 w-10 text-muted-foreground mb-3" />
-          <h3 className="text-sm font-medium text-foreground">No Projects Yet</h3>
-          <p className="text-xs text-muted-foreground mt-1 max-w-[240px]">
-            Get started by creating a new project from the Quick Actions menu.
+          <h3 className="text-sm font-medium text-foreground">
+            {viewArchived
+              ? 'Archived Empty'
+              : searchQuery
+              ? 'No Search Results'
+              : 'No Projects Yet'}
+          </h3>
+          <p className="text-xs text-muted-foreground mt-1 max-w-[280px]">
+            {viewArchived
+              ? 'You do not have any archived projects in this workspace.'
+              : searchQuery
+              ? `We couldn't find any projects matching "${searchQuery}".`
+              : 'Get started by creating a new project from the Quick Actions menu.'}
           </p>
         </div>
       ) : (
-        // Projects List
+        // Projects list slider
         <div className="flex gap-4 overflow-x-auto pb-4 -mx-6 px-6">
           {projects.map((project, i) => {
             const themeClass = colorClasses[project.color || 'blue'] || colorClasses.blue
@@ -128,9 +199,9 @@ export function ContinueWorking() {
             return (
               <motion.div
                 key={project.id}
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.08, duration: 0.5 }}
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
                 className="flex-shrink-0 w-80 cursor-pointer"
                 onClick={() => router.push(`/projects/${project.id}`)}
               >
@@ -140,31 +211,28 @@ export function ContinueWorking() {
                       <div className="flex items-start gap-2.5 min-w-0">
                         <span className="text-2xl mt-0.5 flex-shrink-0">{project.icon || '🚀'}</span>
                         <div className="min-w-0">
-                          <h3 className="font-semibold text-foreground text-base truncate w-40 text-left">{project.name}</h3>
+                          <h3 className="font-semibold text-foreground text-base truncate w-32 text-left">{project.name}</h3>
                           <p className="text-[10px] text-muted-foreground mt-1 font-medium text-left">
                             Created {new Date(project.created_at).toLocaleDateString()}
                           </p>
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <div className="flex items-center gap-1 flex-shrink-0">
                         <AnimatedBadge variant="success">{project.status}</AnimatedBadge>
-                        {isOwner && (
-                          <button
-                            onClick={(e) => handleDeleteTrigger(e, project.id, project.name)}
-                            className="rounded-lg p-1.5 text-muted-foreground hover:bg-red-500/10 hover:text-red-400 transition-all cursor-pointer"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        )}
+                        <span className="text-[10px] rounded px-1.5 py-0.5 border border-white/5 bg-white/[0.02] text-muted-foreground">
+                          {project.visibility}
+                        </span>
                       </div>
                     </div>
 
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.1 + i * 0.08 }}
-                    >
+                    {project.description && (
+                      <p className="text-xs text-muted-foreground text-left line-clamp-2 h-8 leading-snug">
+                        {project.description}
+                      </p>
+                    )}
+
+                    <motion.div>
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-medium text-zinc-500 uppercase tracking-wide">Progress</span>
                         <span className="text-xs font-bold text-zinc-300">{project.progress}%</span>
@@ -173,13 +241,13 @@ export function ContinueWorking() {
                         <motion.div
                           initial={{ width: 0 }}
                           animate={{ width: `${project.progress}%` }}
-                          transition={{ duration: 1.2, delay: 0.15 + i * 0.08, ease: 'easeOut' }}
+                          transition={{ duration: 1.2, ease: 'easeOut' }}
                           className={`h-full bg-gradient-to-r ${themeClass.fromTo} rounded-full`}
                         />
                       </div>
                     </motion.div>
 
-                    <div className="flex items-center justify-between pt-1">
+                    <div className="flex items-center justify-between pt-1 border-t border-white/[0.03]">
                       <div className="flex -space-x-1.5">
                         {project.members?.slice(0, 2).map((member) => (
                           member.profile_image ? (
@@ -190,13 +258,12 @@ export function ContinueWorking() {
                               className="h-6 w-6 rounded-full border-2 border-[#18181b] object-cover shadow-sm"
                             />
                           ) : (
-                            <motion.div
+                            <div
                               key={member.id}
-                              whileHover={{ scale: 1.15, zIndex: 10 }}
                               className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#18181b] bg-gradient-to-br from-primary/30 to-primary/10 text-[9px] font-bold text-primary shadow-sm"
                             >
                               {getInitials(member.full_name)}
-                            </motion.div>
+                            </div>
                           )
                         ))}
                         {(project.members?.length || 1) > 2 && (
@@ -205,13 +272,33 @@ export function ContinueWorking() {
                           </div>
                         )}
                       </div>
-                      <motion.button
-                        whileHover={{ scale: 1.08 }}
-                        whileTap={{ scale: 0.96 }}
-                        className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 transition-all duration-200"
-                      >
-                        Open
-                      </motion.button>
+                      
+                      <div className="flex items-center gap-1">
+                        {isOwner && (
+                          <>
+                            <button
+                              onClick={(e) => handleArchiveTrigger(e, project.id)}
+                              disabled={archivingId === project.id}
+                              className="rounded-lg p-1.5 text-muted-foreground hover:bg-amber-500/10 hover:text-amber-400 transition-all cursor-pointer"
+                              title={project.is_archived ? 'Restore' : 'Archive'}
+                            >
+                              {project.is_archived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
+                            </button>
+                            <button
+                              onClick={(e) => handleDeleteTrigger(e, project.id, project.name)}
+                              className="rounded-lg p-1.5 text-muted-foreground hover:bg-red-500/10 hover:text-red-400 transition-all cursor-pointer"
+                              title="Delete"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </>
+                        )}
+                        <button
+                          className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 transition-all duration-200"
+                        >
+                          Open
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </PremiumCard>
@@ -235,7 +322,7 @@ export function ContinueWorking() {
                 <Trash2 className="h-6 w-6 text-red-500" />
               </div>
               <h3 className="text-base font-semibold text-white mb-2">Delete Project?</h3>
-              <p className="text-xs text-muted-foreground mb-6">
+              <p className="text-xs text-muted-foreground mb-6 text-center">
                 Are you sure you want to delete <span className="text-white font-bold">&quot;{deleteTargetName}&quot;</span>? This action is permanent and deletes all associated workspace metadata.
               </p>
 
