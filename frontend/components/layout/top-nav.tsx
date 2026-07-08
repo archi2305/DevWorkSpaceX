@@ -9,12 +9,14 @@ import { useQueryClient } from '@tanstack/react-query'
 import { dashboardService, SearchResultsResponse } from '@/services/dashboard'
 import { useDashboardData } from '@/hooks/useDashboardData'
 import { dashboardUnifiedService } from '@/services/dashboardUnified'
+import { useProjectStore } from '@/store/useProjectStore'
 
 export function TopNav() {
   const { theme, setTheme } = useTheme()
   const [isMounted, setIsMounted] = useState(false)
   const { user } = useAuth()
   const queryClient = useQueryClient()
+  const { setSearchQuery: setGlobalSearchQuery } = useProjectStore()
 
   // Consume dashboard unified query
   const { data: dashboardData } = useDashboardData()
@@ -53,12 +55,14 @@ export function TopNav() {
     if (!searchQuery.trim()) {
       setSearchResults(null)
       setShowDropdown(false)
+      setGlobalSearchQuery('')
       return
     }
 
     const delayDebounceFn = setTimeout(async () => {
       setSearching(true)
       setShowDropdown(true)
+      setGlobalSearchQuery(searchQuery)
       try {
         const data = await dashboardService.searchWorkspace(searchQuery)
         setSearchResults(data)
@@ -70,7 +74,7 @@ export function TopNav() {
     }, 300)
 
     return () => clearTimeout(delayDebounceFn)
-  }, [searchQuery])
+  }, [searchQuery, setGlobalSearchQuery])
 
   const handleMarkRead = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
