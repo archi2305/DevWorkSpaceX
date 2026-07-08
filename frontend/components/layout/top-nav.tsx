@@ -2,24 +2,35 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Plus, Bell, Moon, Sun, Folder, CheckSquare, FileText, User as UserIcon } from 'lucide-react'
+import { Search, Plus, Bell, Moon, Sun, Folder, CheckSquare, FileText, User as UserIcon, Check } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useAuth } from '@/hooks/useAuth'
-import { useProjectStore } from '@/store/useProjectStore'
+import { useQueryClient } from '@tanstack/react-query'
 import { dashboardService, SearchResultsResponse } from '@/services/dashboard'
+import { useDashboardData } from '@/hooks/useDashboardData'
+import { dashboardUnifiedService } from '@/services/dashboardUnified'
 
 export function TopNav() {
   const { theme, setTheme } = useTheme()
   const [isMounted, setIsMounted] = useState(false)
   const { user } = useAuth()
-  const { fetchProjects } = useProjectStore()
-  
+  const queryClient = useQueryClient()
+
+  // Consume dashboard unified query
+  const { data: dashboardData } = useDashboardData()
+  const notifications = dashboardData?.notifications || []
+  const unreadCount = notifications.filter((n) => !n.is_read).length
+
   // Search states
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<SearchResultsResponse | null>(null)
   const [searching, setSearching] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Notification dropdown states
+  const [showNotifs, setShowNotifs] = useState(false)
+  const notifRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setIsMounted(true)
@@ -28,6 +39,9 @@ export function TopNav() {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowDropdown(false)
+      }
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setShowNotifs(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -39,8 +53,6 @@ export function TopNav() {
     if (!searchQuery.trim()) {
       setSearchResults(null)
       setShowDropdown(false)
-      // Reset dashboard project cards to list all records
-      fetchProjects()
       return
     }
 
@@ -48,12 +60,8 @@ export function TopNav() {
       setSearching(true)
       setShowDropdown(true)
       try {
-        // 1. Fetch global database matches for the portal dropdown list
         const data = await dashboardService.searchWorkspace(searchQuery)
         setSearchResults(data)
-
-        // 2. Filter projects listed on the dashboard background matching the query
-        fetchProjects(searchQuery)
       } catch (error) {
         console.error('Search query execution failed', error)
       } finally {
@@ -62,7 +70,17 @@ export function TopNav() {
     }, 300)
 
     return () => clearTimeout(delayDebounceFn)
-  }, [searchQuery, fetchProjects])
+  }, [searchQuery])
+
+  const handleMarkRead = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      await dashboardUnifiedService.markNotificationRead(id)
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    } catch (err) {
+      console.error('Failed to mark read', err)
+    }
+  }
 
   const getInitials = (name: string) => {
     return name
@@ -139,7 +157,7 @@ export function TopNav() {
                     {/* Projects Section */}
                     {searchResults.projects.length > 0 && (
                       <div className="space-y-1">
-                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2">Projects</p>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 text-left">Projects</p>
                         {searchResults.projects.map((project) => (
                           <div
                             key={project.id}
@@ -156,7 +174,7 @@ export function TopNav() {
                     {/* Tasks Section */}
                     {searchResults.tasks.length > 0 && (
                       <div className="space-y-1">
-                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2">Tasks</p>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 text-left">Tasks</p>
                         {searchResults.tasks.map((task) => (
                           <div
                             key={task.id}
@@ -173,7 +191,7 @@ export function TopNav() {
                     {/* Documentation Section */}
                     {searchResults.documentation.length > 0 && (
                       <div className="space-y-1">
-                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2">Documentation</p>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 text-left">Documentation</p>
                         {searchResults.documentation.map((doc) => (
                           <div
                             key={doc}
@@ -190,7 +208,7 @@ export function TopNav() {
                     {/* Users Section */}
                     {searchResults.users.length > 0 && (
                       <div className="space-y-1">
-                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2">Team members</p>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 text-left">Team members</p>
                         {searchResults.users.map((name) => (
                           <div
                             key={name}
@@ -218,26 +236,87 @@ export function TopNav() {
             className={`
               inline-flex items-center gap-2 rounded-lg border border-input px-3 py-2.5
               text-sm font-medium text-foreground transition-all
-              hover:border-primary hover:bg-primary/5
+              hover:border-primary hover:bg-primary/5 cursor-pointer
             `}
           >
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">New</span>
           </motion.button>
 
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            className="relative rounded-lg p-2.5 hover:bg-muted transition-colors"
-          >
-            <Bell className="h-5 w-5 text-muted-foreground" />
-            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary" />
-          </motion.button>
+          {/* Notifications Dropdown Container */}
+          <div ref={notifRef} className="relative">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              onClick={() => setShowNotifs(!showNotifs)}
+              className="relative rounded-lg p-2.5 hover:bg-muted transition-colors cursor-pointer"
+            >
+              <Bell className="h-5 w-5 text-muted-foreground" />
+              {unreadCount > 0 && (
+                <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-primary flex items-center justify-center text-[7px] text-white font-bold">
+                  {unreadCount}
+                </span>
+              )}
+            </motion.button>
+
+            <AnimatePresence>
+              {showNotifs && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute right-0 mt-2 w-80 rounded-xl border border-white/5 bg-[#09090b] p-4 shadow-2xl z-50 space-y-3"
+                >
+                  <div className="flex items-center justify-between border-b border-border pb-2">
+                    <span className="text-xs font-semibold text-white">Alert Notifications</span>
+                    {unreadCount > 0 && (
+                      <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                        {unreadCount} New
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-2 max-h-[240px] overflow-y-auto pr-1">
+                    {notifications.length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-4">No notifications yet</p>
+                    ) : (
+                      notifications.map((notif) => (
+                        <div
+                          key={notif.id}
+                          className={`rounded-lg p-2.5 border transition-colors ${
+                            notif.is_read
+                              ? 'bg-transparent border-transparent'
+                              : 'bg-primary/5 border-primary/10'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <h4 className="text-xs font-semibold text-white text-left">{notif.title}</h4>
+                              <p className="text-[11px] text-muted-foreground text-left mt-0.5 leading-snug">{notif.message}</p>
+                            </div>
+                            {!notif.is_read && (
+                              <button
+                                onClick={(e) => handleMarkRead(notif.id, e)}
+                                className="flex-shrink-0 rounded p-1 text-muted-foreground hover:bg-primary/15 hover:text-primary transition-colors cursor-pointer"
+                                title="Mark read"
+                              >
+                                <Check className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           {isMounted && (
             <motion.button
               whileHover={{ scale: 1.05 }}
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="rounded-lg p-2.5 hover:bg-muted transition-colors"
+              className="rounded-lg p-2.5 hover:bg-muted transition-colors cursor-pointer"
             >
               {theme === 'dark' ? (
                 <Sun className="h-5 w-5 text-muted-foreground" />
