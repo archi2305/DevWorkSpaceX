@@ -1,10 +1,12 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { motion } from 'framer-motion'
+import { useQueryClient } from '@tanstack/react-query'
 import { PremiumCard } from '../ui/premium-card'
 import { CheckCircle2, Circle, Calendar, CheckSquare } from 'lucide-react'
-import { taskService, TaskResponse } from '@/services/task'
+import { useDashboardData } from '@/hooks/useDashboardData'
+import { taskService } from '@/services/task'
 
 const priorityColors: Record<string, string> = {
   high: 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-500/10',
@@ -13,31 +15,17 @@ const priorityColors: Record<string, string> = {
 }
 
 export function UpcomingTasks() {
-  const [taskList, setTaskList] = useState<TaskResponse[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const fetchTasks = async () => {
-      try {
-        const data = await taskService.getUpcomingTasks()
-        setTaskList(data)
-      } catch (err: any) {
-        setError('Failed to load tasks.')
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchTasks()
-  }, [])
+  const queryClient = useQueryClient()
+  
+  // Consume dashboard unified query
+  const { data: dashboardData, isLoading, error } = useDashboardData()
+  const taskList = dashboardData?.recentTasks || []
 
   const toggleTask = async (id: string, currentCompleted: boolean) => {
     try {
-      const updated = await taskService.toggleTaskComplete(id, !currentCompleted)
-      // Update local state reactively
-      setTaskList((prev) =>
-        prev.map((task) => (task.id === id ? updated : task))
-      )
+      await taskService.toggleTaskComplete(id, !currentCompleted)
+      // Invalidate queries to reload all metrics and checklists reactively
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
     } catch (err: any) {
       console.error('Failed to update task state.', err)
     }
@@ -50,7 +38,7 @@ export function UpcomingTasks() {
         <p className="text-sm text-muted-foreground">Your assigned tasks and deadlines</p>
       </div>
 
-      {loading ? (
+      {isLoading ? (
         // Skeleton Loader
         <div className="mt-6 space-y-3">
           {[1, 2, 3, 4].map((placeholder) => (
@@ -65,7 +53,7 @@ export function UpcomingTasks() {
         </div>
       ) : error ? (
         <div className="mt-6 text-sm text-red-400 p-4 border border-red-500/10 bg-red-500/5 rounded-lg">
-          {error}
+          Failed to load tasks.
         </div>
       ) : taskList.length === 0 ? (
         // Empty State
