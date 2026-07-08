@@ -62,6 +62,7 @@ export function QuickActions() {
   const [pDesc, setPDesc] = useState('')
   const [pColor, setPColor] = useState('blue')
   const [pIcon, setPIcon] = useState('🚀')
+  const [pVisibility, setPVisibility] = useState('Workspace')
   const [pError, setPError] = useState<string | null>(null)
   const [pLoading, setPLoading] = useState(false)
 
@@ -97,6 +98,7 @@ export function QuickActions() {
         color: pColor,
         icon: pIcon,
         status: 'In Progress',
+        visibility: pVisibility,
       })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       setActiveModal(null)
@@ -104,6 +106,7 @@ export function QuickActions() {
       setPDesc('')
       setPColor('blue')
       setPIcon('🚀')
+      setPVisibility('Workspace')
     } catch (err: any) {
       const errMsg = err.response?.data?.detail || 'Failed to create project.'
       setPError(errMsg)
@@ -279,6 +282,23 @@ export function QuickActions() {
                       />
                     ))}
                   </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="pvisibility" className="text-xs font-medium text-white block text-left">
+                    Visibility
+                  </label>
+                  <select
+                    id="pvisibility"
+                    value={pVisibility}
+                    onChange={(e) => setPVisibility(e.target.value)}
+                    disabled={pLoading}
+                    className="w-full px-3.5 py-2 rounded-lg border border-white/10 bg-[#18181b] text-sm text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 disabled:opacity-50"
+                  >
+                    <option value="Workspace">Workspace (Default)</option>
+                    <option value="Private">Private</option>
+                    <option value="Public">Public</option>
+                  </select>
                 </div>
 
                 <div className="flex justify-end gap-2 pt-2 border-t border-white/5">
