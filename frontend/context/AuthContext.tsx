@@ -25,6 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       // Clear invalid credentials
       localStorage.removeItem('token')
+      document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax"
       setUser(null)
     }
   }
@@ -46,10 +47,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await authService.login(credentials)
       localStorage.setItem('token', response.access_token)
+      // Set session cookie for middleware route protection (expires in 1 hour)
+      document.cookie = `token=${response.access_token}; path=/; max-age=3600; SameSite=Lax`
       await refreshUser()
       router.push('/') // Redirect to dashboard
     } catch (error) {
       localStorage.removeItem('token')
+      document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax"
       setUser(null)
       throw error
     } finally {
@@ -65,6 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.warn("Logout endpoint failed, clearing local session anyway.", error)
     } finally {
       localStorage.removeItem('token')
+      document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax"
       setUser(null)
       setIsLoading(false)
       router.push('/login')
