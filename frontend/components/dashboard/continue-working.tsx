@@ -1,30 +1,39 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useRouter } from 'next/navigation'
 import { PremiumCard } from '../ui/premium-card'
 import { AnimatedBadge } from '../ui/animated-badge'
-import { ChevronRight, FolderKanban } from 'lucide-react'
-import { projectService, ProjectResponse } from '@/services/project'
+import { ChevronRight, FolderKanban, Trash2 } from 'lucide-react'
+import { useProjectStore } from '@/store/useProjectStore'
+import { useAuth } from '@/hooks/useAuth'
+
+const colorClasses: Record<string, { bg: string; text: string; border: string; dot: string; fromTo: string }> = {
+  blue: { bg: 'bg-blue-500/10 hover:bg-blue-500/15', text: 'text-blue-400', border: 'border-blue-500/20', dot: 'bg-blue-500', fromTo: 'from-blue-500 to-blue-500/80' },
+  green: { bg: 'bg-emerald-500/10 hover:bg-emerald-500/15', text: 'text-emerald-400', border: 'border-emerald-500/20', dot: 'bg-emerald-500', fromTo: 'from-emerald-500 to-emerald-500/80' },
+  yellow: { bg: 'bg-yellow-500/10 hover:bg-yellow-500/15', text: 'text-yellow-400', border: 'border-yellow-500/20', dot: 'bg-yellow-500', fromTo: 'from-yellow-500 to-yellow-500/80' },
+  purple: { bg: 'bg-purple-500/10 hover:bg-purple-500/15', text: 'text-purple-400', border: 'border-purple-500/20', dot: 'bg-purple-500', fromTo: 'from-purple-500 to-purple-500/80' },
+  red: { bg: 'bg-red-500/10 hover:bg-red-500/15', text: 'text-red-400', border: 'border-red-500/20', dot: 'bg-red-500', fromTo: 'from-red-500 to-red-500/80' },
+  indigo: { bg: 'bg-indigo-500/10 hover:bg-indigo-500/15', text: 'text-indigo-400', border: 'border-indigo-500/20', dot: 'bg-indigo-500', fromTo: 'from-indigo-500 to-indigo-500/80' },
+  pink: { bg: 'bg-pink-500/10 hover:bg-pink-500/15', text: 'text-pink-400', border: 'border-pink-500/20', dot: 'bg-pink-500', fromTo: 'from-pink-500 to-pink-500/80' },
+  orange: { bg: 'bg-orange-500/10 hover:bg-orange-500/15', text: 'text-orange-400', border: 'border-orange-500/20', dot: 'bg-orange-500', fromTo: 'from-orange-500 to-orange-500/80' },
+  teal: { bg: 'bg-teal-500/10 hover:bg-teal-500/15', text: 'text-teal-400', border: 'border-teal-500/20', dot: 'bg-teal-500', fromTo: 'from-teal-500 to-teal-500/80' },
+}
 
 export function ContinueWorking() {
-  const [projectsList, setProjectsList] = useState<ProjectResponse[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
+  const { user } = useAuth()
+  const { projects, loading, error, fetchProjects, deleteProject } = useProjectStore()
+
+  // Deletion Modal triggers
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
+  const [deleteTargetName, setDeleteTargetName] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        const data = await projectService.getProjects()
-        setProjectsList(data)
-      } catch (err: any) {
-        setError('Failed to load projects.')
-      } finally {
-        setLoading(false)
-      }
-    }
     fetchProjects()
-  }, [])
+  }, [fetchProjects])
 
   const getInitials = (name: string) => {
     return name
@@ -33,6 +42,25 @@ export function ContinueWorking() {
       .join('')
       .toUpperCase()
       .slice(0, 2)
+  }
+
+  const handleDeleteTrigger = (e: React.MouseEvent, id: string, name: string) => {
+    e.stopPropagation()
+    setDeleteTargetId(id)
+    setDeleteTargetName(name)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTargetId) return
+    setDeleting(true)
+    try {
+      await deleteProject(deleteTargetId)
+      setDeleteTargetId(null)
+    } catch (err) {
+      alert('Delete operation failed.')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   return (
@@ -44,13 +72,14 @@ export function ContinueWorking() {
         </div>
         <motion.button
           whileHover={{ x: 4 }}
+          onClick={() => router.push('/')}
           className="flex items-center gap-1 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
         >
           View all <ChevronRight className="h-4 w-4" />
         </motion.button>
       </div>
 
-      {loading ? (
+      {loading && projects.length === 0 ? (
         // Skeleton Loader
         <div className="flex gap-4 overflow-x-auto pb-4 -mx-6 px-6">
           {[1, 2, 3].map((placeholder) => (
@@ -76,7 +105,7 @@ export function ContinueWorking() {
         <div className="text-sm text-red-400 p-4 border border-red-500/10 bg-red-500/5 rounded-lg">
           {error}
         </div>
-      ) : projectsList.length === 0 ? (
+      ) : projects.length === 0 ? (
         // Empty State
         <div className="flex flex-col items-center justify-center py-10 rounded-xl border border-white/5 bg-white/[0.01] p-6 text-center">
           <FolderKanban className="h-10 w-10 text-muted-foreground mb-3" />
@@ -88,83 +117,144 @@ export function ContinueWorking() {
       ) : (
         // Projects List
         <div className="flex gap-4 overflow-x-auto pb-4 -mx-6 px-6">
-          {projectsList.map((project, i) => (
-            <motion.div
-              key={project.id}
-              initial={{ opacity: 0, x: 30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 + i * 0.08, duration: 0.5 }}
-              className="flex-shrink-0 w-80"
-            >
-              <PremiumCard hoverable>
-                <div className="space-y-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h3 className="font-semibold text-foreground text-base truncate w-48">{project.name}</h3>
-                      <p className="text-xs text-muted-foreground mt-1.5 font-medium">Assigned to you</p>
-                    </div>
-                    <AnimatedBadge variant="success">{project.status}</AnimatedBadge>
-                  </div>
-
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.3 + i * 0.08 }}
-                  >
-                    <div className="flex items-center justify-between mb-2.5">
-                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Progress</span>
-                      <span className="text-sm font-bold text-primary">{project.progress}%</span>
-                    </div>
-                    <div className="h-2 w-full rounded-full bg-muted/60 overflow-hidden shadow-sm">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${project.progress}%` }}
-                        transition={{ duration: 1.2, delay: 0.35 + i * 0.08, ease: 'easeOut' }}
-                        className="h-full bg-gradient-to-r from-primary to-primary/80 rounded-full shadow-lg shadow-primary/30"
-                      />
-                    </div>
-                  </motion.div>
-
-                  <div className="flex items-center justify-between pt-2">
-                    <div className="flex -space-x-2">
-                      {project.members.slice(0, 2).map((member) => (
-                        member.profile_image ? (
-                          <img
-                            key={member.id}
-                            src={member.profile_image}
-                            alt={member.full_name}
-                            className="h-7 w-7 rounded-full border-2 border-card object-cover shadow-sm"
-                          />
-                        ) : (
-                          <motion.div
-                            key={member.id}
-                            whileHover={{ scale: 1.15, zIndex: 10 }}
-                            className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-card bg-gradient-to-br from-primary/30 to-primary/10 text-xs font-bold text-primary shadow-sm"
-                          >
-                            {getInitials(member.full_name)}
-                          </motion.div>
-                        )
-                      ))}
-                      {project.members.length > 2 && (
-                        <div className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-card bg-muted text-xs font-bold text-muted-foreground shadow-sm">
-                          +{project.members.length - 2}
+          {projects.map((project, i) => {
+            const themeClass = colorClasses[project.color || 'blue'] || colorClasses.blue
+            const isOwner = user?.id === project.owner_id
+            
+            return (
+              <motion.div
+                key={project.id}
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.08, duration: 0.5 }}
+                className="flex-shrink-0 w-80 cursor-pointer"
+                onClick={() => router.push(`/projects/${project.id}`)}
+              >
+                <PremiumCard hoverable>
+                  <div className="space-y-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <span className="text-2xl mt-0.5 flex-shrink-0">{project.icon || '🚀'}</span>
+                        <div className="min-w-0">
+                          <h3 className="font-semibold text-foreground text-base truncate w-40 text-left">{project.name}</h3>
+                          <p className="text-[10px] text-muted-foreground mt-1 font-medium text-left">
+                            Created {new Date(project.created_at).toLocaleDateString()}
+                          </p>
                         </div>
-                      )}
+                      </div>
+                      
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <AnimatedBadge variant="success">{project.status}</AnimatedBadge>
+                        {isOwner && (
+                          <button
+                            onClick={(e) => handleDeleteTrigger(e, project.id, project.name)}
+                            className="rounded-lg p-1.5 text-muted-foreground hover:bg-red-500/10 hover:text-red-400 transition-all"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <motion.button
-                      whileHover={{ scale: 1.08, y: -2 }}
-                      whileTap={{ scale: 0.96 }}
-                      className="rounded-lg px-3 py-1.5 text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 transition-all duration-200"
+
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.1 + i * 0.08 }}
                     >
-                      Open
-                    </motion.button>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-medium text-zinc-500 uppercase tracking-wide">Progress</span>
+                        <span className="text-xs font-bold text-zinc-300">{project.progress}%</span>
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-white/[0.04] overflow-hidden shadow-inner">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${project.progress}%` }}
+                          transition={{ duration: 1.2, delay: 0.15 + i * 0.08, ease: 'easeOut' }}
+                          className={`h-full bg-gradient-to-r ${themeClass.fromTo} rounded-full`}
+                        />
+                      </div>
+                    </motion.div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <div className="flex -space-x-1.5">
+                        {project.members?.slice(0, 2).map((member) => (
+                          member.profile_image ? (
+                            <img
+                              key={member.id}
+                              src={member.profile_image}
+                              alt={member.full_name}
+                              className="h-6 w-6 rounded-full border-2 border-[#18181b] object-cover shadow-sm"
+                            />
+                          ) : (
+                            <motion.div
+                              key={member.id}
+                              whileHover={{ scale: 1.15, zIndex: 10 }}
+                              className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#18181b] bg-gradient-to-br from-primary/30 to-primary/10 text-[9px] font-bold text-primary shadow-sm"
+                            >
+                              {getInitials(member.full_name)}
+                            </motion.div>
+                          )
+                        ))}
+                        {(project.members?.length || 1) > 2 && (
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#18181b] bg-muted text-[9px] font-bold text-muted-foreground shadow-sm">
+                            +{(project.members?.length || 1) - 2}
+                          </div>
+                        )}
+                      </div>
+                      <motion.button
+                        whileHover={{ scale: 1.08 }}
+                        whileTap={{ scale: 0.96 }}
+                        className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 transition-all duration-200"
+                      >
+                        Open
+                      </motion.button>
+                    </div>
                   </div>
-                </div>
-              </PremiumCard>
-            </motion.div>
-          ))}
+                </PremiumCard>
+              </motion.div>
+            )
+          })}
         </div>
       )}
+
+      {/* Delete Confirmation Modal Overlay */}
+      <AnimatePresence>
+        {deleteTargetId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="w-full max-w-sm rounded-2xl border border-red-500/20 bg-[#09090b] p-6 shadow-2xl text-center"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 mx-auto mb-4">
+                <Trash2 className="h-6 w-6 text-red-500" />
+              </div>
+              <h3 className="text-base font-semibold text-white mb-2">Delete Project?</h3>
+              <p className="text-xs text-muted-foreground mb-6">
+                Are you sure you want to delete <span className="text-white font-bold">&quot;{deleteTargetName}&quot;</span>? This action is permanent and deletes all associated workspace metadata.
+              </p>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setDeleteTargetId(null)}
+                  disabled={deleting}
+                  className="flex-1 rounded-lg border border-white/5 bg-white/[0.02] px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-white/5 hover:text-white transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmDelete}
+                  disabled={deleting}
+                  className="flex-1 rounded-lg bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2 text-xs transition-all cursor-pointer"
+                >
+                  {deleting ? 'Deleting...' : 'Confirm Delete'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
