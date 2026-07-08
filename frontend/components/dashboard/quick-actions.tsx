@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, CheckSquare, FileText, Sparkles, X } from 'lucide-react'
-import { projectService } from '@/services/project'
+import { useProjectStore } from '@/store/useProjectStore'
 
 const actions = [
   {
@@ -32,10 +32,30 @@ const actions = [
   },
 ]
 
+const colors = ['blue', 'green', 'yellow', 'purple', 'red', 'indigo', 'pink', 'orange', 'teal']
+const icons = ['🚀', '🎨', '💻', '🔒', '📊', '⚡', '🤖', '🌍', '🛠️']
+
+const colorClasses: Record<string, string> = {
+  blue: 'bg-blue-500',
+  green: 'bg-emerald-500',
+  yellow: 'bg-yellow-500',
+  purple: 'bg-purple-500',
+  red: 'bg-red-500',
+  indigo: 'bg-indigo-500',
+  pink: 'bg-pink-500',
+  orange: 'bg-orange-500',
+  teal: 'bg-teal-500',
+}
+
 export function QuickActions() {
+  const { createProject } = useProjectStore()
+  
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [color, setColor] = useState('blue')
+  const [icon, setIcon] = useState('🚀')
+  
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -55,15 +75,18 @@ export function QuickActions() {
     setLoading(true)
 
     try {
-      await projectService.createProject({
+      await createProject({
         name,
         description: description || undefined,
+        color,
+        icon,
+        status: 'In Progress',
       })
       setIsModalOpen(false)
       setName('')
       setDescription('')
-      // Refresh the page to reload projects list and metrics reactively
-      window.location.reload()
+      setColor('blue')
+      setIcon('🚀')
     } catch (err: any) {
       const errMsg = err.response?.data?.detail || 'Failed to create project.'
       setError(errMsg)
@@ -176,6 +199,44 @@ export function QuickActions() {
                     rows={3}
                     className="w-full px-3.5 py-2 rounded-lg border border-white/10 bg-white/[0.02] text-sm text-white placeholder-[#52525b] outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 disabled:opacity-50 resize-none"
                   />
+                </div>
+
+                {/* Project Icon */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-white block">Project Icon</label>
+                  <div className="flex gap-2">
+                    {icons.map((ico) => (
+                      <button
+                        key={ico}
+                        type="button"
+                        onClick={() => setIcon(ico)}
+                        className={`text-xl p-2 rounded-lg border transition-all cursor-pointer ${
+                          icon === ico ? 'border-primary bg-primary/10' : 'border-white/5 bg-white/[0.01] hover:bg-white/5'
+                        }`}
+                      >
+                        {ico}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Project Color Theme */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-white block">Project Color Theme</label>
+                  <div className="flex gap-2">
+                    {colors.map((col) => (
+                      <button
+                        key={col}
+                        type="button"
+                        onClick={() => setColor(col)}
+                        className={`h-6 w-6 rounded-full border-2 transition-all cursor-pointer ${
+                          colorClasses[col]
+                        } ${
+                          color === col ? 'border-white scale-110 shadow-md' : 'border-transparent opacity-60 hover:opacity-100'
+                        }`}
+                      />
+                    ))}
+                  </div>
                 </div>
 
                 <div className="flex justify-end gap-2 pt-2 border-t border-white/5">
