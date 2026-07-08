@@ -8,6 +8,7 @@ from app.api.projects import router as projects_router
 from app.api.tasks import router as tasks_router
 from app.api.dashboard import router as dashboard_router
 from app.api.search import router as search_router
+from app.api.dashboard_unified import router as dashboard_unified_router
 from app.core.config import settings
 
 # Initialize the FastAPI app
@@ -34,6 +35,7 @@ app.include_router(projects_router)
 app.include_router(tasks_router)
 app.include_router(dashboard_router)
 app.include_router(search_router)
+app.include_router(dashboard_unified_router)
 
 # --- Global Exception Handlers ---
 
