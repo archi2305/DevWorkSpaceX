@@ -1,36 +1,22 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React from 'react'
 import { motion } from 'framer-motion'
 import { PremiumCard } from '../ui/premium-card'
 import { Users, CheckCircle2, Briefcase } from 'lucide-react'
-import { dashboardService, DashboardSummaryResponse } from '@/services/dashboard'
+import { useDashboardData } from '@/hooks/useDashboardData'
 
 export function WorkspaceHealth() {
-  const [summary, setSummary] = useState<DashboardSummaryResponse | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const fetchSummary = async () => {
-      try {
-        const data = await dashboardService.getSummary()
-        setSummary(data)
-      } catch (err: any) {
-        setError('Failed to load dashboard metrics.')
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchSummary()
-  }, [])
+  // Consume dashboard unified query
+  const { data: dashboardData, isLoading, error } = useDashboardData()
+  const metrics = dashboardData?.workspaceHealth
 
   const healthMetrics = [
     {
       id: 1,
       icon: Users,
       label: 'Team Members',
-      value: summary ? String(summary.team_members) : '0',
+      value: metrics ? String(metrics.registered_users) : '0',
       change: 'Registered users',
       status: 'good',
     },
@@ -38,16 +24,16 @@ export function WorkspaceHealth() {
       id: 2,
       icon: CheckCircle2,
       label: 'Tasks Completed',
-      value: summary ? String(summary.completed_tasks) : '0',
-      change: summary ? `Pending: ${summary.pending_tasks}` : '',
+      value: metrics ? String(metrics.completed_tasks) : '0',
+      change: metrics ? `Pending: ${metrics.pending_tasks}` : '',
       status: 'good',
     },
     {
       id: 3,
       icon: Briefcase,
       label: 'Active Projects',
-      value: summary ? String(summary.active_projects) : '0',
-      change: 'On track',
+      value: metrics ? String(metrics.active_projects) : '0',
+      change: metrics ? `Completion Rate: ${metrics.completion_rate}%` : 'On track',
       status: 'good',
     },
   ]
@@ -61,7 +47,7 @@ export function WorkspaceHealth() {
 
       {error ? (
         <div className="mt-6 text-sm text-red-400 p-4 border border-red-500/10 bg-red-500/5 rounded-lg">
-          {error}
+          Failed to load dashboard metrics.
         </div>
       ) : (
         <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -89,16 +75,16 @@ export function WorkspaceHealth() {
                   </span>
                 </div>
 
-                <p className="text-xs text-muted-foreground">{metric.label}</p>
-                {loading ? (
+                <p className="text-xs text-muted-foreground text-left">{metric.label}</p>
+                {isLoading ? (
                   <div className="mt-2 h-7 bg-[#27272a] rounded w-12 animate-pulse" />
                 ) : (
-                  <p className="mt-1 text-2xl font-bold text-foreground">{metric.value}</p>
+                  <p className="mt-1 text-2xl font-bold text-foreground text-left">{metric.value}</p>
                 )}
-                {loading ? (
+                {isLoading ? (
                   <div className="mt-2 h-3 bg-[#27272a] rounded w-20 animate-pulse" />
                 ) : (
-                  <p className="mt-2 text-xs text-muted-foreground">{metric.change}</p>
+                  <p className="mt-2 text-xs text-muted-foreground text-left">{metric.change}</p>
                 )}
               </motion.div>
             )
