@@ -1,35 +1,52 @@
 'use client'
 
+import React from 'react'
 import { motion } from 'framer-motion'
 import { PremiumCard } from '../ui/premium-card'
 import { ProgressBar } from '../ui/progress-bar'
+import { useDashboardData } from '@/hooks/useDashboardData'
 
 export function SprintProgress() {
-  const sprintStats = {
-    name: 'Sprint 24',
-    startDate: 'Mar 10',
-    endDate: 'Mar 23',
-    completed: 12,
-    total: 18,
-    velocity: 42,
+  // Consume dashboard unified query
+  const { data: dashboardData, isLoading, error } = useDashboardData()
+  const sprint = dashboardData?.sprint
+
+  const getFormattedDate = (isoString: string) => {
+    try {
+      const d = new Date(isoString)
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    } catch (e) {
+      return ''
+    }
   }
 
-  const metrics = [
-    { label: 'Completed', value: sprintStats.completed, max: sprintStats.total, color: 'success' as const },
-    { label: 'Remaining', value: sprintStats.total - sprintStats.completed, max: sprintStats.total, color: 'warning' as const },
-  ]
+  const completed = sprint?.completed_tasks || 0
+  const total = sprint?.total_tasks || 0
+  const velocity = sprint?.velocity || 0
+  const progressPercentage = total > 0 ? Math.round((completed / total) * 100) : 0
 
-  const progressPercentage = Math.round((sprintStats.completed / sprintStats.total) * 100)
+  const metrics = [
+    { label: 'Completed', value: completed, max: total, color: 'success' as const },
+    { label: 'Remaining', value: total - completed, max: total, color: 'warning' as const },
+  ]
 
   return (
     <PremiumCard>
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-foreground">{sprintStats.name}</h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              {sprintStats.startDate} — {sprintStats.endDate}
-            </p>
+            {isLoading ? (
+              <div className="h-6 bg-[#18181b]/30 rounded w-24 animate-pulse" />
+            ) : (
+              <h2 className="text-lg font-semibold text-foreground text-left">{sprint?.name || 'Active Sprint'}</h2>
+            )}
+            {isLoading ? (
+              <div className="h-4 bg-[#18181b]/30 rounded w-32 mt-2 animate-pulse" />
+            ) : (
+              <p className="text-sm text-muted-foreground mt-1 text-left">
+                {sprint ? `${getFormattedDate(sprint.start_date)} — ${getFormattedDate(sprint.end_date)}` : 'Sprints cycle dates'}
+              </p>
+            )}
           </div>
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
@@ -37,7 +54,11 @@ export function SprintProgress() {
             transition={{ delay: 0.2 }}
             className="text-right"
           >
-            <div className="text-3xl font-bold text-primary">{progressPercentage}%</div>
+            {isLoading ? (
+              <div className="h-8 bg-[#18181b]/30 rounded w-16 animate-pulse" />
+            ) : (
+              <div className="text-3xl font-bold text-primary">{progressPercentage}%</div>
+            )}
             <p className="text-xs text-muted-foreground mt-1">Complete</p>
           </motion.div>
         </div>
@@ -51,8 +72,8 @@ export function SprintProgress() {
           className="origin-left"
         >
           <ProgressBar
-            value={sprintStats.completed}
-            max={sprintStats.total}
+            value={completed}
+            max={total || 1}
             showPercentage={false}
             size="lg"
             color="primary"
@@ -68,11 +89,15 @@ export function SprintProgress() {
               transition={{ delay: 0.35 + i * 0.1, duration: 0.4 }}
               className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/8 to-transparent p-4 hover:border-primary/40 transition-all duration-200"
             >
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{metric.label}</p>
-              <p className="mt-2 text-2xl font-bold text-foreground">
-                {metric.value}
-                <span className="text-xs text-muted-foreground font-normal ml-1">/{metric.max}</span>
-              </p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide text-left">{metric.label}</p>
+              {isLoading ? (
+                <div className="h-8 bg-[#18181b]/30 rounded w-12 mt-2 animate-pulse" />
+              ) : (
+                <p className="mt-2 text-2xl font-bold text-foreground text-left">
+                  {metric.value}
+                  <span className="text-xs text-muted-foreground font-normal ml-1">/{metric.max}</span>
+                </p>
+              )}
             </motion.div>
           ))}
         </div>
@@ -85,9 +110,13 @@ export function SprintProgress() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Team Velocity</p>
-              <p className="mt-2 text-3xl font-bold text-primary">{sprintStats.velocity}</p>
-              <p className="text-xs text-muted-foreground mt-1">Story points/sprint</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide text-left">Team Velocity</p>
+              {isLoading ? (
+                <div className="h-9 bg-[#18181b]/30 rounded w-16 mt-2 animate-pulse" />
+              ) : (
+                <p className="mt-2 text-3xl font-bold text-primary text-left">{velocity}</p>
+              )}
+              <p className="text-xs text-muted-foreground mt-1 text-left">Story points/sprint</p>
             </div>
             <motion.div
               animate={{ scale: [1, 1.1, 1], rotate: [0, 5, 0] }}
