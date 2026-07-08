@@ -48,6 +48,15 @@ class Project(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False
     )
+
+    # Optional multi-tenant workspace association
+    workspace_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    
+    # Project privacy visibility level ('Workspace', 'Private', 'Public')
+    visibility: Mapped[str] = mapped_column(String(50), default="Workspace", nullable=False)
+    
+    # Project archive toggle
+    is_archived: Mapped[bool] = mapped_column(default=False, nullable=False)
     
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
