@@ -38,3 +38,15 @@ def login(login_data: UserLogin, db: Session = Depends(get_db)):
         "access_token": access_token,
         "token_type": "bearer"
     }
+
+@router.post(
+    "/logout",
+    status_code=status.HTTP_200_OK,
+    summary="Log out user",
+    description="Acknowledges user logout. The client should clear the stored JWT."
+)
+def logout():
+    """
+    Client-side logout endpoint.
+    """
+    return {"message": "Logged out successfully"}
