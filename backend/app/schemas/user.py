@@ -10,6 +10,7 @@ class UserBase(BaseModel):
     email: EmailStr
     full_name: str = Field(..., min_length=1, max_length=100, description="The user's display name")
     profile_image: Optional[str] = Field(None, max_length=1024, description="URL of the profile picture")
+    role: Optional[str] = Field("Developer", max_length=100, description="Workspace role of the user")
 
 class UserRegister(UserBase):
     """
