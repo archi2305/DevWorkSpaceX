@@ -1,12 +1,14 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { PremiumCard } from '../ui/premium-card'
 import { AnimatedBadge } from '../ui/animated-badge'
 import { ChevronRight, FolderKanban, Trash2 } from 'lucide-react'
-import { useProjectStore } from '@/store/useProjectStore'
+import { useDashboardData } from '@/hooks/useDashboardData'
+import { projectService } from '@/services/project'
 import { useAuth } from '@/hooks/useAuth'
 
 const colorClasses: Record<string, { bg: string; text: string; border: string; dot: string; fromTo: string }> = {
@@ -24,16 +26,16 @@ const colorClasses: Record<string, { bg: string; text: string; border: string; d
 export function ContinueWorking() {
   const router = useRouter()
   const { user } = useAuth()
-  const { projects, loading, error, fetchProjects, deleteProject } = useProjectStore()
+  const queryClient = useQueryClient()
+  
+  // Consume dashboard unified query
+  const { data: dashboardData, isLoading, error } = useDashboardData()
+  const projects = dashboardData?.recentProjects || []
 
   // Deletion Modal triggers
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
   const [deleteTargetName, setDeleteTargetName] = useState('')
   const [deleting, setDeleting] = useState(false)
-
-  useEffect(() => {
-    fetchProjects()
-  }, [fetchProjects])
 
   const getInitials = (name: string) => {
     return name
@@ -54,7 +56,9 @@ export function ContinueWorking() {
     if (!deleteTargetId) return
     setDeleting(true)
     try {
-      await deleteProject(deleteTargetId)
+      await projectService.deleteProject(deleteTargetId)
+      // Invalidate query to trigger unified re-fetch
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       setDeleteTargetId(null)
     } catch (err) {
       alert('Delete operation failed.')
@@ -79,7 +83,7 @@ export function ContinueWorking() {
         </motion.button>
       </div>
 
-      {loading && projects.length === 0 ? (
+      {isLoading ? (
         // Skeleton Loader
         <div className="flex gap-4 overflow-x-auto pb-4 -mx-6 px-6">
           {[1, 2, 3].map((placeholder) => (
@@ -103,7 +107,7 @@ export function ContinueWorking() {
         </div>
       ) : error ? (
         <div className="text-sm text-red-400 p-4 border border-red-500/10 bg-red-500/5 rounded-lg">
-          {error}
+          Failed to load projects.
         </div>
       ) : projects.length === 0 ? (
         // Empty State
@@ -148,7 +152,7 @@ export function ContinueWorking() {
                         {isOwner && (
                           <button
                             onClick={(e) => handleDeleteTrigger(e, project.id, project.name)}
-                            className="rounded-lg p-1.5 text-muted-foreground hover:bg-red-500/10 hover:text-red-400 transition-all"
+                            className="rounded-lg p-1.5 text-muted-foreground hover:bg-red-500/10 hover:text-red-400 transition-all cursor-pointer"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
