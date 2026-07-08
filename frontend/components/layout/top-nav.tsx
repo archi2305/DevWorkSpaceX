@@ -4,14 +4,27 @@ import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Search, Plus, Bell, Moon, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
+import { useAuth } from '@/hooks/useAuth'
 
 export function TopNav() {
   const { theme, setTheme } = useTheme()
   const [isMounted, setIsMounted] = useState(false)
+  const { user } = useAuth()
 
   useEffect(() => {
     setIsMounted(true)
   }, [])
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2)
+  }
+
+  const userInitials = user ? getInitials(user.full_name) : 'U'
 
   return (
     <motion.header
@@ -78,12 +91,20 @@ export function TopNav() {
             </motion.button>
           )}
 
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="ml-2 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground cursor-pointer"
-          >
-            AR
-          </motion.div>
+          {user?.profile_image ? (
+            <img
+              src={user.profile_image}
+              alt={user.full_name}
+              className="ml-2 h-9 w-9 rounded-full object-cover cursor-pointer hover:scale-105 transition-transform"
+            />
+          ) : (
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              className="ml-2 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground cursor-pointer"
+            >
+              {userInitials}
+            </motion.div>
+          )}
         </div>
       </div>
     </motion.header>
