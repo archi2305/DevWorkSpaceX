@@ -13,6 +13,9 @@ class ProjectBase(BaseModel):
     color: Optional[str] = Field(None, max_length=50)
     status: str = Field("Pending", max_length=50)
     progress: int = Field(0, ge=0, le=100)
+    workspace_id: Optional[uuid.UUID] = None
+    visibility: str = Field("Workspace", max_length=50)
+    is_archived: bool = Field(False)
 
 class ProjectCreate(BaseModel):
     """
@@ -23,6 +26,8 @@ class ProjectCreate(BaseModel):
     icon: Optional[str] = Field(None, max_length=50)
     color: Optional[str] = Field(None, max_length=50)
     status: Optional[str] = Field("Pending", max_length=50)
+    workspace_id: Optional[uuid.UUID] = None
+    visibility: Optional[str] = Field("Workspace", max_length=50)
 
 class ProjectUpdate(BaseModel):
     """
@@ -34,6 +39,9 @@ class ProjectUpdate(BaseModel):
     color: Optional[str] = Field(None, max_length=50)
     status: Optional[str] = Field(None, max_length=50)
     progress: Optional[int] = Field(None, ge=0, le=100)
+    workspace_id: Optional[uuid.UUID] = None
+    visibility: Optional[str] = Field(None, max_length=50)
+    is_archived: Optional[bool] = Field(None)
 
 class ProjectMember(BaseModel):
     """
