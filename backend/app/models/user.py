@@ -33,6 +33,13 @@ class User(Base):
         nullable=False
     )
     
+    # User's role inside the workspace (e.g., 'Product Manager', 'Staff Engineer')
+    role: Mapped[str] = mapped_column(
+        String(100),
+        default="Developer",
+        nullable=False
+    )
+    
     # Hashed password (never store plain-text passwords!)
     password_hash: Mapped[str] = mapped_column(
         String(255),
