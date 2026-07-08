@@ -9,6 +9,8 @@ class ProjectBase(BaseModel):
     """
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=1024)
+    icon: Optional[str] = Field(None, max_length=50)
+    color: Optional[str] = Field(None, max_length=50)
     status: str = Field("Pending", max_length=50)
     progress: int = Field(0, ge=0, le=100)
 
@@ -18,6 +20,20 @@ class ProjectCreate(BaseModel):
     """
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=1024)
+    icon: Optional[str] = Field(None, max_length=50)
+    color: Optional[str] = Field(None, max_length=50)
+    status: Optional[str] = Field("Pending", max_length=50)
+
+class ProjectUpdate(BaseModel):
+    """
+    Data structure for project editing. All fields are optional.
+    """
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    description: Optional[str] = Field(None, max_length=1024)
+    icon: Optional[str] = Field(None, max_length=50)
+    color: Optional[str] = Field(None, max_length=50)
+    status: Optional[str] = Field(None, max_length=50)
+    progress: Optional[int] = Field(None, ge=0, le=100)
 
 class ProjectMember(BaseModel):
     """
