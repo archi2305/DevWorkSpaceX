@@ -1,9 +1,12 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from app.dependencies.db import get_db
+from app.dependencies.auth import get_current_user
 from app.schemas.user import UserRegister, UserLogin, UserResponse, Token
 from app.services.auth import AuthService
 from app.core.security import create_access_token
+from app.models.activity import ActivityLog
+from app.models.user import User
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -18,7 +21,18 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
     """
     Registers a new user, hashes their password, and saves them to the database.
     """
-    return AuthService.register_user(db, user_data)
+    user = AuthService.register_user(db, user_data)
+    # Log registration activity
+    db_log = ActivityLog(
+        user_id=user.id,
+        action="Registration",
+        details=f"User {user.full_name} registered successfully",
+        target_type="User",
+        target_name=user.full_name
+    )
+    db.add(db_log)
+    db.commit()
+    return user
 
 @router.post(
     "/login",
@@ -32,8 +46,19 @@ def login(login_data: UserLogin, db: Session = Depends(get_db)):
     Authenticates user credentials and generates a JWT bearer token.
     """
     user = AuthService.authenticate_user(db, login_data)
-    # Generate the access token using the user's UUID string as the payload subject
     access_token = create_access_token(subject=str(user.id))
+    
+    # Log login activity
+    db_log = ActivityLog(
+        user_id=user.id,
+        action="Login",
+        details=f"User {user.full_name} logged in",
+        target_type="User",
+        target_name=user.full_name
+    )
+    db.add(db_log)
+    db.commit()
+    
     return {
         "access_token": access_token,
         "token_type": "bearer"
@@ -45,8 +70,22 @@ def login(login_data: UserLogin, db: Session = Depends(get_db)):
     summary="Log out user",
     description="Acknowledges user logout. The client should clear the stored JWT."
 )
-def logout():
+def logout(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
-    Client-side logout endpoint.
+    Client-side logout endpoint. Logs logout activity on the database.
     """
+    # Log logout activity
+    db_log = ActivityLog(
+        user_id=current_user.id,
+        action="Logout",
+        details=f"User {current_user.full_name} logged out",
+        target_type="User",
+        target_name=current_user.full_name
+    )
+    db.add(db_log)
+    db.commit()
+    
     return {"message": "Logged out successfully"}
