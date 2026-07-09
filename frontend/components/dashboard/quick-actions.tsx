@@ -72,7 +72,10 @@ export function QuickActions() {
 
   // Task creation fields
   const [tTitle, setTTitle] = useState('')
-  const [tPriority, setTPriority] = useState('medium')
+  const [tDesc, setTDesc] = useState('')
+  const [tStatus, setTStatus] = useState('Todo')
+  const [tLabels, setTLabels] = useState('')
+  const [tPriority, setTPriority] = useState('Medium')
   const [tDueDate, setTDueDate] = useState('')
   const [tProjectId, setTProjectId] = useState('')
   const [tError, setTError] = useState<string | null>(null)
@@ -139,14 +142,28 @@ export function QuickActions() {
     try {
       await taskService.createTask({
         title: tTitle,
+        description: tDesc || undefined,
+        status: tStatus,
+        labels: tLabels || undefined,
         priority: tPriority,
         due_date: tDueDate || undefined,
         project_id: tProjectId || undefined,
+        completed: tStatus === 'Done'
       })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
       setActiveModal(null)
+      
+      // Success toast
+      setToastMessage('Task created successfully!')
+      setTimeout(() => setToastMessage(null), 3000)
+
       setTTitle('')
-      setTPriority('medium')
+      setTDesc('')
+      setTStatus('Todo')
+      setTLabels('')
+      setTPriority('Medium')
       setTDueDate('')
       setTProjectId('')
     } catch (err: any) {
@@ -417,20 +434,71 @@ export function QuickActions() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label htmlFor="tprio" className="text-xs font-medium text-white block text-left">
-                    Priority
+                  <label htmlFor="tdesc" className="text-xs font-medium text-white block text-left">
+                    Description
                   </label>
-                  <select
-                    id="tprio"
-                    value={tPriority}
-                    onChange={(e) => setTPriority(e.target.value)}
+                  <textarea
+                    id="tdesc"
+                    value={tDesc}
+                    onChange={(e) => setTDesc(e.target.value)}
+                    placeholder="Provide details about this action item..."
                     disabled={tLoading}
-                    className="w-full px-3.5 py-2 rounded-lg border border-white/10 bg-[#18181b] text-sm text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 disabled:opacity-50"
-                  >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                  </select>
+                    rows={2}
+                    className="w-full px-3.5 py-2 rounded-lg border border-white/10 bg-white/[0.02] text-sm text-white placeholder-[#52525b] outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 disabled:opacity-50 resize-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-left">
+                  <div className="space-y-1.5">
+                    <label htmlFor="tstatus" className="text-xs font-medium text-white block">
+                      Status
+                    </label>
+                    <select
+                      id="tstatus"
+                      value={tStatus}
+                      onChange={(e) => setTStatus(e.target.value)}
+                      disabled={tLoading}
+                      className="w-full px-3.5 py-2 rounded-lg border border-white/10 bg-[#18181b] text-sm text-white outline-none focus:border-primary disabled:opacity-50"
+                    >
+                      <option value="Todo">Todo</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Review">Review</option>
+                      <option value="Done">Done</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label htmlFor="tprio" className="text-xs font-medium text-white block">
+                      Priority
+                    </label>
+                    <select
+                      id="tprio"
+                      value={tPriority}
+                      onChange={(e) => setTPriority(e.target.value)}
+                      disabled={tLoading}
+                      className="w-full px-3.5 py-2 rounded-lg border border-white/10 bg-[#18181b] text-sm text-white outline-none focus:border-primary disabled:opacity-50"
+                    >
+                      <option value="Low">Low</option>
+                      <option value="Medium">Medium</option>
+                      <option value="High">High</option>
+                      <option value="Urgent">Urgent</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="tlabels" className="text-xs font-medium text-white block text-left">
+                    Labels (Comma separated)
+                  </label>
+                  <input
+                    id="tlabels"
+                    type="text"
+                    value={tLabels}
+                    onChange={(e) => setTLabels(e.target.value)}
+                    placeholder="e.g. backend, bug, schema"
+                    disabled={tLoading}
+                    className="w-full px-3.5 py-2 rounded-lg border border-white/10 bg-white/[0.02] text-sm text-white placeholder-[#52525b] outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 disabled:opacity-50"
+                  />
                 </div>
 
                 <div className="space-y-1.5">
