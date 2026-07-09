@@ -7,6 +7,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { projectService } from '@/services/project'
 import { taskService } from '@/services/task'
 import { useDashboardData } from '@/hooks/useDashboardData'
+import { useProjectStore } from '@/store/useProjectStore'
 
 const actions = [
   {
@@ -55,7 +56,7 @@ export function QuickActions() {
   const { data: dashboardData } = useDashboardData()
   const projects = dashboardData?.recentProjects || []
   
-  const [activeModal, setActiveModal] = useState<'project' | 'task' | null>(null)
+  const { activeModal, setActiveModal } = useProjectStore()
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   
   // Project creation fields
