@@ -83,6 +83,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
   const [taskLabels, setTaskLabels] = useState('')
   const [taskPriority, setTaskPriority] = useState('Medium')
   const [taskDueDate, setTaskDueDate] = useState('')
+  const [taskAssigneeId, setTaskAssigneeId] = useState('')
 
   // Task editing fields
   const [editTargetTask, setEditTargetTask] = useState<TaskResponse | null>(null)
@@ -92,6 +93,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
   const [editTaskLabels, setEditTaskLabels] = useState('')
   const [editTaskPriority, setEditTaskPriority] = useState('Medium')
   const [editTaskDueDate, setEditTaskDueDate] = useState('')
+  const [editTaskAssigneeId, setEditTaskAssigneeId] = useState('')
   
   const [saveLoading, setSaveLoading] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -120,6 +122,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
       setEditTaskLabels(editTargetTask.labels || '')
       setEditTaskPriority(editTargetTask.priority)
       setEditTaskDueDate(editTargetTask.due_date || '')
+      setEditTaskAssigneeId(editTargetTask.assignee_id || '')
     }
   }, [editTargetTask])
 
@@ -135,6 +138,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
         labels: editTaskLabels || null,
         priority: editTaskPriority,
         due_date: editTaskDueDate || null,
+        assignee_id: editTaskAssigneeId || null,
         completed: editTaskStatus === 'Done'
       } as any)
       queryClient.invalidateQueries({ queryKey: ['tasks', { project_id: id }] })
@@ -243,6 +247,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
         labels: taskLabels || undefined,
         priority: taskPriority,
         due_date: taskDueDate || undefined,
+        assignee_id: taskAssigneeId || undefined,
         project_id: id,
         completed: taskStatus === 'Done'
       })
@@ -256,6 +261,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
       setTaskLabels('')
       setTaskPriority('Medium')
       setTaskDueDate('')
+      setTaskAssigneeId('')
     } catch (err) {
       alert('Failed to create task.')
     } finally {
@@ -522,7 +528,14 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                           </button>
                         </div>
                         <div className="flex justify-between items-center text-[9px] text-[#A7ADB5]">
-                          <span className="font-semibold">{task.priority}</span>
+                          <div className="flex items-center gap-2 font-semibold">
+                            <span>{task.priority}</span>
+                            {task.assignee && (
+                              <span title={`Assigned to ${task.assignee.full_name}`} className="text-[8px] bg-[#1D2024] border border-white/[0.06] text-[#5BB98C] rounded-full px-1.5 py-0.5 font-bold uppercase">
+                                {task.assignee.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
+                              </span>
+                            )}
+                          </div>
                           <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                             <button onClick={() => setEditTargetTask(task)} className="text-[#5BB98C] hover:text-[#B7E4C7] font-semibold cursor-pointer">
                               Edit
@@ -583,7 +596,14 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                           </button>
                         </div>
                         <div className="flex justify-between items-center text-[9px] text-[#A7ADB5]">
-                          <span className="text-[#EB5757] font-semibold">{task.priority}</span>
+                          <div className="flex items-center gap-2 font-semibold">
+                            <span className="text-[#EB5757]">{task.priority}</span>
+                            {task.assignee && (
+                              <span title={`Assigned to ${task.assignee.full_name}`} className="text-[8px] bg-[#1D2024] border border-white/[0.06] text-[#5BB98C] rounded-full px-1.5 py-0.5 font-bold uppercase">
+                                {task.assignee.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
+                              </span>
+                            )}
+                          </div>
                           <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                             <button onClick={() => setEditTargetTask(task)} className="text-[#5BB98C] hover:text-[#B7E4C7] font-semibold cursor-pointer">
                               Edit
@@ -638,7 +658,14 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                           </button>
                         </div>
                         <div className="flex justify-between items-center text-[9px] text-[#7E848C]">
-                          <span className="font-semibold text-[#5BB98C]">Completed</span>
+                          <div className="flex items-center gap-2 font-semibold text-[#5BB98C]">
+                            <span>Completed</span>
+                            {task.assignee && (
+                              <span title={`Assigned to ${task.assignee.full_name}`} className="text-[8px] bg-[#1D2024] border border-white/[0.06] text-[#5BB98C]/60 rounded-full px-1.5 py-0.5 font-bold uppercase">
+                                {task.assignee.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
+                              </span>
+                            )}
+                          </div>
                           <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                             <button onClick={() => setEditTargetTask(task)} className="text-[#5BB98C] hover:text-[#B7E4C7] font-semibold cursor-pointer">
                               Edit
@@ -1093,6 +1120,22 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                 </div>
 
                 <div className="space-y-1.5 text-left">
+                  <label className="text-xs font-semibold text-[#A7ADB5] block">Assignee (Optional)</label>
+                  <select
+                    value={taskAssigneeId}
+                    onChange={(e) => setTaskAssigneeId(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-xs text-[#F5F5F5] outline-none focus:border-[#5BB98C] cursor-pointer"
+                  >
+                    <option value="" className="bg-[#171A1D]">Unassigned</option>
+                    {allWorkspaceMembers.map((member) => (
+                      <option key={member.user.id} value={member.user.id} className="bg-[#171A1D]">
+                        {member.user.full_name} ({member.role})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5 text-left">
                   <label className="text-xs font-semibold text-[#A7ADB5] block">Due Date (Optional)</label>
                   <input
                     type="date"
@@ -1202,6 +1245,22 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                     onChange={(e) => setEditTaskLabels(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-sm text-[#F5F5F5] focus:border-[#5BB98C] outline-none"
                   />
+                </div>
+
+                <div className="space-y-1.5 text-left">
+                  <label className="text-xs font-semibold text-[#A7ADB5] block">Assignee (Optional)</label>
+                  <select
+                    value={editTaskAssigneeId}
+                    onChange={(e) => setEditTaskAssigneeId(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-xs text-[#F5F5F5] outline-none focus:border-[#5BB98C] cursor-pointer"
+                  >
+                    <option value="" className="bg-[#171A1D]">Unassigned</option>
+                    {allWorkspaceMembers.map((member) => (
+                      <option key={member.user.id} value={member.user.id} className="bg-[#171A1D]">
+                        {member.user.full_name} ({member.role})
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="space-y-1.5 text-left">
