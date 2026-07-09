@@ -6,10 +6,31 @@ from app.dependencies.db import get_db
 from app.dependencies.auth import get_current_user
 from app.models.user import User
 from app.models.task import Task
+from app.models.project import Project
 from app.models.activity import ActivityLog
 from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
+
+def recalculate_project_progress(project_id: uuid.UUID, db: Session):
+    """
+    Recalculates a project's overall progress based on its tasks' status.
+    Progress = (Tasks marked as 'Done' or 'completed' / Total tasks) * 100
+    """
+    total_tasks = db.query(Task).filter(Task.project_id == project_id).count()
+    if total_tasks == 0:
+        return
+        
+    completed_tasks = db.query(Task).filter(
+        (Task.project_id == project_id) & 
+        ((Task.completed == True) | (Task.status == "Done"))
+    ).count()
+    
+    progress = int((completed_tasks / total_tasks) * 100)
+    
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if project:
+        project.progress = progress
 
 @router.get(
     "",
@@ -29,7 +50,6 @@ def get_tasks(
     if project_id:
         query = query.filter(Task.project_id == project_id)
     else:
-        # Default to tasks assigned to user
         query = query.filter(Task.assignee_id == current_user.id)
         
     return query.order_by(Task.created_at.desc()).all()
@@ -49,7 +69,8 @@ def get_upcoming_tasks(
     """
     tasks = db.query(Task).filter(
         (Task.assignee_id == current_user.id) &
-        (Task.completed == False)
+        (Task.completed == False) &
+        (Task.status != "Done")
     ).order_by(Task.created_at.desc()).all()
     return tasks
 
@@ -70,11 +91,17 @@ def create_task(
     """
     assignee_id = task_data.assignee_id or current_user.id
     
+    # Sync completed boolean based on status value
+    is_completed = task_data.completed or task_data.status == "Done"
+    
     db_task = Task(
         title=task_data.title,
+        description=task_data.description,
+        status=task_data.status,
+        labels=task_data.labels,
         due_date=task_data.due_date,
         priority=task_data.priority,
-        completed=task_data.completed,
+        completed=is_completed,
         assignee_id=assignee_id,
         project_id=task_data.project_id
     )
@@ -85,21 +112,27 @@ def create_task(
     db_log = ActivityLog(
         user_id=current_user.id,
         action="Task Created",
-        details=f"Task '{db_task.title}' was created",
+        details=f"Task '{db_task.title}' was created under project status: {db_task.status}",
         target_type="Task",
         target_name=db_task.title
     )
     db.add(db_log)
-    
     db.commit()
     db.refresh(db_task)
+    
+    # Recalculate associated project progress
+    if db_task.project_id:
+        recalculate_project_progress(db_task.project_id, db)
+        db.commit()
+        db.refresh(db_task)
+        
     return db_task
 
 @router.patch(
     "/{task_id}",
     response_model=TaskResponse,
     summary="Update a task",
-    description="Updates task completed status, details, or assignment."
+    description="Updates task status, details, or assignment."
 )
 def update_task(
     task_id: uuid.UUID,
@@ -108,7 +141,7 @@ def update_task(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Update details of a task (e.g. toggling complete status).
+    Update details of a task (e.g. status columns, due dates, description).
     """
     db_task = db.query(Task).filter(Task.id == task_id).first()
     if not db_task:
@@ -118,11 +151,16 @@ def update_task(
         )
         
     was_completed = db_task.completed
+    old_project_id = db_task.project_id
     
     # Standard Pydantic model update loop
     update_data = task_update.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_task, key, value)
+        
+    # Automatically sync completed flag with Done status
+    if "status" in update_data:
+        db_task.completed = (db_task.status == "Done")
         
     # Log completions or changes
     log_action = "Task Updated"
@@ -139,8 +177,17 @@ def update_task(
         target_name=db_task.title
     )
     db.add(db_log)
-    
     db.commit()
+    db.refresh(db_task)
+    
+    # Recalculate project progress settings
+    if db_task.project_id:
+        recalculate_project_progress(db_task.project_id, db)
+        db.commit()
+    if old_project_id and old_project_id != db_task.project_id:
+        recalculate_project_progress(old_project_id, db)
+        db.commit()
+        
     db.refresh(db_task)
     return db_task
 
@@ -165,6 +212,8 @@ def delete_task(
             detail="Task not found"
         )
         
+    project_id = db_task.project_id
+    
     db_log = ActivityLog(
         user_id=current_user.id,
         action="Task Deleted",
@@ -173,7 +222,12 @@ def delete_task(
         target_name=db_task.title
     )
     db.add(db_log)
-    
     db.delete(db_task)
     db.commit()
+    
+    # Recalculate project progress
+    if project_id:
+        recalculate_project_progress(project_id, db)
+        db.commit()
+        
     return None

@@ -18,6 +18,9 @@ class Task(Base):
     
     # Task title / description summary
     title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    status: Mapped[str] = mapped_column(String(50), default="Todo", nullable=False)
+    labels: Mapped[str | None] = mapped_column(String(255), nullable=True)
     
     # Task due date (text based for flexibility like 'Today', 'Tomorrow', 'Mar 15')
     due_date: Mapped[str | None] = mapped_column(String(50), nullable=True)
