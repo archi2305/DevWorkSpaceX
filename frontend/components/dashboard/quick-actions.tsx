@@ -56,6 +56,7 @@ export function QuickActions() {
   const projects = dashboardData?.recentProjects || []
   
   const [activeModal, setActiveModal] = useState<'project' | 'task' | null>(null)
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
   
   // Project creation fields
   const [pName, setPName] = useState('')
@@ -107,6 +108,11 @@ export function QuickActions() {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['projects'] })
       setActiveModal(null)
+      
+      // Trigger Toast notification
+      setToastMessage('Project created successfully!')
+      setTimeout(() => setToastMessage(null), 3000)
+
       setPName('')
       setPDesc('')
       setPColor('blue')
@@ -480,6 +486,19 @@ export function QuickActions() {
               </form>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className="fixed bottom-6 right-6 z-50 rounded-xl border border-primary/20 bg-[#09090b] px-4 py-3 text-sm font-semibold text-white shadow-2xl flex items-center gap-2"
+          >
+            <span className="text-primary font-bold">✓</span> {toastMessage}
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
