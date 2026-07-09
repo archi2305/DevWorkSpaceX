@@ -220,27 +220,6 @@ def get_activities(
         ActivityLog.user_id == current_user.id
     ).order_by(ActivityLog.created_at.desc()).all()
 
-@router.get("/workspace/members", response_model=List[WorkspaceMemberResponse])
-def get_workspace_members(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """
-    List registered team members and online statuses.
-    """
-    users = db.query(User).all()
-    team_members = []
-    for u in users:
-        initials = "".join([n[0] for n in u.full_name.split() if n]).upper()[:2]
-        team_members.append(
-            WorkspaceMemberResponse(
-                initials=initials or "U",
-                name=u.full_name,
-                is_online=True if u.id == current_user.id else False
-            )
-        )
-    return team_members
-
 @router.get("/ai/suggestions", response_model=List[AISuggestionResponse])
 def get_ai_suggestions(
     db: Session = Depends(get_db),

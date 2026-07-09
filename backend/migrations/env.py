@@ -21,6 +21,7 @@ from app.models.activity import ActivityLog
 from app.models.notification import Notification
 from app.models.sprint import Sprint
 from app.models.suggestion import AISuggestion
+from app.models.workspace_member import WorkspaceMember
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
