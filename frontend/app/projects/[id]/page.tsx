@@ -20,12 +20,13 @@ interface PageProps {
 const colors = ['blue', 'green', 'yellow', 'purple', 'red', 'indigo', 'pink', 'orange', 'teal']
 const icons = ['🚀', '🎨', '💻', '🔒', '📊', '⚡', '🤖', '🌍', '🛠️']
 
+// Color mapping matching color theme values
 const colorClasses: Record<string, { bg: string; text: string; border: string; dot: string }> = {
-  blue: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/20', dot: 'bg-blue-500' },
-  green: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20', dot: 'bg-emerald-500' },
-  yellow: { bg: 'bg-yellow-500/10', text: 'text-yellow-400', border: 'border-yellow-500/20', dot: 'bg-yellow-500' },
+  blue: { bg: 'bg-[#5BB98C]/10', text: 'text-[#5BB98C]', border: 'border-[#5BB98C]/20', dot: 'bg-[#5BB98C]' },
+  green: { bg: 'bg-[#5BB98C]/10', text: 'text-[#5BB98C]', border: 'border-[#5BB98C]/20', dot: 'bg-[#5BB98C]' },
+  yellow: { bg: 'bg-[#F2C94C]/10', text: 'text-[#F2C94C]', border: 'border-[#F2C94C]/20', dot: 'bg-[#F2C94C]' },
   purple: { bg: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-500/20', dot: 'bg-purple-500' },
-  red: { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/20', dot: 'bg-red-500' },
+  red: { bg: 'bg-[#EB5757]/10', text: 'text-[#EB5757]', border: 'border-[#EB5757]/20', dot: 'bg-[#EB5757]' },
   indigo: { bg: 'bg-indigo-500/10', text: 'text-indigo-400', border: 'border-indigo-500/20', dot: 'bg-indigo-500' },
   pink: { bg: 'bg-pink-500/10', text: 'text-pink-400', border: 'border-pink-500/20', dot: 'bg-pink-500' },
   orange: { bg: 'bg-orange-500/10', text: 'text-orange-400', border: 'border-orange-500/20', dot: 'bg-orange-500' },
@@ -219,22 +220,22 @@ export default function ProjectDetailsPage({ params }: PageProps) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#09090b] text-foreground p-8 flex flex-col items-center justify-center space-y-4">
-        <div className="h-8 w-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-        <p className="text-sm text-muted-foreground">Loading project details...</p>
+      <div className="min-h-screen bg-[#111315] text-[#F5F5F5] p-8 flex flex-col items-center justify-center space-y-4">
+        <div className="h-8 w-8 border-4 border-[#5BB98C]/20 border-t-[#5BB98C] rounded-full animate-spin" />
+        <p className="text-sm text-[#A7ADB5]">Loading project details...</p>
       </div>
     )
   }
 
   if (error || !project) {
     return (
-      <div className="min-h-screen bg-[#09090b] text-foreground p-8 flex flex-col items-center justify-center space-y-4">
-        <AlertCircle className="h-12 w-12 text-red-500" />
-        <h2 className="text-lg font-semibold text-white">Project Not Found</h2>
-        <p className="text-sm text-muted-foreground">This project does not exist or you lack access permissions.</p>
+      <div className="min-h-screen bg-[#111315] text-[#F5F5F5] p-8 flex flex-col items-center justify-center space-y-4">
+        <AlertCircle className="h-12 w-12 text-[#EB5757]" />
+        <h2 className="text-lg font-semibold text-[#F5F5F5]">Project Not Found</h2>
+        <p className="text-sm text-[#A7ADB5]">This project does not exist or you lack access permissions.</p>
         <button
           onClick={() => router.push('/')}
-          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/95 transition-all cursor-pointer"
+          className="inline-flex items-center gap-2 rounded-lg bg-[#5BB98C] px-4 py-2 text-xs font-semibold text-[#111315] hover:bg-[#5BB98C]/90 transition-all cursor-pointer shadow-md"
         >
           <ArrowLeft className="h-4 w-4" /> Go back to Dashboard
         </button>
@@ -253,57 +254,57 @@ export default function ProjectDetailsPage({ params }: PageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-foreground p-8 space-y-8">
+    <div className="min-h-screen bg-[#111315] text-[#F5F5F5] p-8 space-y-8 transition-colors duration-300">
       {/* Cover Image Banner */}
       {project.cover_image && (
-        <div className="w-full h-48 rounded-2xl overflow-hidden border border-white/5 relative bg-white/[0.01]">
-          <img src={project.cover_image} alt={project.name} className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-transparent to-transparent" />
+        <div className="w-full h-48 rounded-2xl overflow-hidden border border-white/[0.06] relative bg-[#171A1D]/30 shadow-inner">
+          <img src={project.cover_image} alt={project.name} className="w-full h-full object-cover opacity-90 transition-opacity hover:opacity-100 duration-500" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#111315] via-transparent to-transparent" />
         </div>
       )}
 
       {/* Header Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/[0.06] pb-6">
         <div className="flex items-center gap-4">
           <button
             onClick={() => router.push('/')}
-            className="rounded-lg border border-white/5 bg-white/[0.02] p-2 text-muted-foreground hover:bg-white/5 hover:text-white transition-all cursor-pointer"
+            className="rounded-xl border border-white/[0.06] bg-[#171A1D] p-2.5 text-[#A7ADB5] hover:bg-[#23272B] hover:text-[#F5F5F5] transition-all cursor-pointer shadow-sm"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4.5 w-4.5" />
           </button>
           
           <div className="flex items-center gap-3">
-            <span className="text-3xl">{project.icon || '🚀'}</span>
+            <span className="text-4xl p-2.5 bg-[#171A1D] rounded-xl border border-white/[0.06] shadow-sm hover:scale-105 transition-transform duration-300">{project.icon || '🚀'}</span>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold text-white tracking-tight">{project.name}</h1>
-                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${themeClass.text} ${themeClass.border} ${themeClass.bg}`}>
+                <h1 className="text-2xl font-bold text-[#F5F5F5] tracking-tight">{project.name}</h1>
+                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border ${themeClass.text} ${themeClass.border} ${themeClass.bg}`}>
                   {project.status}
                 </span>
-                <span className="text-xs rounded-full border border-white/5 bg-white/[0.02] px-2 py-0.5 text-muted-foreground">
+                <span className="text-xs rounded-full border border-white/[0.06] bg-[#1D2024] px-2.5 py-0.5 text-[#A7ADB5] font-medium">
                   {project.visibility}
                 </span>
                 {project.is_archived && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-400 border border-amber-500/20">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[#F2C94C]/10 px-2.5 py-0.5 text-xs font-semibold text-[#F2C94C] border border-[#F2C94C]/20">
                     Archived
                   </span>
                 )}
-                <div className="flex items-center gap-1.5 border-l border-white/10 pl-2.5 ml-1">
+                <div className="flex items-center gap-1.5 border-l border-white/[0.06] pl-2.5 ml-1">
                   <button
                     onClick={handleFavoriteToggle}
-                    className="text-muted-foreground hover:text-yellow-400 transition-colors"
+                    className="text-[#7E848C] hover:text-[#F2C94C] transition-colors cursor-pointer"
                   >
-                    <Star className={`h-4 w-4 ${project.is_favorite ? 'text-yellow-400 fill-current' : ''}`} />
+                    <Star className={`h-4.5 w-4.5 ${project.is_favorite ? 'text-[#F2C94C] fill-current' : ''}`} />
                   </button>
                   <button
                     onClick={handlePinToggle}
-                    className="text-muted-foreground hover:text-primary transition-colors"
+                    className="text-[#7E848C] hover:text-[#5BB98C] transition-colors cursor-pointer"
                   >
-                    <Pin className={`h-4 w-4 ${project.is_pinned ? 'text-primary' : ''}`} />
+                    <Pin className={`h-4.5 w-4.5 ${project.is_pinned ? 'text-[#5BB98C]' : ''}`} />
                   </button>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1.5">
+              <p className="text-xs text-[#7E848C] mt-1.5 flex items-center gap-1.5">
                 <Calendar className="h-3 w-3" />
                 Created {new Date(project.created_at).toLocaleDateString()}
               </p>
@@ -315,16 +316,16 @@ export default function ProjectDetailsPage({ params }: PageProps) {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsEditOpen(true)}
-              className="inline-flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-3.5 py-2 text-xs font-semibold text-white hover:bg-white/5 transition-all cursor-pointer"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/[0.06] bg-[#171A1D] px-4 py-2.5 text-xs font-semibold text-[#F5F5F5] hover:bg-[#23272B] transition-all cursor-pointer shadow-sm hover:-translate-y-0.5"
             >
               <Edit3 className="h-3.5 w-3.5" /> Edit Project
             </button>
             <button
               onClick={handleArchiveToggle}
-              className={`inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-semibold transition-all cursor-pointer ${
+              className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-semibold transition-all cursor-pointer shadow-sm hover:-translate-y-0.5 ${
                 project.is_archived
-                  ? 'bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20'
-                  : 'bg-white/[0.02] border-white/5 text-white hover:bg-white/5'
+                  ? 'bg-[#F2C94C]/10 border-[#F2C94C]/20 text-[#F2C94C] hover:bg-[#F2C94C]/20'
+                  : 'bg-[#171A1D] border-white/[0.06] text-[#F5F5F5] hover:bg-[#23272B]'
               }`}
             >
               {project.is_archived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
@@ -332,7 +333,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
             </button>
             <button
               onClick={() => setIsDeleteOpen(true)}
-              className="inline-flex items-center gap-2 rounded-lg bg-red-500/10 border border-red-500/20 px-3.5 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/25 transition-all cursor-pointer"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#EB5757]/10 border border-[#EB5757]/20 px-4 py-2.5 text-xs font-semibold text-[#EB5757] hover:bg-[#EB5757]/20 transition-all cursor-pointer shadow-sm hover:-translate-y-0.5"
             >
               <Trash2 className="h-3.5 w-3.5" /> Delete
             </button>
@@ -344,24 +345,24 @@ export default function ProjectDetailsPage({ params }: PageProps) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           {/* About Project Card */}
-          <div className="rounded-xl border border-white/5 bg-white/[0.01] p-6 space-y-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground text-left">About Project</h2>
-            <p className="text-sm text-zinc-300 leading-relaxed text-left">
+          <div className="rounded-2xl border border-white/[0.06] bg-gradient-to-br from-[#171A1D] to-[#111315] p-6 space-y-4 shadow-lg hover:shadow-xl transition-all duration-300">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[#7E848C] text-left">About Project</h2>
+            <p className="text-sm text-[#A7ADB5] leading-relaxed text-left font-medium">
               {project.description || 'No description provided for this project.'}
             </p>
             
             {/* Progress Visual */}
             <div className="space-y-2 pt-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Overall Progress</span>
-                <span className="text-sm font-bold text-primary">{project.progress}%</span>
+                <span className="text-xs font-bold text-[#7E848C] uppercase tracking-wide">Overall Progress</span>
+                <span className="text-sm font-bold text-[#5BB98C]">{project.progress}%</span>
               </div>
-              <div className="h-2.5 w-full rounded-full bg-white/[0.04] overflow-hidden shadow-inner">
+              <div className="h-2 w-full rounded-full bg-[#1D2024] overflow-hidden shadow-inner">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${project.progress}%` }}
                   transition={{ duration: 0.8, ease: 'easeOut' }}
-                  className="h-full bg-primary rounded-full shadow"
+                  className="h-full bg-gradient-to-r from-[#5BB98C] to-[#B7E4C7] rounded-full shadow"
                 />
               </div>
             </div>
@@ -370,41 +371,47 @@ export default function ProjectDetailsPage({ params }: PageProps) {
           {/* Kanban Section with Real Tasks */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Sprint Kanban Board</h2>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-[#7E848C]">Sprint Kanban Board</h2>
               <button
                 onClick={() => setIsTaskCreateOpen(true)}
-                className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors font-semibold"
+                className="inline-flex items-center gap-1.5 text-xs text-[#5BB98C] hover:text-[#B7E4C7] transition-colors font-bold cursor-pointer"
               >
-                <Plus className="h-3.5 w-3.5" /> Create Task
+                <Plus className="h-4 w-4" /> Create Task
               </button>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* To Do Column */}
-              <div className="rounded-xl border border-white/5 bg-white/[0.005] p-4 flex flex-col min-h-[300px]">
-                <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-4">
-                  <span className="text-xs font-bold text-white uppercase tracking-wider">To Do</span>
-                  <span className="text-[10px] bg-white/5 text-muted-foreground rounded-full px-2 py-0.5">{columnTasks.todo.length}</span>
+              <div className="rounded-2xl border border-white/[0.06] bg-[#171A1D] p-4 flex flex-col min-h-[340px] shadow-sm hover:shadow-md transition-shadow duration-300">
+                <div className="flex items-center justify-between border-b border-white/[0.06] pb-2 mb-4">
+                  <span className="text-xs font-bold text-[#F5F5F5] uppercase tracking-wider">To Do</span>
+                  <span className="text-[10px] bg-[#1D2024] text-[#A7ADB5] rounded-full px-2 py-0.5 border border-white/[0.06] font-semibold">{columnTasks.todo.length}</span>
                 </div>
                 
                 {columnTasks.todo.length === 0 ? (
-                  <div className="flex-1 flex flex-col items-center justify-center text-center p-4 border border-dashed border-white/5 rounded-lg">
-                    <Layers className="h-6 w-6 text-[#27272a] mb-2" />
-                    <p className="text-[11px] text-muted-foreground">No tasks here</p>
+                  <div className="flex-1 flex flex-col items-center justify-center text-center p-4 border border-dashed border-white/[0.06] rounded-xl bg-[#111315]/40">
+                    <Layers className="h-7 w-7 text-[#7E848C]/40 mb-2" />
+                    <p className="text-xs text-[#7E848C] font-semibold">No tasks here</p>
+                    <button
+                      onClick={() => setIsTaskCreateOpen(true)}
+                      className="mt-3 text-[10px] font-bold text-[#5BB98C] hover:text-[#B7E4C7] transition-all"
+                    >
+                      + Create Task
+                    </button>
                   </div>
                 ) : (
                   <div className="space-y-2">
                     {columnTasks.todo.map(task => (
-                      <div key={task.id} className="p-3 rounded-lg border border-white/5 bg-[#18181b] hover:border-primary/40 transition-all flex flex-col gap-1.5 text-left relative group">
+                      <div key={task.id} className="p-3 rounded-xl border border-white/[0.06] bg-[#1D2024] hover:bg-[#23272B] hover:border-[#5BB98C]/30 hover:scale-[1.02] hover:-translate-y-0.5 transition-all duration-200 flex flex-col gap-1.5 text-left relative group shadow-sm">
                         <div className="flex items-start justify-between gap-2">
-                          <span className="text-xs font-medium text-white">{task.title}</span>
-                          <button onClick={() => handleToggleTask(task.id, task.completed)} className="text-muted-foreground hover:text-white">
-                            <CheckSquare className="h-3.5 w-3.5" />
+                          <span className="text-xs font-semibold text-[#F5F5F5]">{task.title}</span>
+                          <button onClick={() => handleToggleTask(task.id, task.completed)} className="text-[#7E848C] hover:text-[#5BB98C] transition-colors cursor-pointer">
+                            <CheckSquare className="h-4 w-4" />
                           </button>
                         </div>
-                        <div className="flex justify-between items-center text-[9px] text-muted-foreground">
-                          <span>{task.priority}</span>
-                          <button onClick={() => handleDeleteTask(task.id)} className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-500">
+                        <div className="flex justify-between items-center text-[9px] text-[#A7ADB5]">
+                          <span className="font-semibold">{task.priority}</span>
+                          <button onClick={() => handleDeleteTask(task.id)} className="opacity-0 group-hover:opacity-100 text-[#EB5757] hover:text-red-400 font-semibold transition-opacity duration-200 cursor-pointer">
                             Delete
                           </button>
                         </div>
@@ -415,30 +422,36 @@ export default function ProjectDetailsPage({ params }: PageProps) {
               </div>
 
               {/* In Progress Column */}
-              <div className="rounded-xl border border-white/5 bg-white/[0.005] p-4 flex flex-col min-h-[300px]">
-                <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-4">
-                  <span className="text-xs font-bold text-white uppercase tracking-wider">In Progress</span>
-                  <span className="text-[10px] bg-white/5 text-muted-foreground rounded-full px-2 py-0.5">{columnTasks.inprogress.length}</span>
+              <div className="rounded-2xl border border-white/[0.06] bg-[#171A1D] p-4 flex flex-col min-h-[340px] shadow-sm hover:shadow-md transition-shadow duration-300">
+                <div className="flex items-center justify-between border-b border-white/[0.06] pb-2 mb-4">
+                  <span className="text-xs font-bold text-[#F5F5F5] uppercase tracking-wider">In Progress</span>
+                  <span className="text-[10px] bg-[#1D2024] text-[#A7ADB5] rounded-full px-2 py-0.5 border border-white/[0.06] font-semibold">{columnTasks.inprogress.length}</span>
                 </div>
                 
                 {columnTasks.inprogress.length === 0 ? (
-                  <div className="flex-1 flex flex-col items-center justify-center text-center p-4 border border-dashed border-white/5 rounded-lg">
-                    <Layers className="h-6 w-6 text-[#27272a] mb-2" />
-                    <p className="text-[11px] text-muted-foreground">No tasks here</p>
+                  <div className="flex-1 flex flex-col items-center justify-center text-center p-4 border border-dashed border-white/[0.06] rounded-xl bg-[#111315]/40">
+                    <Layers className="h-7 w-7 text-[#7E848C]/40 mb-2" />
+                    <p className="text-xs text-[#7E848C] font-semibold">No tasks here</p>
+                    <button
+                      onClick={() => setIsTaskCreateOpen(true)}
+                      className="mt-3 text-[10px] font-bold text-[#5BB98C] hover:text-[#B7E4C7] transition-all"
+                    >
+                      + Create Task
+                    </button>
                   </div>
                 ) : (
                   <div className="space-y-2">
                     {columnTasks.inprogress.map(task => (
-                      <div key={task.id} className="p-3 rounded-lg border border-white/5 bg-[#18181b] hover:border-primary/40 transition-all flex flex-col gap-1.5 text-left relative group">
+                      <div key={task.id} className="p-3 rounded-xl border border-white/[0.06] bg-[#1D2024] hover:bg-[#23272B] hover:border-[#5BB98C]/30 hover:scale-[1.02] hover:-translate-y-0.5 transition-all duration-200 flex flex-col gap-1.5 text-left relative group shadow-sm">
                         <div className="flex items-start justify-between gap-2">
-                          <span className="text-xs font-medium text-white">{task.title}</span>
-                          <button onClick={() => handleToggleTask(task.id, task.completed)} className="text-muted-foreground hover:text-white">
-                            <CheckSquare className="h-3.5 w-3.5" />
+                          <span className="text-xs font-semibold text-[#F5F5F5]">{task.title}</span>
+                          <button onClick={() => handleToggleTask(task.id, task.completed)} className="text-[#7E848C] hover:text-[#5BB98C] transition-colors cursor-pointer">
+                            <CheckSquare className="h-4 w-4" />
                           </button>
                         </div>
-                        <div className="flex justify-between items-center text-[9px] text-muted-foreground">
-                          <span className="text-red-400">{task.priority}</span>
-                          <button onClick={() => handleDeleteTask(task.id)} className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-500">
+                        <div className="flex justify-between items-center text-[9px] text-[#A7ADB5]">
+                          <span className="text-[#EB5757] font-semibold">{task.priority}</span>
+                          <button onClick={() => handleDeleteTask(task.id)} className="opacity-0 group-hover:opacity-100 text-[#EB5757] hover:text-red-400 font-semibold transition-opacity duration-200 cursor-pointer">
                             Delete
                           </button>
                         </div>
@@ -449,30 +462,30 @@ export default function ProjectDetailsPage({ params }: PageProps) {
               </div>
 
               {/* Done Column */}
-              <div className="rounded-xl border border-white/5 bg-white/[0.005] p-4 flex flex-col min-h-[300px]">
-                <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-4">
-                  <span className="text-xs font-bold text-white uppercase tracking-wider">Done</span>
-                  <span className="text-[10px] bg-white/5 text-muted-foreground rounded-full px-2 py-0.5">{columnTasks.done.length}</span>
+              <div className="rounded-2xl border border-white/[0.06] bg-[#171A1D] p-4 flex flex-col min-h-[340px] shadow-sm hover:shadow-md transition-shadow duration-300">
+                <div className="flex items-center justify-between border-b border-white/[0.06] pb-2 mb-4">
+                  <span className="text-xs font-bold text-[#F5F5F5] uppercase tracking-wider">Done</span>
+                  <span className="text-[10px] bg-[#1D2024] text-[#A7ADB5] rounded-full px-2 py-0.5 border border-white/[0.06] font-semibold">{columnTasks.done.length}</span>
                 </div>
                 
                 {columnTasks.done.length === 0 ? (
-                  <div className="flex-1 flex flex-col items-center justify-center text-center p-4 border border-dashed border-white/5 rounded-lg">
-                    <Layers className="h-6 w-6 text-[#27272a] mb-2" />
-                    <p className="text-[11px] text-muted-foreground">No tasks here</p>
+                  <div className="flex-1 flex flex-col items-center justify-center text-center p-4 border border-dashed border-white/[0.06] rounded-xl bg-[#111315]/40">
+                    <Layers className="h-7 w-7 text-[#7E848C]/40 mb-2" />
+                    <p className="text-xs text-[#7E848C] font-semibold">No tasks here</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
                     {columnTasks.done.map(task => (
-                      <div key={task.id} className="p-3 rounded-lg border border-white/5 bg-[#18181b] opacity-60 hover:opacity-100 transition-all flex flex-col gap-1.5 text-left relative group">
+                      <div key={task.id} className="p-3 rounded-xl border border-white/[0.06] bg-[#1D2024] hover:bg-[#23272B] hover:border-[#5BB98C]/30 hover:scale-[1.02] hover:-translate-y-0.5 opacity-70 hover:opacity-100 transition-all duration-200 flex flex-col gap-1.5 text-left relative group shadow-sm">
                         <div className="flex items-start justify-between gap-2">
-                          <span className="text-xs font-medium text-white line-through">{task.title}</span>
-                          <button onClick={() => handleToggleTask(task.id, task.completed)} className="text-primary hover:text-white">
-                            <CheckSquare className="h-3.5 w-3.5 fill-current" />
+                          <span className="text-xs font-semibold text-[#A7ADB5] line-through">{task.title}</span>
+                          <button onClick={() => handleToggleTask(task.id, task.completed)} className="text-[#5BB98C] hover:text-[#B7E4C7] transition-colors cursor-pointer">
+                            <CheckSquare className="h-4 w-4 fill-current" />
                           </button>
                         </div>
-                        <div className="flex justify-between items-center text-[9px] text-muted-foreground">
-                          <span>Completed</span>
-                          <button onClick={() => handleDeleteTask(task.id)} className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-500">
+                        <div className="flex justify-between items-center text-[9px] text-[#7E848C]">
+                          <span className="font-semibold text-[#5BB98C]">Completed</span>
+                          <button onClick={() => handleDeleteTask(task.id)} className="opacity-0 group-hover:opacity-100 text-[#EB5757] hover:text-red-400 font-semibold transition-opacity duration-200 cursor-pointer">
                             Delete
                           </button>
                         </div>
@@ -486,13 +499,19 @@ export default function ProjectDetailsPage({ params }: PageProps) {
 
           {/* Empty Documentation Placeholder */}
           <div className="space-y-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground text-left">Documentation Docs</h2>
-            <div className="rounded-xl border border-dashed border-white/5 bg-white/[0.002] p-8 flex flex-col items-center justify-center text-center">
-              <FileText className="h-8 w-8 text-[#27272a] mb-3" />
-              <h3 className="text-xs font-semibold text-white">No Documentation Yet</h3>
-              <p className="text-xs text-muted-foreground mt-1 max-w-[240px]">
-                Create notes, specifications, or guides relating to this workspace scope.
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[#7E848C] text-left">Documentation Docs</h2>
+            <div className="rounded-2xl border border-dashed border-white/[0.06] bg-[#171A1D]/40 p-10 flex flex-col items-center justify-center text-center shadow-inner">
+              <FileText className="h-10 w-10 text-[#7E848C]/40 mb-3 animate-pulse" />
+              <h3 className="text-sm font-bold text-[#F5F5F5]">No Documentation Yet</h3>
+              <p className="text-xs text-[#A7ADB5] mt-1.5 max-w-[280px]">
+                Create specs, guidelines, and resource links to keep your team aligned.
               </p>
+              <button
+                onClick={() => alert('Create Documentation is under development.')}
+                className="mt-4 px-4 py-2 text-xs font-bold bg-[#1D2024] hover:bg-[#23272B] border border-white/[0.06] text-[#5BB98C] hover:text-[#B7E4C7] rounded-xl transition-all cursor-pointer shadow-sm"
+              >
+                + Create Document
+              </button>
             </div>
           </div>
         </div>
@@ -500,54 +519,54 @@ export default function ProjectDetailsPage({ params }: PageProps) {
         {/* Right Sidebar details */}
         <div className="space-y-6">
           {/* Metadata Card */}
-          <div className="rounded-xl border border-white/5 bg-white/[0.01] p-6 space-y-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground text-left">Project Metadata</h2>
+          <div className="rounded-2xl border border-white/[0.06] bg-[#171A1D] p-6 space-y-4 shadow-lg">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[#7E848C] text-left">Project Metadata</h2>
             
-            <div className="space-y-3 pt-2 text-xs">
-              <div className="flex items-center justify-between py-1 border-b border-white/5">
-                <span className="text-muted-foreground">Created by</span>
-                <span className="font-semibold text-white flex items-center gap-1">
-                  <UserIcon className="h-3 w-3 text-muted-foreground" />
+            <div className="space-y-3.5 pt-2 text-xs">
+              <div className="flex items-center justify-between py-1 border-b border-white/[0.06]">
+                <span className="text-[#A7ADB5] font-medium">Created by</span>
+                <span className="font-semibold text-[#F5F5F5] flex items-center gap-1.5">
+                  <UserIcon className="h-3.5 w-3.5 text-[#7E848C]" />
                   {isOwner ? 'You' : 'Workspace Collaborator'}
                 </span>
               </div>
-              <div className="flex items-center justify-between py-1 border-b border-white/5">
-                <span className="text-muted-foreground">Current Status</span>
-                <span className="font-semibold text-white flex items-center gap-1.5">
+              <div className="flex items-center justify-between py-1 border-b border-white/[0.06]">
+                <span className="text-[#A7ADB5] font-medium">Current Status</span>
+                <span className="font-semibold text-[#F5F5F5] flex items-center gap-1.5">
                   <span className={`h-1.5 w-1.5 rounded-full ${themeClass.dot}`} />
                   {project.status}
                 </span>
               </div>
-              <div className="flex items-center justify-between py-1 border-b border-white/5">
-                <span className="text-muted-foreground">Priority Level</span>
-                <span className="font-semibold text-white uppercase">{project.priority}</span>
+              <div className="flex items-center justify-between py-1 border-b border-white/[0.06]">
+                <span className="text-[#A7ADB5] font-medium">Priority Level</span>
+                <span className="font-bold text-[#F5F5F5] uppercase tracking-wide text-[10px]">{project.priority}</span>
               </div>
-              <div className="flex items-center justify-between py-1 border-b border-white/5">
-                <span className="text-muted-foreground">Visibility Level</span>
-                <span className="font-semibold text-white uppercase">{project.visibility}</span>
+              <div className="flex items-center justify-between py-1 border-b border-white/[0.06]">
+                <span className="text-[#A7ADB5] font-medium">Visibility Level</span>
+                <span className="font-bold text-[#F5F5F5] uppercase tracking-wide text-[10px]">{project.visibility}</span>
               </div>
-              <div className="flex items-center justify-between py-1 border-b border-white/5">
-                <span className="text-muted-foreground">Team Size</span>
-                <span className="font-semibold text-white">{project.members?.length || 1} members</span>
+              <div className="flex items-center justify-between py-1 border-b border-white/[0.06]">
+                <span className="text-[#A7ADB5] font-medium">Team Size</span>
+                <span className="font-semibold text-[#F5F5F5]">{project.members?.length || 1} members</span>
               </div>
             </div>
           </div>
 
           {/* Task Counter */}
-          <div className="rounded-xl border border-white/5 bg-white/[0.01] p-6 space-y-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground text-left">Upcoming Project Tasks</h2>
+          <div className="rounded-2xl border border-white/[0.06] bg-[#171A1D] p-6 space-y-4 shadow-lg">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[#7E848C] text-left">Upcoming Project Tasks</h2>
             
             {tasks.filter(t => !t.completed).length === 0 ? (
               <div className="flex flex-col items-center justify-center text-center py-6">
-                <CheckSquare className="h-8 w-8 text-[#27272a] mb-2" />
-                <p className="text-xs text-muted-foreground">No upcoming deadlines assigned</p>
+                <CheckSquare className="h-8 w-8 text-[#7E848C]/40 mb-2" />
+                <p className="text-xs text-[#7E848C] font-semibold">No upcoming deadlines assigned</p>
               </div>
             ) : (
               <div className="space-y-2 text-xs">
                 {tasks.filter(t => !t.completed).slice(0, 3).map(task => (
-                  <div key={task.id} className="p-2 rounded border border-white/5 bg-white/[0.01] flex justify-between items-center text-left">
-                    <span className="truncate w-36 text-white font-medium">{task.title}</span>
-                    <span className="text-[9px] text-muted-foreground">{task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No date'}</span>
+                  <div key={task.id} className="p-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] hover:bg-[#23272B] transition-colors flex justify-between items-center text-left">
+                    <span className="truncate w-36 text-[#F5F5F5] font-semibold">{task.title}</span>
+                    <span className="text-[10px] text-[#A7ADB5] font-medium">{task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No date'}</span>
                   </div>
                 ))}
               </div>
@@ -555,15 +574,15 @@ export default function ProjectDetailsPage({ params }: PageProps) {
           </div>
 
           {/* Recent Activity */}
-          <div className="rounded-xl border border-white/5 bg-white/[0.01] p-6 space-y-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground text-left">Recent Activity</h2>
+          <div className="rounded-2xl border border-white/[0.06] bg-[#171A1D] p-6 space-y-4 shadow-lg">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[#7E848C] text-left">Recent Activity</h2>
             
             <div className="space-y-3 text-xs">
               <div className="flex gap-2">
-                <Sparkles className="h-4 w-4 text-primary flex-shrink-0" />
+                <Sparkles className="h-4.5 w-4.5 text-[#5BB98C] flex-shrink-0" />
                 <div className="text-left">
-                  <p className="text-white font-medium">Project initialized</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">By Owner • {new Date(project.created_at).toLocaleDateString()}</p>
+                  <p className="text-[#F5F5F5] font-semibold">Project initialized</p>
+                  <p className="text-[10px] text-[#7E848C] mt-0.5">By Owner • {new Date(project.created_at).toLocaleDateString()}</p>
                 </div>
               </div>
             </div>
@@ -574,31 +593,31 @@ export default function ProjectDetailsPage({ params }: PageProps) {
       {/* Edit Project Modal Overlay */}
       <AnimatePresence>
         {isEditOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="w-full max-w-md rounded-2xl border border-white/5 bg-[#09090b] p-6 shadow-2xl relative"
+              className="w-full max-w-md rounded-2xl border border-white/[0.06] bg-[#171A1D] p-6 shadow-2xl relative"
             >
               <button
                 onClick={() => setIsEditOpen(false)}
-                className="absolute right-4 top-4 rounded-lg p-1 text-muted-foreground hover:bg-white/5 hover:text-white transition-all cursor-pointer"
+                className="absolute right-4 top-4 rounded-xl p-1.5 text-[#A7ADB5] hover:bg-white/5 hover:text-[#F5F5F5] transition-all cursor-pointer"
               >
-                <X className="h-4 w-4" />
+                <X className="h-4.5 w-4.5" />
               </button>
 
-              <h3 className="text-lg font-semibold text-white mb-2 text-left">Edit Project Settings</h3>
+              <h3 className="text-lg font-bold text-[#F5F5F5] mb-2 text-left">Edit Project Settings</h3>
               <form onSubmit={handleUpdate} className="space-y-4">
                 {saveError && (
-                  <div className="p-3 text-xs font-medium rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
+                  <div className="p-3 text-xs font-medium rounded-xl bg-[#EB5757]/10 border border-[#EB5757]/20 text-[#EB5757]">
                     {saveError}
                   </div>
                 )}
 
                 {/* Name */}
                 <div className="space-y-1.5">
-                  <label htmlFor="epname" className="text-xs font-medium text-white block text-left">Project Name</label>
+                  <label htmlFor="epname" className="text-xs font-semibold text-[#A7ADB5] block text-left">Project Name</label>
                   <input
                     id="epname"
                     type="text"
@@ -606,59 +625,59 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
                     placeholder="Project name"
-                    className="w-full px-3.5 py-2 rounded-lg border border-white/10 bg-white/[0.02] text-sm text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-sm text-[#F5F5F5] outline-none focus:border-[#5BB98C]"
                   />
                 </div>
 
                 {/* Description */}
                 <div className="space-y-1.5">
-                  <label htmlFor="epdesc" className="text-xs font-medium text-white block text-left">Description</label>
+                  <label htmlFor="epdesc" className="text-xs font-semibold text-[#A7ADB5] block text-left">Description</label>
                   <textarea
                     id="epdesc"
                     value={editDescription}
                     onChange={(e) => setEditDescription(e.target.value)}
                     placeholder="Project description"
                     rows={2}
-                    className="w-full px-3.5 py-2 rounded-lg border border-white/10 bg-white/[0.02] text-sm text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-sm text-[#F5F5F5] outline-none focus:border-[#5BB98C] resize-none"
                   />
                 </div>
 
                 {/* Status & Priority Row */}
                 <div className="grid grid-cols-2 gap-3 text-left">
                   <div className="space-y-1.5">
-                    <label htmlFor="epstatus" className="text-xs font-medium text-white block">Status</label>
+                    <label htmlFor="epstatus" className="text-xs font-semibold text-[#A7ADB5] block">Status</label>
                     <select
                       id="epstatus"
                       value={editStatus}
                       onChange={(e) => setEditStatus(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/[0.02] text-sm text-white outline-none focus:border-primary"
+                      className="w-full px-3 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-sm text-[#F5F5F5] outline-none focus:border-[#5BB98C] cursor-pointer"
                     >
-                      <option value="Pending" className="bg-[#09090b]">Pending</option>
-                      <option value="In Progress" className="bg-[#09090b]">In Progress</option>
-                      <option value="Review" className="bg-[#09090b]">Review</option>
-                      <option value="Completed" className="bg-[#09090b]">Completed</option>
+                      <option value="Pending" className="bg-[#171A1D]">Pending</option>
+                      <option value="In Progress" className="bg-[#171A1D]">In Progress</option>
+                      <option value="Review" className="bg-[#171A1D]">Review</option>
+                      <option value="Completed" className="bg-[#171A1D]">Completed</option>
                     </select>
                   </div>
 
                   <div className="space-y-1.5">
-                    <label htmlFor="eppriority" className="text-xs font-medium text-white block">Priority</label>
+                    <label htmlFor="eppriority" className="text-xs font-semibold text-[#A7ADB5] block">Priority</label>
                     <select
                       id="eppriority"
                       value={editPriority}
                       onChange={(e) => setEditPriority(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/[0.02] text-sm text-white outline-none focus:border-primary"
+                      className="w-full px-3 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-sm text-[#F5F5F5] outline-none focus:border-[#5BB98C] cursor-pointer"
                     >
-                      <option value="Low" className="bg-[#09090b]">Low</option>
-                      <option value="Medium" className="bg-[#09090b]">Medium</option>
-                      <option value="High" className="bg-[#09090b]">High</option>
-                      <option value="Urgent" className="bg-[#09090b]">Urgent</option>
+                      <option value="Low" className="bg-[#171A1D]">Low</option>
+                      <option value="Medium" className="bg-[#171A1D]">Medium</option>
+                      <option value="High" className="bg-[#171A1D]">High</option>
+                      <option value="Urgent" className="bg-[#171A1D]">Urgent</option>
                     </select>
                   </div>
                 </div>
 
                 {/* Progress Slider */}
                 <div className="space-y-1.5 text-left">
-                  <label htmlFor="epprogress" className="text-xs font-medium text-white block">Progress ({editProgress}%)</label>
+                  <label htmlFor="epprogress" className="text-xs font-semibold text-[#A7ADB5] block">Progress ({editProgress}%)</label>
                   <input
                     id="epprogress"
                     type="range"
@@ -666,49 +685,49 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                     max="100"
                     value={editProgress}
                     onChange={(e) => setEditProgress(Number(e.target.value))}
-                    className="w-full h-8 accent-primary bg-transparent"
+                    className="w-full h-8 accent-[#5BB98C] bg-transparent cursor-pointer"
                   />
                 </div>
 
                 {/* Visibility selector */}
                 <div className="space-y-1.5 text-left">
-                  <label htmlFor="epvisibility" className="text-xs font-medium text-white block font-medium">Visibility Level</label>
+                  <label htmlFor="epvisibility" className="text-xs font-semibold text-[#A7ADB5] block">Visibility Level</label>
                   <select
                     id="epvisibility"
                     value={editVisibility}
                     onChange={(e) => setEditVisibility(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/[0.02] text-sm text-white outline-none focus:border-primary"
+                    className="w-full px-3 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-sm text-[#F5F5F5] outline-none focus:border-[#5BB98C] cursor-pointer"
                   >
-                    <option value="Workspace" className="bg-[#09090b]">Workspace</option>
-                    <option value="Private" className="bg-[#09090b]">Private</option>
-                    <option value="Public" className="bg-[#09090b]">Public</option>
+                    <option value="Workspace" className="bg-[#171A1D]">Workspace</option>
+                    <option value="Private" className="bg-[#171A1D]">Private</option>
+                    <option value="Public" className="bg-[#171A1D]">Public</option>
                   </select>
                 </div>
 
                 {/* Cover Image Input */}
                 <div className="space-y-1.5 text-left">
-                  <label htmlFor="epcover" className="text-xs font-medium text-white block">Cover Image URL</label>
+                  <label htmlFor="epcover" className="text-xs font-semibold text-[#A7ADB5] block">Cover Image URL</label>
                   <input
                     id="epcover"
                     type="text"
                     value={editCoverImage}
                     onChange={(e) => setEditCoverImage(e.target.value)}
                     placeholder="https://images.unsplash.com/photo-..."
-                    className="w-full px-3.5 py-2 rounded-lg border border-white/10 bg-white/[0.02] text-sm text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-sm text-[#F5F5F5] outline-none focus:border-[#5BB98C]"
                   />
                 </div>
 
                 {/* Icon selection */}
                 <div className="space-y-1.5 text-left">
-                  <label className="text-xs font-medium text-white block">Project Icon</label>
+                  <label className="text-xs font-semibold text-[#A7ADB5] block">Project Icon</label>
                   <div className="flex gap-2">
                     {icons.map((ico) => (
                       <button
                         key={ico}
                         type="button"
                         onClick={() => setEditIcon(ico)}
-                        className={`text-xl p-2 rounded-lg border transition-all cursor-pointer ${
-                          editIcon === ico ? 'border-primary bg-primary/10' : 'border-white/5 bg-white/[0.01] hover:bg-white/5'
+                        className={`text-xl p-2 rounded-xl border transition-all cursor-pointer ${
+                          editIcon === ico ? 'border-[#5BB98C] bg-[#5BB98C]/10' : 'border-white/[0.06] bg-[#1D2024] hover:bg-[#23272B]'
                         }`}
                       >
                         {ico}
@@ -719,7 +738,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
 
                 {/* Color selection */}
                 <div className="space-y-1.5 text-left">
-                  <label className="text-xs font-medium text-white block">Project Color Theme</label>
+                  <label className="text-xs font-semibold text-[#A7ADB5] block">Project Color Theme</label>
                   <div className="flex gap-2">
                     {colors.map((col) => (
                       <button
@@ -727,28 +746,28 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                         type="button"
                         onClick={() => setEditColor(col)}
                         className={`h-7 w-7 rounded-full border-2 transition-all cursor-pointer ${
-                          colorClasses[col]?.dot
+                          colorClasses[col]?.dot || 'bg-[#5BB98C]'
                         } ${
-                          editColor === col ? 'border-white scale-110 shadow-lg' : 'border-transparent opacity-60 hover:opacity-100'
+                          editColor === col ? 'border-[#F5F5F5] scale-110 shadow-lg' : 'border-transparent opacity-60 hover:opacity-100'
                         }`}
                       />
                     ))}
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-2 pt-2 border-t border-white/5">
+                <div className="flex justify-end gap-2 pt-2 border-t border-white/[0.06]">
                   <button
                     type="button"
                     onClick={() => setIsEditOpen(false)}
                     disabled={saveLoading}
-                    className="rounded-lg px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-white/5 hover:text-white transition-all cursor-pointer"
+                    className="rounded-xl px-4 py-2.5 text-xs font-bold text-[#A7ADB5] hover:bg-[#1D2024] hover:text-[#F5F5F5] transition-all cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={saveLoading}
-                    className="rounded-lg bg-primary hover:bg-primary/95 text-primary-foreground font-semibold px-4 py-2 text-xs transition-all cursor-pointer"
+                    className="rounded-xl bg-[#5BB98C] hover:bg-[#5BB98C]/90 text-[#111315] font-bold px-4 py-2.5 text-xs transition-all cursor-pointer shadow-md"
                   >
                     Save Changes
                   </button>
@@ -762,70 +781,70 @@ export default function ProjectDetailsPage({ params }: PageProps) {
       {/* Task Creation Modal */}
       <AnimatePresence>
         {isTaskCreateOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-sm rounded-2xl border border-white/5 bg-[#09090b] p-6 shadow-2xl relative"
+              className="w-full max-w-sm rounded-2xl border border-white/[0.06] bg-[#171A1D] p-6 shadow-2xl relative"
             >
               <button
                 onClick={() => setIsTaskCreateOpen(false)}
-                className="absolute right-4 top-4 rounded-lg p-1 text-muted-foreground hover:bg-white/5 hover:text-white transition-all cursor-pointer"
+                className="absolute right-4 top-4 rounded-xl p-1.5 text-[#A7ADB5] hover:bg-white/5 hover:text-[#F5F5F5] transition-all cursor-pointer"
               >
-                <X className="h-4 w-4" />
+                <X className="h-4.5 w-4.5" />
               </button>
 
-              <h3 className="text-base font-semibold text-white mb-4 text-left">Create New Project Task</h3>
+              <h3 className="text-base font-bold text-[#F5F5F5] mb-4 text-left">Create New Project Task</h3>
               <form onSubmit={handleCreateTask} className="space-y-4">
                 <div className="space-y-1.5 text-left">
-                  <label className="text-xs font-medium text-white block">Task Title</label>
+                  <label className="text-xs font-semibold text-[#A7ADB5] block">Task Title</label>
                   <input
                     type="text"
                     required
                     value={taskTitle}
                     onChange={(e) => setTaskTitle(e.target.value)}
                     placeholder="e.g. Build API Schema validations"
-                    className="w-full px-3.5 py-2 rounded-lg border border-white/10 bg-[#18181b] text-sm text-white focus:border-primary outline-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-sm text-[#F5F5F5] focus:border-[#5BB98C] outline-none"
                   />
                 </div>
 
                 <div className="space-y-1.5 text-left">
-                  <label className="text-xs font-medium text-white block">Priority</label>
+                  <label className="text-xs font-semibold text-[#A7ADB5] block">Priority</label>
                   <select
                     value={taskPriority}
                     onChange={(e) => setTaskPriority(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-white/10 bg-[#18181b] text-xs text-white outline-none focus:border-primary"
+                    className="w-full px-3 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-xs text-[#F5F5F5] outline-none focus:border-[#5BB98C] cursor-pointer"
                   >
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                    <option value="Urgent">Urgent</option>
+                    <option value="Low" className="bg-[#171A1D]">Low</option>
+                    <option value="Medium" className="bg-[#171A1D]">Medium</option>
+                    <option value="High" className="bg-[#171A1D]">High</option>
+                    <option value="Urgent" className="bg-[#171A1D]">Urgent</option>
                   </select>
                 </div>
 
                 <div className="space-y-1.5 text-left">
-                  <label className="text-xs font-medium text-white block">Due Date (Optional)</label>
+                  <label className="text-xs font-semibold text-[#A7ADB5] block">Due Date (Optional)</label>
                   <input
                     type="date"
                     value={taskDueDate}
                     onChange={(e) => setTaskDueDate(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-lg border border-white/10 bg-[#18181b] text-xs text-white focus:border-primary outline-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-xs text-[#F5F5F5] focus:border-[#5BB98C] outline-none cursor-pointer"
                   />
                 </div>
 
-                <div className="flex gap-2 justify-end pt-2 border-t border-white/5">
+                <div className="flex gap-2 justify-end pt-2 border-t border-white/[0.06]">
                   <button
                     type="button"
                     onClick={() => setIsTaskCreateOpen(false)}
-                    className="rounded-lg px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-white/5 hover:text-white transition-all cursor-pointer"
+                    className="rounded-xl px-4 py-2.5 text-xs font-bold text-[#A7ADB5] hover:bg-[#1D2024] hover:text-[#F5F5F5] transition-all cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={saveLoading}
-                    className="rounded-lg bg-primary hover:bg-primary/95 text-primary-foreground font-semibold px-4 py-2 text-xs transition-all cursor-pointer"
+                    className="rounded-xl bg-[#5BB98C] hover:bg-[#5BB98C]/90 text-[#111315] font-bold px-4 py-2.5 text-xs transition-all cursor-pointer shadow-md"
                   >
                     {saveLoading ? 'Creating...' : 'Create Task'}
                   </button>
@@ -839,33 +858,33 @@ export default function ProjectDetailsPage({ params }: PageProps) {
       {/* Delete Confirmation Modal Overlay */}
       <AnimatePresence>
         {isDeleteOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="w-full max-w-sm rounded-2xl border border-red-500/20 bg-[#09090b] p-6 shadow-2xl text-center"
+              className="w-full max-w-sm rounded-2xl border border-[#EB5757]/20 bg-[#171A1D] p-6 shadow-2xl text-center"
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 mx-auto mb-4">
-                <Trash2 className="h-6 w-6 text-red-500" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#EB5757]/10 mx-auto mb-4 border border-[#EB5757]/20">
+                <Trash2 className="h-6 w-6 text-[#EB5757]" />
               </div>
-              <h3 className="text-base font-semibold text-white mb-2">Delete Project?</h3>
-              <p className="text-xs text-muted-foreground mb-6">
-                Are you sure you want to delete <span className="text-white font-bold">&quot;{project.name}&quot;</span>? This action is permanent and deletes all associated workspace metadata.
+              <h3 className="text-base font-bold text-[#F5F5F5] mb-2">Delete Project?</h3>
+              <p className="text-xs text-[#A7ADB5] mb-6 font-medium">
+                Are you sure you want to delete <span className="text-[#F5F5F5] font-bold">&quot;{project.name}&quot;</span>? This action is permanent and deletes all associated workspace metadata.
               </p>
 
               <div className="flex gap-2">
                 <button
                   onClick={() => setIsDeleteOpen(false)}
                   disabled={saveLoading}
-                  className="flex-1 rounded-lg border border-white/5 bg-white/[0.02] px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-white/5 hover:text-white transition-all cursor-pointer"
+                  className="flex-1 rounded-xl border border-white/[0.06] bg-[#1D2024] px-4 py-2.5 text-xs font-bold text-[#A7ADB5] hover:bg-[#23272B] hover:text-[#F5F5F5] transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDelete}
                   disabled={saveLoading}
-                  className="flex-1 rounded-lg bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2 text-xs transition-all cursor-pointer"
+                  className="flex-1 rounded-xl bg-[#EB5757] hover:bg-red-600 text-white font-bold px-4 py-2.5 text-xs transition-all cursor-pointer shadow-md"
                 >
                   Confirm Delete
                 </button>
