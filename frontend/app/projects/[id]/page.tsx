@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { projectService } from '@/services/project'
 import { taskService } from '@/services/task'
+import { teamService } from '@/services/team'
 import { useAuth } from '@/hooks/useAuth'
 
 interface PageProps {
@@ -66,6 +67,14 @@ export default function ProjectDetailsPage({ params }: PageProps) {
   const [editProgress, setEditProgress] = useState(0)
   const [editVisibility, setEditVisibility] = useState('Workspace')
   const [editCoverImage, setEditCoverImage] = useState('')
+
+  // Fetch workspace members
+  const { data: allWorkspaceMembers = [] } = useQuery({
+    queryKey: ['workspace-members'],
+    queryFn: teamService.getWorkspaceMembers
+  })
+
+  const [isAddMemberOpen, setIsAddMemberOpen] = useState(false)
 
   // Task creation fields
   const [taskTitle, setTaskTitle] = useState('')
@@ -283,6 +292,25 @@ export default function ProjectDetailsPage({ params }: PageProps) {
       queryClient.invalidateQueries({ queryKey: ['project', id] })
     } catch (err) {
       console.error('Failed to drop task status', err)
+    }
+  }
+
+  const handleAssignProjectMember = async (userId: string) => {
+    try {
+      await teamService.assignProjectMember(id, userId)
+      queryClient.invalidateQueries({ queryKey: ['project', id] })
+      setIsAddMemberOpen(false)
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Failed to assign project member.')
+    }
+  }
+
+  const handleRemoveProjectMember = async (userId: string) => {
+    try {
+      await teamService.removeProjectMember(id, userId)
+      queryClient.invalidateQueries({ queryKey: ['project', id] })
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Failed to remove project member.')
     }
   }
 
@@ -678,9 +706,81 @@ export default function ProjectDetailsPage({ params }: PageProps) {
               </div>
               <div className="flex items-center justify-between py-1 border-b border-white/[0.06]">
                 <span className="text-[#A7ADB5] font-medium">Team Size</span>
-                <span className="font-semibold text-[#F5F5F5]">{project.members?.length || 1} members</span>
+                <span className="font-semibold text-[#F5F5F5]">{project.members?.length || 0} members</span>
               </div>
             </div>
+          </div>
+
+          {/* Project Members Section */}
+          <div className="rounded-2xl border border-white/[0.06] bg-[#171A1D] p-6 space-y-4 shadow-lg text-left">
+            <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-[#7E848C]">Assigned Team</h2>
+              <button
+                onClick={() => setIsAddMemberOpen(!isAddMemberOpen)}
+                className="text-[10px] font-bold text-[#5BB98C] hover:text-[#B7E4C7] transition-all cursor-pointer"
+              >
+                + Add Member
+              </button>
+            </div>
+
+            {/* List members */}
+            <div className="space-y-2.5">
+              {project.members && project.members.length > 0 ? (
+                project.members.map((m: any) => {
+                  const initials = m.full_name
+                    .split(' ')
+                    .map((n: string) => n[0])
+                    .join('')
+                    .toUpperCase()
+                    .slice(0, 2)
+                  return (
+                    <div key={m.id} className="flex items-center justify-between group/member text-xs">
+                      <div className="flex items-center gap-2">
+                        <div className="h-6 w-6 rounded-full bg-[#1D2024] border border-white/[0.06] flex items-center justify-center font-bold text-[10px] text-[#5BB98C]">
+                          {m.profile_image ? (
+                            <img src={m.profile_image} alt={m.full_name} className="h-full w-full rounded-full object-cover" />
+                          ) : (
+                            initials || '?'
+                          )}
+                        </div>
+                        <span className="text-[#F5F5F5] font-medium truncate w-32">{m.full_name}</span>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveProjectMember(m.id)}
+                        className="text-[10px] text-[#EB5757] hover:text-red-400 opacity-0 group-hover/member:opacity-100 transition-opacity cursor-pointer font-bold"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )
+                })
+              ) : (
+                <p className="text-[10px] text-[#7E848C]">No members assigned to this project yet.</p>
+              )}
+            </div>
+
+            {/* Add Member Dropdown/List panel */}
+            {isAddMemberOpen && (
+              <div className="pt-2 border-t border-white/[0.06] space-y-2">
+                <p className="text-[9px] font-bold text-[#7E848C] uppercase tracking-wider">Select Teammate</p>
+                <div className="max-h-[140px] overflow-y-auto space-y-1 pr-1">
+                  {allWorkspaceMembers
+                    .filter((wm) => !project.members?.some((pm: any) => pm.id === wm.user.id))
+                    .map((member) => (
+                      <button
+                        key={member.user.id}
+                        onClick={() => handleAssignProjectMember(member.user.id)}
+                        className="w-full text-left p-1.5 rounded-lg hover:bg-[#1D2024] text-[10px] text-[#A7ADB5] hover:text-[#F5F5F5] transition-all cursor-pointer truncate block"
+                      >
+                        {member.user.full_name} ({member.role})
+                      </button>
+                    ))}
+                  {allWorkspaceMembers.filter((wm) => !project.members?.some((pm: any) => pm.id === wm.user.id)).length === 0 && (
+                    <p className="text-[9px] text-[#7E848C]">All workspace members are already assigned.</p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Task Counter */}
