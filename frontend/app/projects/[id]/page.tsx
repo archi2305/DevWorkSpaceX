@@ -7,7 +7,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { 
   ArrowLeft, Calendar, User as UserIcon, Trash2, Edit3, 
   Clock, AlertCircle, X, Layers, CheckSquare, 
-  Sparkles, FileText, Archive, ArchiveRestore 
+  Sparkles, FileText, Archive, ArchiveRestore, Star, Pin
 } from 'lucide-react'
 import { projectService } from '@/services/project'
 import { useAuth } from '@/hooks/useAuth'
@@ -53,8 +53,10 @@ export default function ProjectDetailsPage({ params }: PageProps) {
   const [editColor, setEditColor] = useState('blue')
   const [editIcon, setEditIcon] = useState('🚀')
   const [editStatus, setEditStatus] = useState('In Progress')
+  const [editPriority, setEditPriority] = useState('Medium')
   const [editProgress, setEditProgress] = useState(0)
   const [editVisibility, setEditVisibility] = useState('Workspace')
+  const [editCoverImage, setEditCoverImage] = useState('')
   
   const [saveLoading, setSaveLoading] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -67,8 +69,10 @@ export default function ProjectDetailsPage({ params }: PageProps) {
       setEditColor(project.color || 'blue')
       setEditIcon(project.icon || '🚀')
       setEditStatus(project.status)
+      setEditPriority(project.priority)
       setEditProgress(project.progress)
       setEditVisibility(project.visibility)
+      setEditCoverImage(project.cover_image || '')
     }
   }, [project])
 
@@ -85,9 +89,11 @@ export default function ProjectDetailsPage({ params }: PageProps) {
         color: editColor,
         icon: editIcon,
         status: editStatus,
+        priority: editPriority,
         progress: Number(editProgress),
         visibility: editVisibility,
-      })
+        cover_image: editCoverImage || null,
+      } as any)
       queryClient.invalidateQueries({ queryKey: ['project', id] })
       queryClient.invalidateQueries({ queryKey: ['projects'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
@@ -103,7 +109,11 @@ export default function ProjectDetailsPage({ params }: PageProps) {
   const handleArchiveToggle = async () => {
     setSaveLoading(true)
     try {
-      await projectService.archiveProject(id)
+      if (project?.is_archived) {
+        await projectService.restoreProject(id)
+      } else {
+        await projectService.archiveProject(id)
+      }
       queryClient.invalidateQueries({ queryKey: ['project', id] })
       queryClient.invalidateQueries({ queryKey: ['projects'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
@@ -111,6 +121,26 @@ export default function ProjectDetailsPage({ params }: PageProps) {
       alert('Failed to archive project.')
     } finally {
       setSaveLoading(false)
+    }
+  }
+
+  const handleFavoriteToggle = async () => {
+    try {
+      await projectService.favoriteProject(id)
+      queryClient.invalidateQueries({ queryKey: ['project', id] })
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+    } catch (err) {
+      console.error('Failed to toggle favorite', err)
+    }
+  }
+
+  const handlePinToggle = async () => {
+    try {
+      await projectService.pinProject(id)
+      queryClient.invalidateQueries({ queryKey: ['project', id] })
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+    } catch (err) {
+      console.error('Failed to toggle pin', err)
     }
   }
 
@@ -159,6 +189,14 @@ export default function ProjectDetailsPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-[#09090b] text-foreground p-8 space-y-8">
+      {/* Cover Image Banner */}
+      {project.cover_image && (
+        <div className="w-full h-48 rounded-2xl overflow-hidden border border-white/5 relative bg-white/[0.01]">
+          <img src={project.cover_image} alt={project.name} className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-transparent to-transparent" />
+        </div>
+      )}
+
       {/* Header Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6">
         <div className="flex items-center gap-4">
@@ -185,6 +223,20 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                     Archived
                   </span>
                 )}
+                <div className="flex items-center gap-1.5 border-l border-white/10 pl-2.5 ml-1">
+                  <button
+                    onClick={handleFavoriteToggle}
+                    className="text-muted-foreground hover:text-yellow-400 transition-colors"
+                  >
+                    <Star className={`h-4 w-4 ${project.is_favorite ? 'text-yellow-400 fill-current' : ''}`} />
+                  </button>
+                  <button
+                    onClick={handlePinToggle}
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    <Pin className={`h-4 w-4 ${project.is_pinned ? 'text-primary' : ''}`} />
+                  </button>
+                </div>
               </div>
               <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1.5">
                 <Calendar className="h-3 w-3" />
@@ -225,7 +277,6 @@ export default function ProjectDetailsPage({ params }: PageProps) {
 
       {/* Main Details Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column details */}
         <div className="lg:col-span-2 space-y-6">
           {/* About Project Card */}
           <div className="rounded-xl border border-white/5 bg-white/[0.01] p-6 space-y-4">
@@ -277,7 +328,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
 
           {/* Empty Documentation Placeholder */}
           <div className="space-y-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground text-left font-semibold">Documentation Docs</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground text-left">Documentation Docs</h2>
             <div className="rounded-xl border border-dashed border-white/5 bg-white/[0.002] p-8 flex flex-col items-center justify-center text-center">
               <FileText className="h-8 w-8 text-[#27272a] mb-3" />
               <h3 className="text-xs font-semibold text-white">No Documentation Yet</h3>
@@ -310,6 +361,10 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                 </span>
               </div>
               <div className="flex items-center justify-between py-1 border-b border-white/5">
+                <span className="text-muted-foreground">Priority Level</span>
+                <span className="font-semibold text-white uppercase">{project.priority}</span>
+              </div>
+              <div className="flex items-center justify-between py-1 border-b border-white/5">
                 <span className="text-muted-foreground">Visibility Level</span>
                 <span className="font-semibold text-white uppercase">{project.visibility}</span>
               </div>
@@ -320,7 +375,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
             </div>
           </div>
 
-          {/* Task Counter summary statistics */}
+          {/* Task Counter */}
           <div className="rounded-xl border border-white/5 bg-white/[0.01] p-6 space-y-4">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground text-left">Upcoming Project Tasks</h2>
             <div className="flex flex-col items-center justify-center text-center py-6">
@@ -329,7 +384,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
             </div>
           </div>
 
-          {/* Recent Activity summary statistics */}
+          {/* Recent Activity */}
           <div className="rounded-xl border border-white/5 bg-white/[0.01] p-6 space-y-4">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground text-left">Recent Activity</h2>
             
@@ -363,11 +418,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                 <X className="h-4 w-4" />
               </button>
 
-              <h3 className="text-lg font-semibold text-white mb-2">Edit Project Settings</h3>
-              <p className="text-xs text-muted-foreground mb-4">
-                Modify your workspace project properties.
-              </p>
-
+              <h3 className="text-lg font-semibold text-white mb-2 text-left">Edit Project Settings</h3>
               <form onSubmit={handleUpdate} className="space-y-4">
                 {saveError && (
                   <div className="p-3 text-xs font-medium rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
@@ -397,15 +448,15 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                     value={editDescription}
                     onChange={(e) => setEditDescription(e.target.value)}
                     placeholder="Project description"
-                    rows={3}
+                    rows={2}
                     className="w-full px-3.5 py-2 rounded-lg border border-white/10 bg-white/[0.02] text-sm text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none"
                   />
                 </div>
 
-                {/* Status & Progress Row */}
-                <div className="grid grid-cols-2 gap-3">
+                {/* Status & Priority Row */}
+                <div className="grid grid-cols-2 gap-3 text-left">
                   <div className="space-y-1.5">
-                    <label htmlFor="epstatus" className="text-xs font-medium text-white block text-left">Status</label>
+                    <label htmlFor="epstatus" className="text-xs font-medium text-white block">Status</label>
                     <select
                       id="epstatus"
                       value={editStatus}
@@ -420,22 +471,38 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label htmlFor="epprogress" className="text-xs font-medium text-white block text-left">Progress ({editProgress}%)</label>
-                    <input
-                      id="epprogress"
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={editProgress}
-                      onChange={(e) => setEditProgress(Number(e.target.value))}
-                      className="w-full h-8 accent-primary bg-transparent"
-                    />
+                    <label htmlFor="eppriority" className="text-xs font-medium text-white block">Priority</label>
+                    <select
+                      id="eppriority"
+                      value={editPriority}
+                      onChange={(e) => setEditPriority(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/[0.02] text-sm text-white outline-none focus:border-primary"
+                    >
+                      <option value="Low" className="bg-[#09090b]">Low</option>
+                      <option value="Medium" className="bg-[#09090b]">Medium</option>
+                      <option value="High" className="bg-[#09090b]">High</option>
+                      <option value="Urgent" className="bg-[#09090b]">Urgent</option>
+                    </select>
                   </div>
                 </div>
 
+                {/* Progress Slider */}
+                <div className="space-y-1.5 text-left">
+                  <label htmlFor="epprogress" className="text-xs font-medium text-white block">Progress ({editProgress}%)</label>
+                  <input
+                    id="epprogress"
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={editProgress}
+                    onChange={(e) => setEditProgress(Number(e.target.value))}
+                    className="w-full h-8 accent-primary bg-transparent"
+                  />
+                </div>
+
                 {/* Visibility selector */}
-                <div className="space-y-1.5">
-                  <label htmlFor="epvisibility" className="text-xs font-medium text-white block text-left font-medium">Visibility Level</label>
+                <div className="space-y-1.5 text-left">
+                  <label htmlFor="epvisibility" className="text-xs font-medium text-white block font-medium">Visibility Level</label>
                   <select
                     id="epvisibility"
                     value={editVisibility}
@@ -448,9 +515,22 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                   </select>
                 </div>
 
+                {/* Cover Image Input */}
+                <div className="space-y-1.5 text-left">
+                  <label htmlFor="epcover" className="text-xs font-medium text-white block">Cover Image URL</label>
+                  <input
+                    id="epcover"
+                    type="text"
+                    value={editCoverImage}
+                    onChange={(e) => setEditCoverImage(e.target.value)}
+                    placeholder="https://images.unsplash.com/photo-..."
+                    className="w-full px-3.5 py-2 rounded-lg border border-white/10 bg-white/[0.02] text-sm text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                  />
+                </div>
+
                 {/* Icon selection */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-white block text-left">Project Icon</label>
+                <div className="space-y-1.5 text-left">
+                  <label className="text-xs font-medium text-white block">Project Icon</label>
                   <div className="flex gap-2">
                     {icons.map((ico) => (
                       <button
@@ -468,8 +548,8 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                 </div>
 
                 {/* Color selection */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-white block text-left">Project Color Theme</label>
+                <div className="space-y-1.5 text-left">
+                  <label className="text-xs font-medium text-white block">Project Color Theme</label>
                   <div className="flex gap-2">
                     {colors.map((col) => (
                       <button
@@ -500,7 +580,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                     disabled={saveLoading}
                     className="rounded-lg bg-primary hover:bg-primary/95 text-primary-foreground font-semibold px-4 py-2 text-xs transition-all cursor-pointer"
                   >
-                    {saveLoading ? 'Saving...' : 'Save Changes'}
+                    Save Changes
                   </button>
                 </div>
               </form>
@@ -540,7 +620,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                   disabled={saveLoading}
                   className="flex-1 rounded-lg bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2 text-xs transition-all cursor-pointer"
                 >
-                  {saveLoading ? 'Deleting...' : 'Confirm Delete'}
+                  Confirm Delete
                 </button>
               </div>
             </motion.div>
