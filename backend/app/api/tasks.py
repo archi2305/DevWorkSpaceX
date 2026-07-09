@@ -1,7 +1,7 @@
 import uuid
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from app.dependencies.db import get_db
 from app.dependencies.auth import get_current_user
 from app.models.user import User
@@ -10,6 +10,29 @@ from app.models.activity import ActivityLog
 from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
+
+@router.get(
+    "",
+    response_model=List[TaskResponse],
+    summary="Get workspace tasks",
+    description="Loads tasks with optional filter by project ID."
+)
+def get_tasks(
+    project_id: Optional[uuid.UUID] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    List tasks optionally filtered by project.
+    """
+    query = db.query(Task)
+    if project_id:
+        query = query.filter(Task.project_id == project_id)
+    else:
+        # Default to tasks assigned to user
+        query = query.filter(Task.assignee_id == current_user.id)
+        
+    return query.order_by(Task.created_at.desc()).all()
 
 @router.get(
     "/upcoming",
@@ -25,7 +48,8 @@ def get_upcoming_tasks(
     Query tasks assigned to the user.
     """
     tasks = db.query(Task).filter(
-        Task.assignee_id == current_user.id
+        (Task.assignee_id == current_user.id) &
+        (Task.completed == False)
     ).order_by(Task.created_at.desc()).all()
     return tasks
 
@@ -141,7 +165,6 @@ def delete_task(
             detail="Task not found"
         )
         
-    # Log task deletion activity before database record deletion
     db_log = ActivityLog(
         user_id=current_user.id,
         action="Task Deleted",
