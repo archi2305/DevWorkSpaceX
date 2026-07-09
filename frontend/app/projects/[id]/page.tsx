@@ -223,8 +223,20 @@ export default function ProjectDetailsPage({ params }: PageProps) {
       await taskService.deleteTask(taskId)
       queryClient.invalidateQueries({ queryKey: ['tasks', { project_id: id }] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['project', id] })
     } catch (err) {
       console.error('Failed to delete task', err)
+    }
+  }
+
+  const handleDropTask = async (taskId: string, targetStatus: string) => {
+    try {
+      await taskService.updateTask(taskId, { status: targetStatus })
+      queryClient.invalidateQueries({ queryKey: ['tasks', { project_id: id }] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['project', id] })
+    } catch (err) {
+      console.error('Failed to drop task status', err)
     }
   }
 
@@ -392,7 +404,15 @@ export default function ProjectDetailsPage({ params }: PageProps) {
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* To Do Column */}
-              <div className="rounded-2xl border border-white/[0.06] bg-[#171A1D] p-4 flex flex-col min-h-[340px] shadow-sm hover:shadow-md transition-shadow duration-300">
+              <div
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  const taskId = e.dataTransfer.getData('text/plain')
+                  if (taskId) handleDropTask(taskId, 'Todo')
+                }}
+                className="rounded-2xl border border-white/[0.06] bg-[#171A1D] p-4 flex flex-col min-h-[340px] shadow-sm hover:shadow-md transition-shadow duration-300"
+              >
                 <div className="flex items-center justify-between border-b border-white/[0.06] pb-2 mb-4">
                   <span className="text-xs font-bold text-[#F5F5F5] uppercase tracking-wider">To Do</span>
                   <span className="text-[10px] bg-[#1D2024] text-[#A7ADB5] rounded-full px-2 py-0.5 border border-white/[0.06] font-semibold">{columnTasks.todo.length}</span>
@@ -412,7 +432,15 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                 ) : (
                   <div className="space-y-2">
                     {columnTasks.todo.map(task => (
-                      <div key={task.id} className="p-3 rounded-xl border border-white/[0.06] bg-[#1D2024] hover:bg-[#23272B] hover:border-[#5BB98C]/30 hover:scale-[1.02] hover:-translate-y-0.5 transition-all duration-200 flex flex-col gap-1.5 text-left relative group shadow-sm">
+                      <div
+                        key={task.id}
+                        draggable={true}
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('text/plain', task.id)
+                          e.dataTransfer.effectAllowed = 'move'
+                        }}
+                        className="p-3 rounded-xl border border-white/[0.06] bg-[#1D2024] hover:bg-[#23272B] hover:border-[#5BB98C]/30 hover:scale-[1.02] hover:-translate-y-0.5 transition-all duration-200 flex flex-col gap-1.5 text-left relative group shadow-sm cursor-grab active:cursor-grabbing"
+                      >
                         <div className="flex items-start justify-between gap-2">
                           <span className="text-xs font-semibold text-[#F5F5F5]">{task.title}</span>
                           <button onClick={() => handleToggleTask(task.id, task.completed)} className="text-[#7E848C] hover:text-[#5BB98C] transition-colors cursor-pointer">
@@ -432,7 +460,15 @@ export default function ProjectDetailsPage({ params }: PageProps) {
               </div>
 
               {/* In Progress Column */}
-              <div className="rounded-2xl border border-white/[0.06] bg-[#171A1D] p-4 flex flex-col min-h-[340px] shadow-sm hover:shadow-md transition-shadow duration-300">
+              <div
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  const taskId = e.dataTransfer.getData('text/plain')
+                  if (taskId) handleDropTask(taskId, 'In Progress')
+                }}
+                className="rounded-2xl border border-white/[0.06] bg-[#171A1D] p-4 flex flex-col min-h-[340px] shadow-sm hover:shadow-md transition-shadow duration-300"
+              >
                 <div className="flex items-center justify-between border-b border-white/[0.06] pb-2 mb-4">
                   <span className="text-xs font-bold text-[#F5F5F5] uppercase tracking-wider">In Progress</span>
                   <span className="text-[10px] bg-[#1D2024] text-[#A7ADB5] rounded-full px-2 py-0.5 border border-white/[0.06] font-semibold">{columnTasks.inprogress.length}</span>
@@ -452,7 +488,15 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                 ) : (
                   <div className="space-y-2">
                     {columnTasks.inprogress.map(task => (
-                      <div key={task.id} className="p-3 rounded-xl border border-white/[0.06] bg-[#1D2024] hover:bg-[#23272B] hover:border-[#5BB98C]/30 hover:scale-[1.02] hover:-translate-y-0.5 transition-all duration-200 flex flex-col gap-1.5 text-left relative group shadow-sm">
+                      <div
+                        key={task.id}
+                        draggable={true}
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('text/plain', task.id)
+                          e.dataTransfer.effectAllowed = 'move'
+                        }}
+                        className="p-3 rounded-xl border border-white/[0.06] bg-[#1D2024] hover:bg-[#23272B] hover:border-[#5BB98C]/30 hover:scale-[1.02] hover:-translate-y-0.5 transition-all duration-200 flex flex-col gap-1.5 text-left relative group shadow-sm cursor-grab active:cursor-grabbing"
+                      >
                         <div className="flex items-start justify-between gap-2">
                           <span className="text-xs font-semibold text-[#F5F5F5]">{task.title}</span>
                           <button onClick={() => handleToggleTask(task.id, task.completed)} className="text-[#7E848C] hover:text-[#5BB98C] transition-colors cursor-pointer">
@@ -472,7 +516,15 @@ export default function ProjectDetailsPage({ params }: PageProps) {
               </div>
 
               {/* Done Column */}
-              <div className="rounded-2xl border border-white/[0.06] bg-[#171A1D] p-4 flex flex-col min-h-[340px] shadow-sm hover:shadow-md transition-shadow duration-300">
+              <div
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  const taskId = e.dataTransfer.getData('text/plain')
+                  if (taskId) handleDropTask(taskId, 'Done')
+                }}
+                className="rounded-2xl border border-white/[0.06] bg-[#171A1D] p-4 flex flex-col min-h-[340px] shadow-sm hover:shadow-md transition-shadow duration-300"
+              >
                 <div className="flex items-center justify-between border-b border-white/[0.06] pb-2 mb-4">
                   <span className="text-xs font-bold text-[#F5F5F5] uppercase tracking-wider">Done</span>
                   <span className="text-[10px] bg-[#1D2024] text-[#A7ADB5] rounded-full px-2 py-0.5 border border-white/[0.06] font-semibold">{columnTasks.done.length}</span>
@@ -486,7 +538,15 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                 ) : (
                   <div className="space-y-2">
                     {columnTasks.done.map(task => (
-                      <div key={task.id} className="p-3 rounded-xl border border-white/[0.06] bg-[#1D2024] hover:bg-[#23272B] hover:border-[#5BB98C]/30 hover:scale-[1.02] hover:-translate-y-0.5 opacity-70 hover:opacity-100 transition-all duration-200 flex flex-col gap-1.5 text-left relative group shadow-sm">
+                      <div
+                        key={task.id}
+                        draggable={true}
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('text/plain', task.id)
+                          e.dataTransfer.effectAllowed = 'move'
+                        }}
+                        className="p-3 rounded-xl border border-white/[0.06] bg-[#1D2024] hover:bg-[#23272B] hover:border-[#5BB98C]/30 hover:scale-[1.02] hover:-translate-y-0.5 opacity-70 hover:opacity-100 transition-all duration-200 flex flex-col gap-1.5 text-left relative group shadow-sm cursor-grab active:cursor-grabbing"
+                      >
                         <div className="flex items-start justify-between gap-2">
                           <span className="text-xs font-semibold text-[#A7ADB5] line-through">{task.title}</span>
                           <button onClick={() => handleToggleTask(task.id, task.completed)} className="text-[#5BB98C] hover:text-[#B7E4C7] transition-colors cursor-pointer">
