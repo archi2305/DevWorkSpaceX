@@ -2,6 +2,9 @@ import { api } from './api'
 
 export interface TaskCreateInput {
   title: string
+  description?: string
+  status?: string // 'Todo', 'In Progress', 'Review', 'Done'
+  labels?: string
   due_date?: string
   priority?: string
   assignee_id?: string
@@ -12,6 +15,9 @@ export interface TaskCreateInput {
 export interface TaskResponse {
   id: string
   title: string
+  description: string | null
+  status: string
+  labels: string | null
   due_date: string | null
   priority: string
   completed: boolean
@@ -48,7 +54,7 @@ export const taskService = {
   },
 
   /**
-   * Update task details (e.g. status, priority).
+   * Update task details (e.g. status columns, due dates, descriptions).
    */
   async updateTask(taskId: string, data: Partial<TaskResponse>): Promise<TaskResponse> {
     const response = await api.patch<TaskResponse>(`/tasks/${taskId}`, data)
