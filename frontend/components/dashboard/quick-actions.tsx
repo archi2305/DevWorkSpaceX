@@ -63,6 +63,8 @@ export function QuickActions() {
   const [pColor, setPColor] = useState('blue')
   const [pIcon, setPIcon] = useState('🚀')
   const [pVisibility, setPVisibility] = useState('Workspace')
+  const [pPriority, setPPriority] = useState('Medium')
+  const [pCoverImage, setPCoverImage] = useState('')
   const [pError, setPError] = useState<string | null>(null)
   const [pLoading, setPLoading] = useState(false)
 
@@ -97,16 +99,21 @@ export function QuickActions() {
         description: pDesc || undefined,
         color: pColor,
         icon: pIcon,
-        status: 'In Progress',
+        status: 'Pending',
         visibility: pVisibility,
+        priority: pPriority,
+        cover_image: pCoverImage || undefined,
       })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
       setActiveModal(null)
       setPName('')
       setPDesc('')
       setPColor('blue')
       setPIcon('🚀')
       setPVisibility('Workspace')
+      setPPriority('Medium')
+      setPCoverImage('')
     } catch (err: any) {
       const errMsg = err.response?.data?.detail || 'Failed to create project.'
       setPError(errMsg)
@@ -299,6 +306,39 @@ export function QuickActions() {
                     <option value="Private">Private</option>
                     <option value="Public">Public</option>
                   </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="ppriority" className="text-xs font-medium text-white block text-left">
+                    Priority
+                  </label>
+                  <select
+                    id="ppriority"
+                    value={pPriority}
+                    onChange={(e) => setPPriority(e.target.value)}
+                    disabled={pLoading}
+                    className="w-full px-3.5 py-2 rounded-lg border border-white/10 bg-[#18181b] text-sm text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 disabled:opacity-50"
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium (Default)</option>
+                    <option value="High">High</option>
+                    <option value="Urgent">Urgent</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="pcover" className="text-xs font-medium text-white block text-left">
+                    Cover Image URL (Optional)
+                  </label>
+                  <input
+                    id="pcover"
+                    type="text"
+                    value={pCoverImage}
+                    onChange={(e) => setPCoverImage(e.target.value)}
+                    placeholder="https://images.unsplash.com/photo-..."
+                    disabled={pLoading}
+                    className="w-full px-3.5 py-2 rounded-lg border border-white/10 bg-white/[0.02] text-sm text-white placeholder-[#52525b] outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 disabled:opacity-50"
+                  />
                 </div>
 
                 <div className="flex justify-end gap-2 pt-2 border-t border-white/5">
