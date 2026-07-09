@@ -16,7 +16,7 @@ export function TopNav() {
   const [isMounted, setIsMounted] = useState(false)
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const { setSearchQuery: setGlobalSearchQuery } = useProjectStore()
+  const { setSearchQuery: setGlobalSearchQuery, setActiveModal } = useProjectStore()
 
   // Consume dashboard unified query
   const { data: dashboardData } = useDashboardData()
@@ -237,6 +237,7 @@ export function TopNav() {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={() => setActiveModal('project')}
             className={`
               inline-flex items-center gap-2 rounded-lg border border-input px-3 py-2.5
               text-sm font-medium text-foreground transition-all
