@@ -25,20 +25,21 @@ def get_workspace_members(
     """
     List all workspace members.
     """
-    members = db.query(WorkspaceMember).all()
-    
-    # If table is completely empty, populate current user as default Owner
-    if not members:
-        owner_member = WorkspaceMember(
+    # Ensure querying user is registered as a member
+    current_membership = db.query(WorkspaceMember).filter(WorkspaceMember.user_id == current_user.id).first()
+    if not current_membership:
+        # Assign Owner if it is the first member, otherwise Developer
+        has_any = db.query(WorkspaceMember).first()
+        role = "Owner" if not has_any else "Developer"
+        current_membership = WorkspaceMember(
             user_id=current_user.id,
-            role="Owner"
+            role=role
         )
-        db.add(owner_member)
+        db.add(current_membership)
         db.commit()
-        db.refresh(owner_member)
-        members = [owner_member]
+        db.refresh(current_membership)
         
-    return members
+    return db.query(WorkspaceMember).all()
 
 @router.post(
     "/invite",
