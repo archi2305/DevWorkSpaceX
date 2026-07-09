@@ -7,9 +7,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { 
   ArrowLeft, Calendar, User as UserIcon, Trash2, Edit3, 
   Clock, AlertCircle, X, Layers, CheckSquare, 
-  Sparkles, FileText, Archive, ArchiveRestore, Star, Pin
+  Sparkles, FileText, Archive, ArchiveRestore, Star, Pin, Plus
 } from 'lucide-react'
 import { projectService } from '@/services/project'
+import { taskService } from '@/services/task'
 import { useAuth } from '@/hooks/useAuth'
 
 interface PageProps {
@@ -37,16 +38,23 @@ export default function ProjectDetailsPage({ params }: PageProps) {
   const { user } = useAuth()
   const queryClient = useQueryClient()
   
-  // Fetch project details using TanStack Query
+  // Fetch project details
   const { data: project, isLoading, error } = useQuery({
     queryKey: ['project', id],
     queryFn: () => projectService.getProjectById(id),
     retry: 1,
   })
 
+  // Fetch tasks associated with this project
+  const { data: tasks = [], isLoading: tasksLoading } = useQuery({
+    queryKey: ['tasks', { project_id: id }],
+    queryFn: () => taskService.getTasks(id),
+  })
+
   // Editing modal fields
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const [isTaskCreateOpen, setIsTaskCreateOpen] = useState(false)
   
   const [editName, setEditName] = useState('')
   const [editDescription, setEditDescription] = useState('')
@@ -57,6 +65,11 @@ export default function ProjectDetailsPage({ params }: PageProps) {
   const [editProgress, setEditProgress] = useState(0)
   const [editVisibility, setEditVisibility] = useState('Workspace')
   const [editCoverImage, setEditCoverImage] = useState('')
+
+  // Task creation fields
+  const [taskTitle, setTaskTitle] = useState('')
+  const [taskPriority, setTaskPriority] = useState('Medium')
+  const [taskDueDate, setTaskDueDate] = useState('')
   
   const [saveLoading, setSaveLoading] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -159,6 +172,51 @@ export default function ProjectDetailsPage({ params }: PageProps) {
     }
   }
 
+  const handleCreateTask = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!taskTitle.trim()) return
+    setSaveLoading(true)
+    try {
+      await taskService.createTask({
+        title: taskTitle,
+        priority: taskPriority,
+        due_date: taskDueDate || undefined,
+        project_id: id,
+        completed: false
+      })
+      queryClient.invalidateQueries({ queryKey: ['tasks', { project_id: id }] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      setIsTaskCreateOpen(false)
+      setTaskTitle('')
+      setTaskPriority('Medium')
+      setTaskDueDate('')
+    } catch (err) {
+      alert('Failed to create task.')
+    } finally {
+      setSaveLoading(false)
+    }
+  }
+
+  const handleToggleTask = async (taskId: string, currentCompleted: boolean) => {
+    try {
+      await taskService.toggleTaskComplete(taskId, !currentCompleted)
+      queryClient.invalidateQueries({ queryKey: ['tasks', { project_id: id }] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    } catch (err) {
+      console.error('Failed to toggle task', err)
+    }
+  }
+
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      await taskService.deleteTask(taskId)
+      queryClient.invalidateQueries({ queryKey: ['tasks', { project_id: id }] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    } catch (err) {
+      console.error('Failed to delete task', err)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#09090b] text-foreground p-8 flex flex-col items-center justify-center space-y-4">
@@ -186,6 +244,13 @@ export default function ProjectDetailsPage({ params }: PageProps) {
 
   const themeClass = colorClasses[project.color || 'blue'] || colorClasses.blue
   const isOwner = user?.id === project.owner_id
+
+  // Column distributions
+  const columnTasks = {
+    todo: tasks.filter(t => !t.completed && t.priority !== 'High' && t.priority !== 'Urgent'),
+    inprogress: tasks.filter(t => !t.completed && (t.priority === 'High' || t.priority === 'Urgent')),
+    done: tasks.filter(t => t.completed)
+  }
 
   return (
     <div className="min-h-screen bg-[#09090b] text-foreground p-8 space-y-8">
@@ -302,27 +367,120 @@ export default function ProjectDetailsPage({ params }: PageProps) {
             </div>
           </div>
 
-          {/* Kanban Section Placeholder */}
+          {/* Kanban Section with Real Tasks */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Sprint Kanban Board</h2>
-              <span className="text-xs text-muted-foreground">0 Tasks</span>
+              <button
+                onClick={() => setIsTaskCreateOpen(true)}
+                className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors font-semibold"
+              >
+                <Plus className="h-3.5 w-3.5" /> Create Task
+              </button>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {['To Do', 'In Progress', 'Done'].map((column) => (
-                <div key={column} className="rounded-xl border border-white/5 bg-white/[0.005] p-4 flex flex-col h-[280px]">
-                  <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-4">
-                    <span className="text-xs font-bold text-white uppercase tracking-wider">{column}</span>
-                    <span className="text-[10px] bg-white/5 text-muted-foreground rounded-full px-2 py-0.5">0</span>
-                  </div>
-                  
+              {/* To Do Column */}
+              <div className="rounded-xl border border-white/5 bg-white/[0.005] p-4 flex flex-col min-h-[300px]">
+                <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-4">
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">To Do</span>
+                  <span className="text-[10px] bg-white/5 text-muted-foreground rounded-full px-2 py-0.5">{columnTasks.todo.length}</span>
+                </div>
+                
+                {columnTasks.todo.length === 0 ? (
                   <div className="flex-1 flex flex-col items-center justify-center text-center p-4 border border-dashed border-white/5 rounded-lg">
                     <Layers className="h-6 w-6 text-[#27272a] mb-2" />
-                    <p className="text-[11px] text-muted-foreground font-medium">No tasks here yet</p>
+                    <p className="text-[11px] text-muted-foreground">No tasks here</p>
                   </div>
+                ) : (
+                  <div className="space-y-2">
+                    {columnTasks.todo.map(task => (
+                      <div key={task.id} className="p-3 rounded-lg border border-white/5 bg-[#18181b] hover:border-primary/40 transition-all flex flex-col gap-1.5 text-left relative group">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-xs font-medium text-white">{task.title}</span>
+                          <button onClick={() => handleToggleTask(task.id, task.completed)} className="text-muted-foreground hover:text-white">
+                            <CheckSquare className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        <div className="flex justify-between items-center text-[9px] text-muted-foreground">
+                          <span>{task.priority}</span>
+                          <button onClick={() => handleDeleteTask(task.id)} className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-500">
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* In Progress Column */}
+              <div className="rounded-xl border border-white/5 bg-white/[0.005] p-4 flex flex-col min-h-[300px]">
+                <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-4">
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">In Progress</span>
+                  <span className="text-[10px] bg-white/5 text-muted-foreground rounded-full px-2 py-0.5">{columnTasks.inprogress.length}</span>
                 </div>
-              ))}
+                
+                {columnTasks.inprogress.length === 0 ? (
+                  <div className="flex-1 flex flex-col items-center justify-center text-center p-4 border border-dashed border-white/5 rounded-lg">
+                    <Layers className="h-6 w-6 text-[#27272a] mb-2" />
+                    <p className="text-[11px] text-muted-foreground">No tasks here</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {columnTasks.inprogress.map(task => (
+                      <div key={task.id} className="p-3 rounded-lg border border-white/5 bg-[#18181b] hover:border-primary/40 transition-all flex flex-col gap-1.5 text-left relative group">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-xs font-medium text-white">{task.title}</span>
+                          <button onClick={() => handleToggleTask(task.id, task.completed)} className="text-muted-foreground hover:text-white">
+                            <CheckSquare className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        <div className="flex justify-between items-center text-[9px] text-muted-foreground">
+                          <span className="text-red-400">{task.priority}</span>
+                          <button onClick={() => handleDeleteTask(task.id)} className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-500">
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Done Column */}
+              <div className="rounded-xl border border-white/5 bg-white/[0.005] p-4 flex flex-col min-h-[300px]">
+                <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-4">
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">Done</span>
+                  <span className="text-[10px] bg-white/5 text-muted-foreground rounded-full px-2 py-0.5">{columnTasks.done.length}</span>
+                </div>
+                
+                {columnTasks.done.length === 0 ? (
+                  <div className="flex-1 flex flex-col items-center justify-center text-center p-4 border border-dashed border-white/5 rounded-lg">
+                    <Layers className="h-6 w-6 text-[#27272a] mb-2" />
+                    <p className="text-[11px] text-muted-foreground">No tasks here</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {columnTasks.done.map(task => (
+                      <div key={task.id} className="p-3 rounded-lg border border-white/5 bg-[#18181b] opacity-60 hover:opacity-100 transition-all flex flex-col gap-1.5 text-left relative group">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-xs font-medium text-white line-through">{task.title}</span>
+                          <button onClick={() => handleToggleTask(task.id, task.completed)} className="text-primary hover:text-white">
+                            <CheckSquare className="h-3.5 w-3.5 fill-current" />
+                          </button>
+                        </div>
+                        <div className="flex justify-between items-center text-[9px] text-muted-foreground">
+                          <span>Completed</span>
+                          <button onClick={() => handleDeleteTask(task.id)} className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-500">
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -378,10 +536,22 @@ export default function ProjectDetailsPage({ params }: PageProps) {
           {/* Task Counter */}
           <div className="rounded-xl border border-white/5 bg-white/[0.01] p-6 space-y-4">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground text-left">Upcoming Project Tasks</h2>
-            <div className="flex flex-col items-center justify-center text-center py-6">
-              <CheckSquare className="h-8 w-8 text-[#27272a] mb-2" />
-              <p className="text-xs text-muted-foreground">No upcoming deadlines assigned</p>
-            </div>
+            
+            {tasks.filter(t => !t.completed).length === 0 ? (
+              <div className="flex flex-col items-center justify-center text-center py-6">
+                <CheckSquare className="h-8 w-8 text-[#27272a] mb-2" />
+                <p className="text-xs text-muted-foreground">No upcoming deadlines assigned</p>
+              </div>
+            ) : (
+              <div className="space-y-2 text-xs">
+                {tasks.filter(t => !t.completed).slice(0, 3).map(task => (
+                  <div key={task.id} className="p-2 rounded border border-white/5 bg-white/[0.01] flex justify-between items-center text-left">
+                    <span className="truncate w-36 text-white font-medium">{task.title}</span>
+                    <span className="text-[9px] text-muted-foreground">{task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No date'}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Recent Activity */}
@@ -581,6 +751,83 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                     className="rounded-lg bg-primary hover:bg-primary/95 text-primary-foreground font-semibold px-4 py-2 text-xs transition-all cursor-pointer"
                   >
                     Save Changes
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Task Creation Modal */}
+      <AnimatePresence>
+        {isTaskCreateOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-sm rounded-2xl border border-white/5 bg-[#09090b] p-6 shadow-2xl relative"
+            >
+              <button
+                onClick={() => setIsTaskCreateOpen(false)}
+                className="absolute right-4 top-4 rounded-lg p-1 text-muted-foreground hover:bg-white/5 hover:text-white transition-all cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+
+              <h3 className="text-base font-semibold text-white mb-4 text-left">Create New Project Task</h3>
+              <form onSubmit={handleCreateTask} className="space-y-4">
+                <div className="space-y-1.5 text-left">
+                  <label className="text-xs font-medium text-white block">Task Title</label>
+                  <input
+                    type="text"
+                    required
+                    value={taskTitle}
+                    onChange={(e) => setTaskTitle(e.target.value)}
+                    placeholder="e.g. Build API Schema validations"
+                    className="w-full px-3.5 py-2 rounded-lg border border-white/10 bg-[#18181b] text-sm text-white focus:border-primary outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1.5 text-left">
+                  <label className="text-xs font-medium text-white block">Priority</label>
+                  <select
+                    value={taskPriority}
+                    onChange={(e) => setTaskPriority(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-white/10 bg-[#18181b] text-xs text-white outline-none focus:border-primary"
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                    <option value="Urgent">Urgent</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5 text-left">
+                  <label className="text-xs font-medium text-white block">Due Date (Optional)</label>
+                  <input
+                    type="date"
+                    value={taskDueDate}
+                    onChange={(e) => setTaskDueDate(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-lg border border-white/10 bg-[#18181b] text-xs text-white focus:border-primary outline-none"
+                  />
+                </div>
+
+                <div className="flex gap-2 justify-end pt-2 border-t border-white/5">
+                  <button
+                    type="button"
+                    onClick={() => setIsTaskCreateOpen(false)}
+                    className="rounded-lg px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-white/5 hover:text-white transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saveLoading}
+                    className="rounded-lg bg-primary hover:bg-primary/95 text-primary-foreground font-semibold px-4 py-2 text-xs transition-all cursor-pointer"
+                  >
+                    {saveLoading ? 'Creating...' : 'Create Task'}
                   </button>
                 </div>
               </form>
