@@ -19,17 +19,17 @@ import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 
 const navItems = [
-  { icon: Home, label: 'Home', href: '#' },
-  { icon: Files, label: 'Projects', href: '#' },
-  { icon: MessageSquare, label: 'Messages', href: '#' },
-  { icon: Zap, label: 'Quick Actions', href: '#' },
-  { icon: Users, label: 'Team', href: '#' },
-  { icon: Briefcase, label: 'Workspace', href: '#' },
-  { icon: BarChart3, label: 'Analytics', href: '#' },
-  { icon: BookOpen, label: 'Documentation', href: '#' },
-  { icon: Archive, label: 'Archives', href: '#' },
-  { icon: Settings, label: 'Settings', href: '#' },
-  { icon: HelpCircle, label: 'Help', href: '#' },
+  { icon: Home, label: 'Home', href: '/' },
+  { icon: Files, label: 'Projects', href: '/projects' },
+  { icon: MessageSquare, label: 'Messages', href: '/messages' },
+  { icon: Zap, label: 'Quick Actions', href: '/quick-actions' },
+  { icon: Users, label: 'Team', href: '/team' },
+  { icon: Briefcase, label: 'Workspace', href: '/workspace' },
+  { icon: BarChart3, label: 'Analytics', href: '/analytics' },
+  { icon: BookOpen, label: 'Documentation', href: '/documentation' },
+  { icon: Archive, label: 'Archives', href: '/archives' },
+  { icon: Settings, label: 'Settings', href: '/settings' },
+  { icon: HelpCircle, label: 'Help', href: '/help' },
 ]
 
 export function Sidebar() {
