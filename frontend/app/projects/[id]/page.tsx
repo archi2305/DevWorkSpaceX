@@ -69,6 +69,9 @@ export default function ProjectDetailsPage({ params }: PageProps) {
 
   // Task creation fields
   const [taskTitle, setTaskTitle] = useState('')
+  const [taskDesc, setTaskDesc] = useState('')
+  const [taskStatus, setTaskStatus] = useState('Todo')
+  const [taskLabels, setTaskLabels] = useState('')
   const [taskPriority, setTaskPriority] = useState('Medium')
   const [taskDueDate, setTaskDueDate] = useState('')
   
@@ -180,15 +183,22 @@ export default function ProjectDetailsPage({ params }: PageProps) {
     try {
       await taskService.createTask({
         title: taskTitle,
+        description: taskDesc || undefined,
+        status: taskStatus,
+        labels: taskLabels || undefined,
         priority: taskPriority,
         due_date: taskDueDate || undefined,
         project_id: id,
-        completed: false
+        completed: taskStatus === 'Done'
       })
       queryClient.invalidateQueries({ queryKey: ['tasks', { project_id: id }] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['project', id] })
       setIsTaskCreateOpen(false)
       setTaskTitle('')
+      setTaskDesc('')
+      setTaskStatus('Todo')
+      setTaskLabels('')
       setTaskPriority('Medium')
       setTaskDueDate('')
     } catch (err) {
@@ -810,17 +820,55 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                 </div>
 
                 <div className="space-y-1.5 text-left">
-                  <label className="text-xs font-semibold text-[#A7ADB5] block">Priority</label>
-                  <select
-                    value={taskPriority}
-                    onChange={(e) => setTaskPriority(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-xs text-[#F5F5F5] outline-none focus:border-[#5BB98C] cursor-pointer"
-                  >
-                    <option value="Low" className="bg-[#171A1D]">Low</option>
-                    <option value="Medium" className="bg-[#171A1D]">Medium</option>
-                    <option value="High" className="bg-[#171A1D]">High</option>
-                    <option value="Urgent" className="bg-[#171A1D]">Urgent</option>
-                  </select>
+                  <label className="text-xs font-semibold text-[#A7ADB5] block">Description</label>
+                  <textarea
+                    value={taskDesc}
+                    onChange={(e) => setTaskDesc(e.target.value)}
+                    placeholder="Provide details about this action item..."
+                    rows={2}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-sm text-[#F5F5F5] focus:border-[#5BB98C] outline-none resize-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-left">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-[#A7ADB5] block">Status</label>
+                    <select
+                      value={taskStatus}
+                      onChange={(e) => setTaskStatus(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-xs text-[#F5F5F5] outline-none focus:border-[#5BB98C] cursor-pointer"
+                    >
+                      <option value="Todo" className="bg-[#171A1D]">Todo</option>
+                      <option value="In Progress" className="bg-[#171A1D]">In Progress</option>
+                      <option value="Review" className="bg-[#171A1D]">Review</option>
+                      <option value="Done" className="bg-[#171A1D]">Done</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-[#A7ADB5] block">Priority</label>
+                    <select
+                      value={taskPriority}
+                      onChange={(e) => setTaskPriority(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-xs text-[#F5F5F5] outline-none focus:border-[#5BB98C] cursor-pointer"
+                    >
+                      <option value="Low" className="bg-[#171A1D]">Low</option>
+                      <option value="Medium" className="bg-[#171A1D]">Medium</option>
+                      <option value="High" className="bg-[#171A1D]">High</option>
+                      <option value="Urgent" className="bg-[#171A1D]">Urgent</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 text-left">
+                  <label className="text-xs font-semibold text-[#A7ADB5] block">Labels (Comma separated)</label>
+                  <input
+                    type="text"
+                    value={taskLabels}
+                    onChange={(e) => setTaskLabels(e.target.value)}
+                    placeholder="e.g. docs, design, critical"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-sm text-[#F5F5F5] focus:border-[#5BB98C] outline-none"
+                  />
                 </div>
 
                 <div className="space-y-1.5 text-left">
