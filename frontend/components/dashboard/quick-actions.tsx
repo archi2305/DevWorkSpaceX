@@ -3,9 +3,10 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, CheckSquare, FileText, Sparkles, X } from 'lucide-react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { projectService } from '@/services/project'
 import { taskService } from '@/services/task'
+import { teamService } from '@/services/team'
 import { useDashboardData } from '@/hooks/useDashboardData'
 import { useProjectStore } from '@/store/useProjectStore'
 
@@ -70,6 +71,11 @@ export function QuickActions() {
   const [pError, setPError] = useState<string | null>(null)
   const [pLoading, setPLoading] = useState(false)
 
+  const { data: members = [] } = useQuery({
+    queryKey: ['workspace-members'],
+    queryFn: teamService.getWorkspaceMembers
+  })
+
   // Task creation fields
   const [tTitle, setTTitle] = useState('')
   const [tDesc, setTDesc] = useState('')
@@ -77,6 +83,7 @@ export function QuickActions() {
   const [tLabels, setTLabels] = useState('')
   const [tPriority, setTPriority] = useState('Medium')
   const [tDueDate, setTDueDate] = useState('')
+  const [tAssigneeId, setTAssigneeId] = useState('')
   const [tProjectId, setTProjectId] = useState('')
   const [tError, setTError] = useState<string | null>(null)
   const [tLoading, setTLoading] = useState(false)
@@ -147,6 +154,7 @@ export function QuickActions() {
         labels: tLabels || undefined,
         priority: tPriority,
         due_date: tDueDate || undefined,
+        assignee_id: tAssigneeId || undefined,
         project_id: tProjectId || undefined,
         completed: tStatus === 'Done'
       })
@@ -166,6 +174,7 @@ export function QuickActions() {
       setTPriority('Medium')
       setTDueDate('')
       setTProjectId('')
+      setTAssigneeId('')
     } catch (err: any) {
       const errMsg = err.response?.data?.detail || 'Failed to create task.'
       setTError(errMsg)
@@ -499,6 +508,26 @@ export function QuickActions() {
                     disabled={tLoading}
                     className="w-full px-3.5 py-2 rounded-lg border border-white/10 bg-white/[0.02] text-sm text-white placeholder-[#52525b] outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 disabled:opacity-50"
                   />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="tassignee" className="text-xs font-medium text-white block text-left">
+                    Assignee (Optional)
+                  </label>
+                  <select
+                    id="tassignee"
+                    value={tAssigneeId}
+                    onChange={(e) => setTAssigneeId(e.target.value)}
+                    disabled={tLoading}
+                    className="w-full px-3.5 py-2 rounded-lg border border-white/10 bg-[#18181b] text-xs text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 disabled:opacity-50 cursor-pointer"
+                  >
+                    <option value="">Unassigned</option>
+                    {members.map((member) => (
+                      <option key={member.user.id} value={member.user.id}>
+                        {member.user.full_name} ({member.role})
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="space-y-1.5">
