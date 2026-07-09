@@ -6,6 +6,7 @@ from app.dependencies.db import get_db
 from app.dependencies.auth import get_current_user
 from app.models.user import User
 from app.models.project import Project
+from app.models.activity import ActivityLog
 from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
@@ -94,7 +95,6 @@ def create_project(
     """
     Validates duplicate projects and registers project instance.
     """
-    # Enforce uniqueness of project names per owner
     existing = db.query(Project).filter(
         (Project.owner_id == current_user.id) &
         (Project.name == project_data.name)
@@ -120,6 +120,17 @@ def create_project(
     db_project.members.append(current_user)
     
     db.add(db_project)
+    
+    # Log project creation activity
+    db_log = ActivityLog(
+        user_id=current_user.id,
+        action="Project Created",
+        details=f"Project '{db_project.name}' was created",
+        target_type="Project",
+        target_name=db_project.name
+    )
+    db.add(db_log)
+    
     db.commit()
     db.refresh(db_project)
     return db_project
@@ -203,6 +214,16 @@ def update_project(
     for key, value in update_data.items():
         setattr(project, key, value)
         
+    # Log project update activity
+    db_log = ActivityLog(
+        user_id=current_user.id,
+        action="Project Updated",
+        details=f"Project '{project.name}' details were updated",
+        target_type="Project",
+        target_name=project.name
+    )
+    db.add(db_log)
+    
     db.commit()
     db.refresh(project)
     return project
@@ -235,6 +256,18 @@ def toggle_project_archive(
         )
         
     project.is_archived = not project.is_archived
+    
+    # Log archiving activity
+    log_action = "Project Archived" if project.is_archived else "Project Restored"
+    db_log = ActivityLog(
+        user_id=current_user.id,
+        action=log_action,
+        details=f"Project '{project.name}' was {log_action.lower()}",
+        target_type="Project",
+        target_name=project.name
+    )
+    db.add(db_log)
+    
     db.commit()
     db.refresh(project)
     return project
@@ -260,13 +293,22 @@ def delete_project(
             detail="Project not found"
         )
         
-    # Only the owner is permitted to delete the project
     if project.owner_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only the project owner can delete this project"
         )
         
+    # Log project deletion activity before database record deletion
+    db_log = ActivityLog(
+        user_id=current_user.id,
+        action="Project Deleted",
+        details=f"Project '{project.name}' was deleted",
+        target_type="Project",
+        target_name=project.name
+    )
+    db.add(db_log)
+    
     db.delete(project)
     db.commit()
     return None
