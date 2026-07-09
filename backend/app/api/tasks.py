@@ -6,6 +6,7 @@ from app.dependencies.db import get_db
 from app.dependencies.auth import get_current_user
 from app.models.user import User
 from app.models.task import Task
+from app.models.activity import ActivityLog
 from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
@@ -55,6 +56,17 @@ def create_task(
     )
     
     db.add(db_task)
+    
+    # Log task creation activity
+    db_log = ActivityLog(
+        user_id=current_user.id,
+        action="Task Created",
+        details=f"Task '{db_task.title}' was created",
+        target_type="Task",
+        target_name=db_task.title
+    )
+    db.add(db_log)
+    
     db.commit()
     db.refresh(db_task)
     return db_task
@@ -81,11 +93,64 @@ def update_task(
             detail="Task not found"
         )
         
+    was_completed = db_task.completed
+    
     # Standard Pydantic model update loop
     update_data = task_update.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_task, key, value)
         
+    # Log completions or changes
+    log_action = "Task Updated"
+    log_details = f"Task '{db_task.title}' details were updated"
+    if db_task.completed and not was_completed:
+        log_action = "Task Completed"
+        log_details = f"Task '{db_task.title}' was completed"
+        
+    db_log = ActivityLog(
+        user_id=current_user.id,
+        action=log_action,
+        details=log_details,
+        target_type="Task",
+        target_name=db_task.title
+    )
+    db.add(db_log)
+    
     db.commit()
     db.refresh(db_task)
     return db_task
+
+@router.delete(
+    "/{task_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a task",
+    description="Removes task from database and writes an activity log."
+)
+def delete_task(
+    task_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Deletes the task after writing delete log.
+    """
+    db_task = db.query(Task).filter(Task.id == task_id).first()
+    if not db_task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found"
+        )
+        
+    # Log task deletion activity before database record deletion
+    db_log = ActivityLog(
+        user_id=current_user.id,
+        action="Task Deleted",
+        details=f"Task '{db_task.title}' was deleted",
+        target_type="Task",
+        target_name=db_task.title
+    )
+    db.add(db_log)
+    
+    db.delete(db_task)
+    db.commit()
+    return None
