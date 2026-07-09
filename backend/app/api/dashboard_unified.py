@@ -12,6 +12,7 @@ from app.models.activity import ActivityLog
 from app.models.notification import Notification
 from app.models.sprint import Sprint
 from app.models.suggestion import AISuggestion
+from app.models.workspace_member import WorkspaceMember
 from app.schemas.dashboard_unified import (
     DashboardUnifiedResponse, 
     ActivityLogResponse, 
@@ -165,9 +166,16 @@ def get_unified_dashboard(
     sprint = db.query(Sprint).first()
 
     # 7. Team online statuses
-    users = db.query(User).all()
+    workspace_members = db.query(WorkspaceMember).all()
+    if not workspace_members:
+        owner_member = WorkspaceMember(user_id=current_user.id, role="Owner")
+        db.add(owner_member)
+        db.commit()
+        workspace_members = [owner_member]
+
     team_members = []
-    for u in users:
+    for wm in workspace_members:
+        u = wm.user
         initials = "".join([n[0] for n in u.full_name.split() if n]).upper()[:2]
         team_members.append(
             WorkspaceMemberResponse(
@@ -181,7 +189,7 @@ def get_unified_dashboard(
     active_projects = sum(1 for p in projects if p.progress < 100)
     completed_tasks = db.query(Task).filter((Task.assignee_id == current_user.id) & (Task.completed == True)).count()
     pending_tasks = db.query(Task).filter((Task.assignee_id == current_user.id) & (Task.completed == False)).count()
-    registered_users = len(users)
+    registered_users = db.query(User).count()
     
     total_tasks_count = completed_tasks + pending_tasks
     completion_rate = int((completed_tasks / total_tasks_count) * 100) if total_tasks_count > 0 else 0
