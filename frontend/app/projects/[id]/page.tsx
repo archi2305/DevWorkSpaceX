@@ -74,6 +74,15 @@ export default function ProjectDetailsPage({ params }: PageProps) {
   const [taskLabels, setTaskLabels] = useState('')
   const [taskPriority, setTaskPriority] = useState('Medium')
   const [taskDueDate, setTaskDueDate] = useState('')
+
+  // Task editing fields
+  const [editTargetTask, setEditTargetTask] = useState<TaskResponse | null>(null)
+  const [editTaskTitle, setEditTaskTitle] = useState('')
+  const [editTaskDesc, setEditTaskDesc] = useState('')
+  const [editTaskStatus, setEditTaskStatus] = useState('Todo')
+  const [editTaskLabels, setEditTaskLabels] = useState('')
+  const [editTaskPriority, setEditTaskPriority] = useState('Medium')
+  const [editTaskDueDate, setEditTaskDueDate] = useState('')
   
   const [saveLoading, setSaveLoading] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -92,6 +101,43 @@ export default function ProjectDetailsPage({ params }: PageProps) {
       setEditCoverImage(project.cover_image || '')
     }
   }, [project])
+
+  // Sync edit task parameters once target task selected
+  useEffect(() => {
+    if (editTargetTask) {
+      setEditTaskTitle(editTargetTask.title)
+      setEditTaskDesc(editTargetTask.description || '')
+      setEditTaskStatus(editTargetTask.status)
+      setEditTaskLabels(editTargetTask.labels || '')
+      setEditTaskPriority(editTargetTask.priority)
+      setEditTaskDueDate(editTargetTask.due_date || '')
+    }
+  }, [editTargetTask])
+
+  const handleSaveTaskEdit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editTargetTask || !editTaskTitle.trim()) return
+    setSaveLoading(true)
+    try {
+      await taskService.updateTask(editTargetTask.id, {
+        title: editTaskTitle,
+        description: editTaskDesc || null,
+        status: editTaskStatus,
+        labels: editTaskLabels || null,
+        priority: editTaskPriority,
+        due_date: editTaskDueDate || null,
+        completed: editTaskStatus === 'Done'
+      } as any)
+      queryClient.invalidateQueries({ queryKey: ['tasks', { project_id: id }] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['project', id] })
+      setEditTargetTask(null)
+    } catch (err) {
+      alert('Failed to update task settings.')
+    } finally {
+      setSaveLoading(false)
+    }
+  }
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -449,9 +495,14 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                         </div>
                         <div className="flex justify-between items-center text-[9px] text-[#A7ADB5]">
                           <span className="font-semibold">{task.priority}</span>
-                          <button onClick={() => handleDeleteTask(task.id)} className="opacity-0 group-hover:opacity-100 text-[#EB5757] hover:text-red-400 font-semibold transition-opacity duration-200 cursor-pointer">
-                            Delete
-                          </button>
+                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <button onClick={() => setEditTargetTask(task)} className="text-[#5BB98C] hover:text-[#B7E4C7] font-semibold cursor-pointer">
+                              Edit
+                            </button>
+                            <button onClick={() => handleDeleteTask(task.id)} className="text-[#EB5757] hover:text-red-400 font-semibold cursor-pointer">
+                              Delete
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -505,9 +556,14 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                         </div>
                         <div className="flex justify-between items-center text-[9px] text-[#A7ADB5]">
                           <span className="text-[#EB5757] font-semibold">{task.priority}</span>
-                          <button onClick={() => handleDeleteTask(task.id)} className="opacity-0 group-hover:opacity-100 text-[#EB5757] hover:text-red-400 font-semibold transition-opacity duration-200 cursor-pointer">
-                            Delete
-                          </button>
+                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <button onClick={() => setEditTargetTask(task)} className="text-[#5BB98C] hover:text-[#B7E4C7] font-semibold cursor-pointer">
+                              Edit
+                            </button>
+                            <button onClick={() => handleDeleteTask(task.id)} className="text-[#EB5757] hover:text-red-400 font-semibold cursor-pointer">
+                              Delete
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -555,9 +611,14 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                         </div>
                         <div className="flex justify-between items-center text-[9px] text-[#7E848C]">
                           <span className="font-semibold text-[#5BB98C]">Completed</span>
-                          <button onClick={() => handleDeleteTask(task.id)} className="opacity-0 group-hover:opacity-100 text-[#EB5757] hover:text-red-400 font-semibold transition-opacity duration-200 cursor-pointer">
-                            Delete
-                          </button>
+                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <button onClick={() => setEditTargetTask(task)} className="text-[#5BB98C] hover:text-[#B7E4C7] font-semibold cursor-pointer">
+                              Edit
+                            </button>
+                            <button onClick={() => handleDeleteTask(task.id)} className="text-[#EB5757] hover:text-red-400 font-semibold cursor-pointer">
+                              Delete
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -955,6 +1016,118 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                     className="rounded-xl bg-[#5BB98C] hover:bg-[#5BB98C]/90 text-[#111315] font-bold px-4 py-2.5 text-xs transition-all cursor-pointer shadow-md"
                   >
                     {saveLoading ? 'Creating...' : 'Create Task'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Task Modal */}
+      <AnimatePresence>
+        {editTargetTask && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-sm rounded-2xl border border-white/[0.06] bg-[#171A1D] p-6 shadow-2xl relative"
+            >
+              <button
+                onClick={() => setEditTargetTask(null)}
+                className="absolute right-4 top-4 rounded-xl p-1.5 text-[#A7ADB5] hover:bg-white/5 hover:text-[#F5F5F5] transition-all cursor-pointer"
+              >
+                <X className="h-4.5 w-4.5" />
+              </button>
+
+              <h3 className="text-base font-bold text-[#F5F5F5] mb-4 text-left">Edit Task Details</h3>
+              <form onSubmit={handleSaveTaskEdit} className="space-y-4">
+                <div className="space-y-1.5 text-left">
+                  <label className="text-xs font-semibold text-[#A7ADB5] block">Task Title</label>
+                  <input
+                    type="text"
+                    required
+                    value={editTaskTitle}
+                    onChange={(e) => setEditTaskTitle(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-sm text-[#F5F5F5] focus:border-[#5BB98C] outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1.5 text-left">
+                  <label className="text-xs font-semibold text-[#A7ADB5] block">Description</label>
+                  <textarea
+                    value={editTaskDesc}
+                    onChange={(e) => setEditTaskDesc(e.target.value)}
+                    rows={2}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-sm text-[#F5F5F5] focus:border-[#5BB98C] outline-none resize-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-left">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-[#A7ADB5] block">Status</label>
+                    <select
+                      value={editTaskStatus}
+                      onChange={(e) => setEditTaskStatus(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-xs text-[#F5F5F5] outline-none focus:border-[#5BB98C] cursor-pointer"
+                    >
+                      <option value="Todo" className="bg-[#171A1D]">Todo</option>
+                      <option value="In Progress" className="bg-[#171A1D]">In Progress</option>
+                      <option value="Review" className="bg-[#171A1D]">Review</option>
+                      <option value="Done" className="bg-[#171A1D]">Done</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-[#A7ADB5] block">Priority</label>
+                    <select
+                      value={editTaskPriority}
+                      onChange={(e) => setEditTaskPriority(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-xs text-[#F5F5F5] outline-none focus:border-[#5BB98C] cursor-pointer"
+                    >
+                      <option value="Low" className="bg-[#171A1D]">Low</option>
+                      <option value="Medium" className="bg-[#171A1D]">Medium</option>
+                      <option value="High" className="bg-[#171A1D]">High</option>
+                      <option value="Urgent" className="bg-[#171A1D]">Urgent</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 text-left">
+                  <label className="text-xs font-semibold text-[#A7ADB5] block">Labels (Comma separated)</label>
+                  <input
+                    type="text"
+                    value={editTaskLabels}
+                    onChange={(e) => setEditTaskLabels(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-sm text-[#F5F5F5] focus:border-[#5BB98C] outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1.5 text-left">
+                  <label className="text-xs font-semibold text-[#A7ADB5] block">Due Date</label>
+                  <input
+                    type="date"
+                    value={editTaskDueDate}
+                    onChange={(e) => setEditTaskDueDate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-xs text-[#F5F5F5] focus:border-[#5BB98C] outline-none cursor-pointer"
+                  />
+                </div>
+
+                <div className="flex gap-2 justify-end pt-2 border-t border-white/[0.06]">
+                  <button
+                    type="button"
+                    onClick={() => setEditTargetTask(null)}
+                    className="rounded-xl px-4 py-2.5 text-xs font-bold text-[#A7ADB5] hover:bg-[#1D2024] hover:text-[#F5F5F5] transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saveLoading}
+                    className="rounded-xl bg-[#5BB98C] hover:bg-[#5BB98C]/90 text-[#111315] font-bold px-4 py-2.5 text-xs transition-all cursor-pointer shadow-md"
+                  >
+                    Save Changes
                   </button>
                 </div>
               </form>
