@@ -100,7 +100,7 @@ export function UpcomingTasks() {
                     >
                       {task.title}
                     </p>
-                    <span className={`flex-shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${priorityColors[task.priority] || priorityColors.medium}`}>
+                    <span className={`flex-shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${priorityColors[task.priority.toLowerCase()] || priorityColors.medium}`}>
                       {task.priority}
                     </span>
                   </div>
