@@ -287,6 +287,34 @@ export default function SettingsPage() {
                           Allow team developers and designers to invite new members
                         </label>
                       </div>
+
+                      {/* Email notifications check */}
+                      <div className="flex items-center gap-2 pt-2">
+                        <input
+                          type="checkbox"
+                          id="enable_email_notifications"
+                          checked={settings.enable_email_notifications}
+                          onChange={(e) => updateSettingsMutation.mutate({ enable_email_notifications: e.target.checked })}
+                          className="rounded border-white/10 bg-[#1D2024] text-[#5BB98C] focus:ring-[#5BB98C] h-4 w-4 cursor-pointer"
+                        />
+                        <label htmlFor="enable_email_notifications" className="text-xs text-[#F5F5F5] cursor-pointer">
+                          Enable email alerts for task assignments and mentions
+                        </label>
+                      </div>
+
+                      {/* Desktop notifications check */}
+                      <div className="flex items-center gap-2 pt-2">
+                        <input
+                          type="checkbox"
+                          id="enable_desktop_notifications"
+                          checked={settings.enable_desktop_notifications}
+                          onChange={(e) => updateSettingsMutation.mutate({ enable_desktop_notifications: e.target.checked })}
+                          className="rounded border-white/10 bg-[#1D2024] text-[#5BB98C] focus:ring-[#5BB98C] h-4 w-4 cursor-pointer"
+                        />
+                        <label htmlFor="enable_desktop_notifications" className="text-xs text-[#F5F5F5] cursor-pointer">
+                          Enable real-time push desktop alerts for comments and project updates
+                        </label>
+                      </div>
                     </div>
 
                     {/* Export Workspace Backup */}

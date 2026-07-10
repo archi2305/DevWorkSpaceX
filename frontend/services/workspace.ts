@@ -6,7 +6,9 @@ export interface WorkspaceSettings {
   logo_url: string | null
   theme: string
   timezone: string
-  allow_member_invites: bool
+  allow_member_invites: boolean
+  enable_email_notifications: boolean
+  enable_desktop_notifications: boolean
 }
 
 export interface APIKey {
