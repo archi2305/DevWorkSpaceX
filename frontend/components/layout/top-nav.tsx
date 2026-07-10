@@ -10,6 +10,7 @@ import { dashboardService, SearchResultsResponse } from '@/services/dashboard'
 import { useDashboardData } from '@/hooks/useDashboardData'
 import { dashboardUnifiedService } from '@/services/dashboardUnified'
 import { useProjectStore } from '@/store/useProjectStore'
+import { api } from '@/services/api'
 
 export function TopNav() {
   const { theme, setTheme } = useTheme()
@@ -50,6 +51,35 @@ export function TopNav() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Connect real-time WebSockets for notifications
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const token = localStorage.getItem('token')
+    if (!token) return
+
+    const baseURL = api.defaults.baseURL || 'http://localhost:8001'
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const wsHost = baseURL.replace(/^https?:\/\//, '')
+    const wsUrl = `${wsProtocol}//${wsHost}/notifications/ws?token=${token}`
+
+    const socket = new WebSocket(wsUrl)
+
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        console.log('Received notification via WS:', data)
+        // Refetch dashboard data in real-time
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      } catch (err) {
+        console.error('Failed to parse WS notification payload', err)
+      }
+    }
+
+    return () => {
+      socket.close()
+    }
+  }, [queryClient, user])
+
   // Debounced search logic
   useEffect(() => {
     if (!searchQuery.trim()) {
@@ -83,6 +113,15 @@ export function TopNav() {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
     } catch (err) {
       console.error('Failed to mark read', err)
+    }
+  }
+
+  const handleMarkAllRead = async () => {
+    try {
+      await dashboardUnifiedService.markAllNotificationsRead()
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    } catch (err) {
+      console.error('Failed to mark all read', err)
     }
   }
 
@@ -269,14 +308,24 @@ export function TopNav() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}
-                  className="absolute right-0 mt-2 w-80 rounded-xl border border-white/5 bg-[#09090b] p-4 shadow-2xl z-50 space-y-3"
+                  className="absolute right-0 mt-2 w-80 rounded-xl border border-white/[0.06] bg-[#171A1D] p-4 shadow-2xl z-50 space-y-3"
                 >
-                  <div className="flex items-center justify-between border-b border-border pb-2">
-                    <span className="text-xs font-semibold text-white">Alert Notifications</span>
+                  <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-white">Notifications</span>
+                      {unreadCount > 0 && (
+                        <span className="rounded bg-[#5BB98C]/15 border border-[#5BB98C]/20 px-1.5 py-0.5 text-[8px] font-bold text-[#5BB98C]">
+                          {unreadCount} New
+                        </span>
+                      )}
+                    </div>
                     {unreadCount > 0 && (
-                      <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                        {unreadCount} New
-                      </span>
+                      <button
+                        onClick={handleMarkAllRead}
+                        className="text-[10px] text-[#5BB98C] hover:underline cursor-pointer font-semibold"
+                      >
+                        Mark all read
+                      </button>
                     )}
                   </div>
 
@@ -290,7 +339,7 @@ export function TopNav() {
                           className={`rounded-lg p-2.5 border transition-colors ${
                             notif.is_read
                               ? 'bg-transparent border-transparent'
-                              : 'bg-primary/5 border-primary/10'
+                              : 'bg-[#5BB98C]/5 border-[#5BB98C]/10'
                           }`}
                         >
                           <div className="flex items-start justify-between gap-2">
@@ -301,7 +350,7 @@ export function TopNav() {
                             {!notif.is_read && (
                               <button
                                 onClick={(e) => handleMarkRead(notif.id, e)}
-                                className="flex-shrink-0 rounded p-1 text-muted-foreground hover:bg-primary/15 hover:text-primary transition-colors cursor-pointer"
+                                className="flex-shrink-0 rounded p-1 text-muted-foreground hover:bg-[#5BB98C]/15 hover:text-[#5BB98C] transition-colors cursor-pointer"
                                 title="Mark read"
                               >
                                 <Check className="h-3 w-3" />

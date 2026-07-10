@@ -94,4 +94,12 @@ export const dashboardUnifiedService = {
     const response = await api.post<NotificationResponse>(`/notifications/${id}/read`)
     return response.data
   },
+
+  /**
+   * Mark all alert notifications as read in the database.
+   */
+  async markAllNotificationsRead(): Promise<{ message: string }> {
+    const response = await api.post<{ message: string }>('/notifications/read-all')
+    return response.data
+  },
 }
