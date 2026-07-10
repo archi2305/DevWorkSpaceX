@@ -7,11 +7,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { 
   ArrowLeft, Calendar, User as UserIcon, Trash2, Edit3, 
   Clock, AlertCircle, X, Layers, CheckSquare, 
-  Sparkles, FileText, Archive, ArchiveRestore, Star, Pin, Plus
+  Sparkles, FileText, Archive, ArchiveRestore, Star, Pin, Plus, Tag
 } from 'lucide-react'
 import { projectService } from '@/services/project'
-import { taskService } from '@/services/task'
+import { taskService, TaskResponse } from '@/services/task'
 import { teamService } from '@/services/team'
+import { labelService } from '@/services/label'
+import { LabelsManager } from '@/components/labels/labels-manager'
 import { useAuth } from '@/hooks/useAuth'
 import { CommentsList } from '@/components/comments/comments-list'
 import { useCollaboration } from '@/hooks/use-collaboration'
@@ -78,12 +80,20 @@ export default function ProjectDetailsPage({ params }: PageProps) {
   })
 
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false)
+  const [filterLabelId, setFilterLabelId] = useState('')
+  const [isLabelManagerOpen, setIsLabelManagerOpen] = useState(false)
+
+  // Load project-scoped labels
+  const { data: allLabels = [] } = useQuery({
+    queryKey: ['labels', id],
+    queryFn: () => labelService.getLabels(id)
+  })
 
   // Task creation fields
   const [taskTitle, setTaskTitle] = useState('')
   const [taskDesc, setTaskDesc] = useState('')
   const [taskStatus, setTaskStatus] = useState('Todo')
-  const [taskLabels, setTaskLabels] = useState('')
+  const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([])
   const [taskPriority, setTaskPriority] = useState('Medium')
   const [taskDueDate, setTaskDueDate] = useState('')
   const [taskAssigneeId, setTaskAssigneeId] = useState('')
@@ -93,7 +103,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
   const [editTaskTitle, setEditTaskTitle] = useState('')
   const [editTaskDesc, setEditTaskDesc] = useState('')
   const [editTaskStatus, setEditTaskStatus] = useState('Todo')
-  const [editTaskLabels, setEditTaskLabels] = useState('')
+  const [editLabelIds, setEditLabelIds] = useState<string[]>([])
   const [editTaskPriority, setEditTaskPriority] = useState('Medium')
   const [editTaskDueDate, setEditTaskDueDate] = useState('')
   const [editTaskAssigneeId, setEditTaskAssigneeId] = useState('')
@@ -122,10 +132,10 @@ export default function ProjectDetailsPage({ params }: PageProps) {
       setEditTaskTitle(editTargetTask.title)
       setEditTaskDesc(editTargetTask.description || '')
       setEditTaskStatus(editTargetTask.status)
-      setEditTaskLabels(editTargetTask.labels || '')
       setEditTaskPriority(editTargetTask.priority)
       setEditTaskDueDate(editTargetTask.due_date || '')
       setEditTaskAssigneeId(editTargetTask.assignee_id || '')
+      setEditLabelIds((editTargetTask.labels || []).map(l => l.id))
     }
   }, [editTargetTask])
 
@@ -138,12 +148,12 @@ export default function ProjectDetailsPage({ params }: PageProps) {
         title: editTaskTitle,
         description: editTaskDesc || null,
         status: editTaskStatus,
-        labels: editTaskLabels || null,
         priority: editTaskPriority,
         due_date: editTaskDueDate || null,
         assignee_id: editTaskAssigneeId || null,
         completed: editTaskStatus === 'Done'
       } as any)
+      await labelService.assignLabelsToTask(editTargetTask.id, editLabelIds)
       queryClient.invalidateQueries({ queryKey: ['tasks', { project_id: id }] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['project', id] })
@@ -243,25 +253,27 @@ export default function ProjectDetailsPage({ params }: PageProps) {
     if (!taskTitle.trim()) return
     setSaveLoading(true)
     try {
-      await taskService.createTask({
+      const newTask = await taskService.createTask({
         title: taskTitle,
         description: taskDesc || undefined,
         status: taskStatus,
-        labels: taskLabels || undefined,
         priority: taskPriority,
         due_date: taskDueDate || undefined,
         assignee_id: taskAssigneeId || undefined,
         project_id: id,
         completed: taskStatus === 'Done'
       })
+      if (selectedLabelIds.length > 0) {
+        await labelService.assignLabelsToTask(newTask.id, selectedLabelIds)
+      }
       queryClient.invalidateQueries({ queryKey: ['tasks', { project_id: id }] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['project', id] })
       setIsTaskCreateOpen(false)
       setTaskTitle('')
       setTaskDesc('')
+      setSelectedLabelIds([])
       setTaskStatus('Todo')
-      setTaskLabels('')
       setTaskPriority('Medium')
       setTaskDueDate('')
       setTaskAssigneeId('')
@@ -353,10 +365,17 @@ export default function ProjectDetailsPage({ params }: PageProps) {
   const isOwner = user?.id === project.owner_id
 
   // Column distributions
+  const filteredTasks = tasks.filter(t => {
+    if (filterLabelId) {
+      return (t.labels || []).some(lbl => lbl.id === filterLabelId)
+    }
+    return true
+  })
+
   const columnTasks = {
-    todo: tasks.filter(t => !t.completed && t.priority !== 'High' && t.priority !== 'Urgent'),
-    inprogress: tasks.filter(t => !t.completed && (t.priority === 'High' || t.priority === 'Urgent')),
-    done: tasks.filter(t => t.completed)
+    todo: filteredTasks.filter(t => !t.completed && t.priority !== 'High' && t.priority !== 'Urgent'),
+    inprogress: filteredTasks.filter(t => !t.completed && (t.priority === 'High' || t.priority === 'Urgent')),
+    done: filteredTasks.filter(t => t.completed)
   }
 
   return (
@@ -420,6 +439,12 @@ export default function ProjectDetailsPage({ params }: PageProps) {
 
         {isOwner && (
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsLabelManagerOpen(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/[0.06] bg-[#171A1D] px-4 py-2.5 text-xs font-semibold text-[#F5F5F5] hover:bg-[#23272B] transition-all cursor-pointer shadow-sm hover:-translate-y-0.5"
+            >
+              <Tag className="h-3.5 w-3.5" /> Manage Tags
+            </button>
             <button
               onClick={() => setIsEditOpen(true)}
               className="inline-flex items-center gap-2 rounded-xl border border-white/[0.06] bg-[#171A1D] px-4 py-2.5 text-xs font-semibold text-[#F5F5F5] hover:bg-[#23272B] transition-all cursor-pointer shadow-sm hover:-translate-y-0.5"
@@ -485,6 +510,36 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                 <Plus className="h-4 w-4" /> Create Task
               </button>
             </div>
+
+            {/* Labels filter pill bar */}
+            {allLabels.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 bg-[#171A1D] border border-white/[0.04] p-2 rounded-xl text-left">
+                <span className="text-[10px] font-bold text-[#7E848C] uppercase px-1">Filter:</span>
+                <button
+                  onClick={() => setFilterLabelId('')}
+                  className={`text-[9px] px-2.5 py-1 rounded-lg font-bold transition-all border cursor-pointer ${
+                    !filterLabelId ? 'bg-white/10 text-white border-white/20' : 'bg-transparent text-[#A7ADB5] border-transparent'
+                  }`}
+                >
+                  All Tasks
+                </button>
+                {allLabels.map((lbl) => (
+                  <button
+                    key={lbl.id}
+                    onClick={() => setFilterLabelId(lbl.id)}
+                    className={`text-[9px] px-2.5 py-1 rounded-lg font-bold transition-all border cursor-pointer ${
+                      filterLabelId === lbl.id ? 'border-white/40 font-extrabold scale-105 shadow-sm' : 'border-transparent opacity-65 hover:opacity-100'
+                    }`}
+                    style={{
+                      backgroundColor: lbl.color,
+                      color: '#111315'
+                    }}
+                  >
+                    {lbl.name}
+                  </button>
+                ))}
+              </div>
+            )}
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* To Do Column */}
@@ -526,7 +581,18 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                         className="p-3 rounded-xl border border-white/[0.06] bg-[#1D2024] hover:bg-[#23272B] hover:border-[#5BB98C]/30 hover:scale-[1.02] hover:-translate-y-0.5 transition-all duration-200 flex flex-col gap-1.5 text-left relative group shadow-sm cursor-grab active:cursor-grabbing"
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <span className="text-xs font-semibold text-[#F5F5F5]">{task.title}</span>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs font-semibold text-[#F5F5F5]">{task.title}</span>
+                            {task.labels && task.labels.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {task.labels.map(lbl => (
+                                  <span key={lbl.id} className="text-[7.5px] px-1 py-0.5 rounded font-bold text-[#111315]" style={{ backgroundColor: lbl.color }}>
+                                    {lbl.name}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                           <button onClick={() => handleToggleTask(task.id, task.completed)} className="text-[#7E848C] hover:text-[#5BB98C] transition-colors cursor-pointer">
                             <CheckSquare className="h-4 w-4" />
                           </button>
@@ -594,7 +660,18 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                         className="p-3 rounded-xl border border-white/[0.06] bg-[#1D2024] hover:bg-[#23272B] hover:border-[#5BB98C]/30 hover:scale-[1.02] hover:-translate-y-0.5 transition-all duration-200 flex flex-col gap-1.5 text-left relative group shadow-sm cursor-grab active:cursor-grabbing"
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <span className="text-xs font-semibold text-[#F5F5F5]">{task.title}</span>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs font-semibold text-[#F5F5F5]">{task.title}</span>
+                            {task.labels && task.labels.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {task.labels.map(lbl => (
+                                  <span key={lbl.id} className="text-[7.5px] px-1 py-0.5 rounded font-bold text-[#111315]" style={{ backgroundColor: lbl.color }}>
+                                    {lbl.name}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                           <button onClick={() => handleToggleTask(task.id, task.completed)} className="text-[#7E848C] hover:text-[#5BB98C] transition-colors cursor-pointer">
                             <CheckSquare className="h-4 w-4" />
                           </button>
@@ -656,7 +733,18 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                         className="p-3 rounded-xl border border-white/[0.06] bg-[#1D2024] hover:bg-[#23272B] hover:border-[#5BB98C]/30 hover:scale-[1.02] hover:-translate-y-0.5 opacity-70 hover:opacity-100 transition-all duration-200 flex flex-col gap-1.5 text-left relative group shadow-sm cursor-grab active:cursor-grabbing"
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <span className="text-xs font-semibold text-[#A7ADB5] line-through">{task.title}</span>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs font-semibold text-[#A7ADB5] line-through">{task.title}</span>
+                            {task.labels && task.labels.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {task.labels.map(lbl => (
+                                  <span key={lbl.id} className="text-[7.5px] px-1 py-0.5 rounded font-bold text-[#111315]" style={{ backgroundColor: lbl.color }}>
+                                    {lbl.name}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                           <button onClick={() => handleToggleTask(task.id, task.completed)} className="text-[#5BB98C] hover:text-[#B7E4C7] transition-colors cursor-pointer">
                             <CheckSquare className="h-4 w-4 fill-current" />
                           </button>
@@ -1118,14 +1206,37 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                 </div>
 
                 <div className="space-y-1.5 text-left">
-                  <label className="text-xs font-semibold text-[#A7ADB5] block">Labels (Comma separated)</label>
-                  <input
-                    type="text"
-                    value={taskLabels}
-                    onChange={(e) => setTaskLabels(e.target.value)}
-                    placeholder="e.g. docs, design, critical"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-sm text-[#F5F5F5] focus:border-[#5BB98C] outline-none"
-                  />
+                  <label className="text-xs font-semibold text-[#A7ADB5] block">Tags & Labels</label>
+                  <div className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto p-2 border border-white/[0.06] bg-[#1D2024] rounded-xl">
+                    {allLabels.map((lbl) => {
+                      const isSelected = selectedLabelIds.includes(lbl.id)
+                      return (
+                        <button
+                          key={lbl.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedLabelIds(prev =>
+                              prev.includes(lbl.id) ? prev.filter(id => id !== lbl.id) : [...prev, lbl.id]
+                            )
+                          }}
+                          className={`text-[9px] px-2 py-0.5 rounded-md font-bold transition-all border cursor-pointer ${
+                            isSelected
+                              ? 'border-white/40 shadow-sm'
+                              : 'opacity-50 border-transparent'
+                          }`}
+                          style={{
+                            backgroundColor: lbl.color,
+                            color: '#111315'
+                          }}
+                        >
+                          {lbl.name}
+                        </button>
+                      )
+                    })}
+                    {allLabels.length === 0 && (
+                      <span className="text-[10px] text-[#7E848C] italic">No project labels created yet.</span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-1.5 text-left">
@@ -1250,13 +1361,37 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                 </div>
 
                 <div className="space-y-1.5 text-left">
-                  <label className="text-xs font-semibold text-[#A7ADB5] block">Labels (Comma separated)</label>
-                  <input
-                    type="text"
-                    value={editTaskLabels}
-                    onChange={(e) => setEditTaskLabels(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-sm text-[#F5F5F5] focus:border-[#5BB98C] outline-none"
-                  />
+                  <label className="text-xs font-semibold text-[#A7ADB5] block">Tags & Labels</label>
+                  <div className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto p-2 border border-white/[0.06] bg-[#1D2024] rounded-xl">
+                    {allLabels.map((lbl) => {
+                      const isSelected = editLabelIds.includes(lbl.id)
+                      return (
+                        <button
+                          key={lbl.id}
+                          type="button"
+                          onClick={() => {
+                            setEditLabelIds(prev =>
+                              prev.includes(lbl.id) ? prev.filter(id => id !== lbl.id) : [...prev, lbl.id]
+                            )
+                          }}
+                          className={`text-[9px] px-2 py-0.5 rounded-md font-bold transition-all border cursor-pointer ${
+                            isSelected
+                              ? 'border-white/40 shadow-sm'
+                              : 'opacity-50 border-transparent'
+                          }`}
+                          style={{
+                            backgroundColor: lbl.color,
+                            color: '#111315'
+                          }}
+                        >
+                          {lbl.name}
+                        </button>
+                      )
+                    })}
+                    {allLabels.length === 0 && (
+                      <span className="text-[10px] text-[#7E848C] italic">No project labels created yet.</span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-1.5 text-left">
@@ -1349,6 +1484,18 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                 </button>
               </div>
             </motion.div>
+          </div>
+        )}
+      {/* Label Manager Modal Overlay */}
+      <AnimatePresence>
+        {isLabelManagerOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+            <div className="relative">
+              <LabelsManager
+                projectId={id}
+                onClose={() => setIsLabelManagerOpen(false)}
+              />
+            </div>
           </div>
         )}
       </AnimatePresence>
