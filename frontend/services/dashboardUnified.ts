@@ -102,4 +102,11 @@ export const dashboardUnifiedService = {
     const response = await api.post<{ message: string }>('/notifications/read-all')
     return response.data
   },
+
+  /**
+   * Delete notification from PostgreSQL.
+   */
+  async deleteNotification(id: string): Promise<void> {
+    await api.delete(`/notifications/${id}`)
+  }
 }

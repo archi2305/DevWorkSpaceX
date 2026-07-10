@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Plus, Bell, Moon, Sun, Folder, CheckSquare, FileText, User as UserIcon, Check } from 'lucide-react'
+import { Search, Plus, Bell, Moon, Sun, Folder, CheckSquare, FileText, User as UserIcon, Check, Trash2 } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useAuth } from '@/hooks/useAuth'
 import { useQueryClient } from '@tanstack/react-query'
@@ -122,6 +122,16 @@ export function TopNav() {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
     } catch (err) {
       console.error('Failed to mark all read', err)
+    }
+  }
+
+  const handleDeleteNotification = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      await dashboardUnifiedService.deleteNotification(id)
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    } catch (err) {
+      console.error('Failed to delete notification', err)
     }
   }
 
@@ -347,15 +357,24 @@ export function TopNav() {
                               <h4 className="text-xs font-semibold text-white text-left">{notif.title}</h4>
                               <p className="text-[11px] text-muted-foreground text-left mt-0.5 leading-snug">{notif.message}</p>
                             </div>
-                            {!notif.is_read && (
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              {!notif.is_read && (
+                                <button
+                                  onClick={(e) => handleMarkRead(notif.id, e)}
+                                  className="rounded p-1 text-muted-foreground hover:bg-[#5BB98C]/15 hover:text-[#5BB98C] transition-colors cursor-pointer"
+                                  title="Mark read"
+                                >
+                                  <Check className="h-3 w-3" />
+                                </button>
+                              )}
                               <button
-                                onClick={(e) => handleMarkRead(notif.id, e)}
-                                className="flex-shrink-0 rounded p-1 text-muted-foreground hover:bg-[#5BB98C]/15 hover:text-[#5BB98C] transition-colors cursor-pointer"
-                                title="Mark read"
+                                onClick={(e) => handleDeleteNotification(notif.id, e)}
+                                className="rounded p-1 text-muted-foreground hover:bg-red-500/10 hover:text-red-400 transition-colors cursor-pointer"
+                                title="Delete notification"
                               >
-                                <Check className="h-3 w-3" />
+                                <Trash2 className="h-3 w-3" />
                               </button>
-                            )}
+                            </div>
                           </div>
                         </div>
                       ))
