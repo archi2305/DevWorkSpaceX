@@ -34,3 +34,17 @@ class AIGeneratedTask(BaseModel):
     description: str
     priority: str
     status: str
+
+class PromptTemplateCreate(BaseModel):
+    title: str
+    content: str
+
+class PromptTemplateResponse(BaseModel):
+    id: uuid.UUID
+    title: str
+    content: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+

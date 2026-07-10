@@ -5,7 +5,7 @@ from typing import List, Optional
 from app.dependencies.db import get_db
 from app.dependencies.auth import get_current_user
 from app.models.user import User
-from app.models.ai import AIConversation, AIMessage
+from app.models.ai import AIConversation, AIMessage, PromptTemplate
 from app.models.project import Project
 from app.models.task import Task
 from app.services.ai import AIService
@@ -14,7 +14,9 @@ from app.schemas.ai import (
     AIChatResponse,
     AIConversationResponse,
     AIMessageResponse,
-    AIGeneratedTask
+    AIGeneratedTask,
+    PromptTemplateCreate,
+    PromptTemplateResponse
 )
 
 router = APIRouter(prefix="/ai", tags=["AI Assistant"])
@@ -206,3 +208,70 @@ def generate_tasks(
             "status": "Todo"
         }
     ]
+
+@router.post(
+    "/prompts",
+    response_model=PromptTemplateResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Save prompt template"
+)
+def create_prompt_template(
+    template_data: PromptTemplateCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Saves a prompt template to PostgreSQL.
+    """
+    tmpl = PromptTemplate(
+        user_id=current_user.id,
+        title=template_data.title,
+        content=template_data.content
+    )
+    db.add(tmpl)
+    db.commit()
+    db.refresh(tmpl)
+    return tmpl
+
+@router.get(
+    "/prompts",
+    response_model=List[PromptTemplateResponse],
+    summary="List saved prompt templates"
+)
+def list_prompt_templates(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Retrieve all custom prompt templates from the user prompt library.
+    """
+    return db.query(PromptTemplate).filter(
+        PromptTemplate.user_id == current_user.id
+    ).order_by(PromptTemplate.created_at.desc()).all()
+
+@router.delete(
+    "/prompts/{id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete prompt template"
+)
+def delete_prompt_template(
+    id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Removes a custom prompt template from the user library.
+    """
+    tmpl = db.query(PromptTemplate).filter(
+        PromptTemplate.id == id,
+        PromptTemplate.user_id == current_user.id
+    ).first()
+    if not tmpl:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Prompt template not found"
+        )
+    db.delete(tmpl)
+    db.commit()
+    return None
+

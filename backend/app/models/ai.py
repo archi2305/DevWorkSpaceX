@@ -44,3 +44,25 @@ class AIMessage(Base):
         default=datetime.utcnow,
         nullable=False
     )
+
+class PromptTemplate(Base):
+    """
+    Model storing prompt library templates.
+    """
+    __tablename__ = "prompt_templates"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False
+    )
+
+    user = relationship("User", backref="prompt_templates")
+
