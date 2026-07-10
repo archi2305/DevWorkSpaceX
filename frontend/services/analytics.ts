@@ -59,6 +59,7 @@ export const analyticsService = {
    */
   async getAnalytics(params?: {
     project_id?: string
+    workspace_id?: string
     start_date?: string
     end_date?: string
   }): Promise<AnalyticsSummaryResponse> {

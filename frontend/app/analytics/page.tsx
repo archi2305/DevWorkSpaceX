@@ -18,17 +18,20 @@ import {
 } from 'lucide-react'
 import { analyticsService } from '@/services/analytics'
 import { projectService } from '@/services/project'
+import { workspaceService } from '@/services/workspace'
 
 export default function AnalyticsPage() {
   const [selectedProjectId, setSelectedProjectId] = useState<string>('')
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>('')
   const [startDate, setStartDate] = useState<string>('')
   const [endDate, setEndDate] = useState<string>('')
 
   // Query analytics dataset
   const { data: analytics, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ['analytics', selectedProjectId, startDate, endDate],
+    queryKey: ['analytics', selectedProjectId, selectedWorkspaceId, startDate, endDate],
     queryFn: () => analyticsService.getAnalytics({
       project_id: selectedProjectId || undefined,
+      workspace_id: selectedWorkspaceId || undefined,
       start_date: startDate || undefined,
       end_date: endDate || undefined
     })
@@ -38,6 +41,12 @@ export default function AnalyticsPage() {
   const { data: projects = [] } = useQuery({
     queryKey: ['projects'],
     queryFn: () => projectService.getProjects()
+  })
+
+  // Load workspace details for scope filter
+  const { data: workspaceSettings } = useQuery({
+    queryKey: ['workspace-settings'],
+    queryFn: () => workspaceService.getSettings()
   })
 
   const getPercentage = (value: number, total: number) => {
@@ -75,6 +84,19 @@ export default function AnalyticsPage() {
 
             {/* Filter selectors */}
             <div className="flex flex-wrap items-center gap-2.5">
+              <select
+                value={selectedWorkspaceId}
+                onChange={(e) => setSelectedWorkspaceId(e.target.value)}
+                className="px-3.5 py-2 rounded-xl border border-white/[0.06] bg-[#171A1D] text-xs text-[#F5F5F5] outline-none cursor-pointer hover:bg-[#23272B] focus:border-[#5BB98C]"
+              >
+                <option value="">All Workspaces</option>
+                {workspaceSettings && (
+                  <option value={workspaceSettings.id}>
+                    {workspaceSettings.name || 'Acme Workspace'}
+                  </option>
+                )}
+              </select>
+
               <select
                 value={selectedProjectId}
                 onChange={(e) => setSelectedProjectId(e.target.value)}
