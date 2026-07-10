@@ -24,6 +24,9 @@ class Notification(Base):
     # Full message body context
     message: Mapped[str] = mapped_column(String(1024), nullable=False)
     
+    # Notification type (e.g. 'Mention', 'Reminder', 'Info')
+    type: Mapped[str] = mapped_column(String(50), default="Info", nullable=False)
+    
     # Completed/read state indicator
     is_read: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     

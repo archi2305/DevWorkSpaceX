@@ -42,8 +42,10 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
+import asyncio
+
 # Global notification dispatcher helper
-async def dispatch_notification(
+def dispatch_notification(
     db: Session,
     user_id: uuid.UUID,
     title: str,
@@ -73,7 +75,16 @@ async def dispatch_notification(
         "is_read": notif.is_read,
         "created_at": notif.created_at.isoformat()
     }
-    await manager.send_personal_message(payload, user_id)
+    
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(manager.send_personal_message(payload, user_id))
+        else:
+            loop.run_until_complete(manager.send_personal_message(payload, user_id))
+    except Exception:
+        pass
+        
     return notif
 
 @router.get(
