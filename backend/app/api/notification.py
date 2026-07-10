@@ -146,7 +146,6 @@ def mark_all_notifications_read(
     db.commit()
     return {"message": "All notifications marked as read"}
 
-@router.websocket("/ws")
 async def websocket_endpoint(
     websocket: WebSocket,
     token: Optional[str] = None,
