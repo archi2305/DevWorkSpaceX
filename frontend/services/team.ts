@@ -65,5 +65,21 @@ export const teamService = {
    */
   async removeProjectMember(projectId: string, userId: string): Promise<void> {
     await api.delete(`/workspace/projects/${projectId}/members/${userId}`)
+  },
+
+  /**
+   * Fetch detailed member profile with projects and tasks summary.
+   */
+  async getMemberProfile(id: string): Promise<any> {
+    const response = await api.get(`/workspace/member/${id}/profile`)
+    return response.data
+  },
+
+  /**
+   * Fetch roles permissions matrix.
+   */
+  async getWorkspacePermissions(): Promise<any> {
+    const response = await api.get('/workspace/permissions')
+    return response.data
   }
 }

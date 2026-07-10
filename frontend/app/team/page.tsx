@@ -16,7 +16,8 @@ import {
   Briefcase,
   CheckCircle,
   Clock,
-  ChevronRight
+  ChevronRight,
+  Loader
 } from 'lucide-react'
 import { teamService, WorkspaceMember } from '@/services/team'
 
@@ -78,6 +79,13 @@ export default function TeamPage() {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       setSelectedMember(null)
     }
+  })
+
+  // Load dynamic profile details for selected teammate
+  const { data: profileDetails, isLoading: isProfileLoading } = useQuery({
+    queryKey: ['member-profile', selectedMember?.id],
+    queryFn: () => teamService.getMemberProfile(selectedMember!.id),
+    enabled: !!selectedMember?.id
   })
 
   const handleInviteSubmit = (e: React.FormEvent) => {
@@ -268,6 +276,49 @@ export default function TeamPage() {
           </div>
         )}
 
+        {/* Roles Permission Matrix Card */}
+        <div className="rounded-2xl border border-white/[0.06] bg-[#171A1D] p-6 space-y-4 shadow-lg text-left mt-10">
+          <div className="border-b border-white/[0.06] pb-3">
+            <h2 className="text-sm font-bold text-white flex items-center gap-2">
+              <Shield className="h-4.5 w-4.5 text-[#5BB98C]" /> Workspace Roles & Permissions Matrix
+            </h2>
+            <p className="text-[11px] text-[#A7ADB5] mt-1">Workspace operations mapped to dynamic user roles policies.</p>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead>
+                <tr className="border-b border-white/[0.06] text-[#7E848C]">
+                  <th className="py-2.5 font-bold uppercase tracking-wider">Role</th>
+                  <th className="py-2.5 text-center font-bold uppercase tracking-wider">Manage Workspace</th>
+                  <th className="py-2.5 text-center font-bold uppercase tracking-wider">Invite Members</th>
+                  <th className="py-2.5 text-center font-bold uppercase tracking-wider">Create Projects</th>
+                  <th className="py-2.5 text-center font-bold uppercase tracking-wider">Delete Projects</th>
+                  <th className="py-2.5 text-center font-bold uppercase tracking-wider">Delete Workspace</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/[0.04] text-[#A7ADB5]">
+                {[
+                  { role: 'Owner', manage: true, invite: true, create: true, del_proj: true, del_ws: true },
+                  { role: 'Admin', manage: true, invite: true, create: true, del_proj: false, del_ws: false },
+                  { role: 'Manager', manage: false, invite: true, create: true, del_proj: false, del_ws: false },
+                  { role: 'Developer', manage: false, invite: false, create: true, del_proj: false, del_ws: false },
+                  { role: 'Guest', manage: false, invite: false, create: false, del_proj: false, del_ws: false },
+                ].map((row) => (
+                  <tr key={row.role} className="hover:bg-white/[0.02] transition-colors">
+                    <td className="py-3 font-bold text-white">{row.role}</td>
+                    <td className="py-3 text-center">{row.manage ? <span className="text-[#5BB98C] font-semibold">✓</span> : <span className="text-red-400">✗</span>}</td>
+                    <td className="py-3 text-center">{row.invite ? <span className="text-[#5BB98C] font-semibold">✓</span> : <span className="text-red-400">✗</span>}</td>
+                    <td className="py-3 text-center">{row.create ? <span className="text-[#5BB98C] font-semibold">✓</span> : <span className="text-red-400">✗</span>}</td>
+                    <td className="py-3 text-center">{row.del_proj ? <span className="text-[#5BB98C] font-semibold">✓</span> : <span className="text-red-400">✗</span>}</td>
+                    <td className="py-3 text-center">{row.del_ws ? <span className="text-[#5BB98C] font-semibold">✓</span> : <span className="text-red-400">✗</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         {/* Invite Modal */}
         <AnimatePresence>
           {isInviteOpen && (
@@ -410,22 +461,45 @@ export default function TeamPage() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <h4 className="text-xs font-bold text-[#7E848C] uppercase tracking-wider">Account Metadata</h4>
-                    <div className="grid grid-cols-1 gap-2.5 bg-[#1D2024] border border-white/[0.06] rounded-xl p-3.5 text-xs">
-                      <div className="flex items-center gap-2 text-[#A7ADB5]">
-                        <Clock className="h-3.5 w-3.5 text-[#5BB98C]" />
-                        Joined Workspace: <span className="text-[#F5F5F5] font-semibold">{new Date(selectedMember.created_at).toLocaleDateString()}</span>
+                    <div className="grid grid-cols-2 gap-2.5 bg-[#1D2024] border border-white/[0.06] rounded-xl p-3.5 text-xs">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] text-[#7E848C]">Joined</span>
+                        <span className="text-white font-bold">{new Date(selectedMember.created_at).toLocaleDateString()}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-[#A7ADB5]">
-                        <Mail className="h-3.5 w-3.5 text-[#5BB98C]" />
-                        Verified: <span className="text-[#F5F5F5] font-semibold">Yes</span>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] text-[#7E848C]">Projects Count</span>
+                        <span className="text-[#5BB98C] font-extrabold">{profileDetails?.projects_count ?? 0}</span>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] text-[#7E848C]">Tasks Assigned</span>
+                        <span className="text-[#5BB98C] font-extrabold">{profileDetails?.tasks_count ?? 0}</span>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] text-[#7E848C]">Status</span>
+                        <span className="text-[#5BB98C] font-bold">Active</span>
                       </div>
                     </div>
                   </div>
 
+                  {/* Recent Activities Feed */}
                   <div className="space-y-2">
-                    <h4 className="text-xs font-bold text-[#7E848C] uppercase tracking-wider">Assigned Operations</h4>
-                    <div className="bg-[#1D2024] border border-white/[0.06] rounded-xl p-3.5 text-xs text-[#A7ADB5] space-y-1.5">
-                      <p>Members can assign projects and update workspace tasks dynamically from the main boards.</p>
+                    <h4 className="text-xs font-bold text-[#7E848C] uppercase tracking-wider">Recent Activity Logs</h4>
+                    <div className="bg-[#1D2024] border border-white/[0.06] rounded-xl p-3.5 text-xs text-[#A7ADB5] space-y-2 max-h-[150px] overflow-y-auto">
+                      {isProfileLoading ? (
+                        <div className="flex justify-center py-2"><Loader className="h-4 w-4 text-[#5BB98C] animate-spin" /></div>
+                      ) : profileDetails?.recent_activities?.length > 0 ? (
+                        profileDetails.recent_activities.map((act: any) => (
+                          <div key={act.id} className="border-b border-white/[0.04] pb-1.5 last:border-0 last:pb-0">
+                            <div className="flex justify-between items-center text-[10px] font-bold text-white">
+                              <span>{act.action}</span>
+                              <span className="text-[8px] text-[#7E848C] font-normal">{new Date(act.created_at).toLocaleDateString()}</span>
+                            </div>
+                            <p className="text-[10px] text-[#7E848C] mt-0.5">{act.details}</p>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="italic text-[10px] text-[#7E848C]">No recent activity logs recorded.</p>
+                      )}
                     </div>
                   </div>
                 </div>
