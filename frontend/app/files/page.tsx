@@ -34,6 +34,10 @@ export default function FileExplorerPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState('newest') // name, newest, size
   
+  // Pagination details
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 20
+
   // Drag & drop highlight state
   const [isDragging, setIsDragging] = useState(false)
   
@@ -42,6 +46,11 @@ export default function FileExplorerPage() {
   
   // Modals / Overlays
   const [previewAsset, setPreviewAsset] = useState<FileAssetResponse | null>(null)
+
+  // Reset page to 1 on filter or scope changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [selectedProjectId, currentFolderId, searchQuery, sortBy])
   
   // Load projects for project scope filter
   const { data: projects = [] } = useQuery({
@@ -51,12 +60,14 @@ export default function FileExplorerPage() {
 
   // Load files in the current folder context
   const { data: assets = [], isLoading } = useQuery({
-    queryKey: ['files', selectedProjectId, currentFolderId, searchQuery, sortBy],
+    queryKey: ['files', selectedProjectId, currentFolderId, searchQuery, sortBy, currentPage],
     queryFn: () => fileService.getFiles({
       project_id: selectedProjectId || undefined,
       parent_id: currentFolderId || undefined,
       q: searchQuery || undefined,
-      sort_by: sortBy
+      sort_by: sortBy,
+      limit: itemsPerPage,
+      offset: (currentPage - 1) * itemsPerPage
     })
   })
 
@@ -378,6 +389,29 @@ export default function FileExplorerPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {assets.length > 0 && (
+            <div className="flex items-center justify-between border-t border-white/[0.06] pt-4 mt-6 text-xs text-[#A7ADB5]">
+              <span>Page {currentPage}</span>
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  className="px-3 py-1.5 rounded-lg bg-[#171A1D] hover:bg-[#1D2024] disabled:opacity-50 text-white font-semibold cursor-pointer border border-white/[0.06] transition-colors"
+                >
+                  Previous
+                </button>
+                <button
+                  disabled={assets.length < itemsPerPage}
+                  onClick={() => setCurrentPage(prev => prev + 1)}
+                  className="px-3 py-1.5 rounded-lg bg-[#171A1D] hover:bg-[#1D2024] disabled:opacity-50 text-white font-semibold cursor-pointer border border-white/[0.06] transition-colors"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           )}
         </div>

@@ -28,6 +28,8 @@ def get_files(
     parent_id: Optional[uuid.UUID] = None,
     q: Optional[str] = None,
     sort_by: Optional[str] = "newest", # name, newest, size
+    limit: Optional[int] = None,
+    offset: Optional[int] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -56,6 +58,9 @@ def get_files(
         query = query.order_by(FileAsset.is_folder.desc(), FileAsset.size.desc())
     else: # newest
         query = query.order_by(FileAsset.is_folder.desc(), FileAsset.created_at.desc())
+        
+    if limit is not None and offset is not None:
+        query = query.offset(offset).limit(limit)
         
     return query.all()
 

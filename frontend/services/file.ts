@@ -23,6 +23,8 @@ export const fileService = {
     parent_id?: string
     q?: string
     sort_by?: string
+    limit?: number
+    offset?: number
   }): Promise<FileAssetResponse[]> {
     const response = await api.get<FileAssetResponse[]>('/files', { params })
     return response.data
