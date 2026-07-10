@@ -7,6 +7,7 @@ from app.dependencies.auth import get_current_user
 from app.models.user import User
 from app.models.project import Project, project_members
 from app.models.workspace_member import WorkspaceMember
+from app.models.task import Task
 from app.models.activity import ActivityLog
 from app.schemas.team import WorkspaceInvite, WorkspaceMemberUpdate, WorkspaceMemberResponse, ProjectMemberAdd
 from app.api.notification import dispatch_notification
@@ -282,3 +283,108 @@ def remove_project_member(
     
     db.commit()
     return None
+
+@router.get(
+    "/member/{id}/profile",
+    summary="Get member profile details"
+)
+def get_member_profile(
+    id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Returns complete profile details for a workspace member including their assigned projects, tasks, and recent activity logs.
+    """
+    member = db.query(WorkspaceMember).filter(WorkspaceMember.id == id).first()
+    if not member:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Workspace member not found"
+        )
+        
+    user = member.user
+    
+    # Load assigned projects where user is member or owner
+    projects = db.query(Project).filter(
+        (Project.owner_id == user.id) | (Project.members.any(id=user.id))
+    ).all()
+    
+    # Load active tasks assigned to user
+    tasks = db.query(Task).filter(Task.assignee_id == user.id).all()
+    
+    # Load recent activity logs of this user
+    activities = db.query(ActivityLog).filter(ActivityLog.user_id == user.id).order_by(ActivityLog.created_at.desc()).limit(10).all()
+    
+    return {
+        "member_id": str(member.id),
+        "user_id": str(user.id),
+        "email": user.email,
+        "full_name": user.full_name,
+        "role": member.role,
+        "joined_at": member.created_at,
+        "projects_count": len(projects),
+        "tasks_count": len(tasks),
+        "recent_activities": [
+            {
+                "id": str(act.id),
+                "action": act.action,
+                "details": act.details,
+                "created_at": act.created_at
+            }
+            for act in activities
+        ],
+        "assigned_projects": [
+            {"id": str(p.id), "name": p.name}
+            for p in projects
+        ]
+    }
+
+@router.get(
+    "/permissions",
+    summary="Get roles permission matrix"
+)
+def get_workspace_permissions(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Returns the workspace role permissions map matrix.
+    """
+    return {
+        "Owner": {
+            "manage_workspace": True,
+            "invite_members": True,
+            "create_projects": True,
+            "delete_projects": True,
+            "delete_workspace": True
+        },
+        "Admin": {
+            "manage_workspace": True,
+            "invite_members": True,
+            "create_projects": True,
+            "delete_projects": False,
+            "delete_workspace": False
+        },
+        "Manager": {
+            "manage_workspace": False,
+            "invite_members": True,
+            "create_projects": True,
+            "delete_projects": False,
+            "delete_workspace": False
+        },
+        "Developer": {
+            "manage_workspace": False,
+            "invite_members": False,
+            "create_projects": True,
+            "delete_projects": False,
+            "delete_workspace": False
+        },
+        "Guest": {
+            "manage_workspace": False,
+            "invite_members": False,
+            "create_projects": False,
+            "delete_projects": False,
+            "delete_workspace": False
+        }
+    }
+
