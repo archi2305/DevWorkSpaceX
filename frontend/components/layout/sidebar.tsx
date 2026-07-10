@@ -14,6 +14,8 @@ import {
   Archive,
   HelpCircle,
   LogOut,
+  FolderOpen,
+  Calendar,
 } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
@@ -21,6 +23,8 @@ import { useAuth } from '@/hooks/useAuth'
 const navItems = [
   { icon: Home, label: 'Home', href: '/' },
   { icon: Files, label: 'Projects', href: '/projects' },
+  { icon: FolderOpen, label: 'Files', href: '/files' },
+  { icon: Calendar, label: 'Calendar', href: '/calendar' },
   { icon: MessageSquare, label: 'Messages', href: '/messages' },
   { icon: Zap, label: 'Quick Actions', href: '/quick-actions' },
   { icon: Users, label: 'Team', href: '/team' },
