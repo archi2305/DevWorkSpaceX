@@ -91,5 +91,28 @@ export const aiService = {
   async generateTasks(): Promise<AIGeneratedTask[]> {
     const response = await api.post<AIGeneratedTask[]>('/ai/generate-tasks')
     return response.data
+  },
+
+  /**
+   * Fetch custom prompt library templates.
+   */
+  async getSavedPrompts(): Promise<any[]> {
+    const response = await api.get('/ai/prompts')
+    return response.data
+  },
+
+  /**
+   * Save a prompt template to PostgreSQL.
+   */
+  async savePrompt(title: string, content: string): Promise<any> {
+    const response = await api.post('/ai/prompts', { title, content })
+    return response.data
+  },
+
+  /**
+   * Delete prompt template from user library.
+   */
+  async deletePrompt(id: string): Promise<void> {
+    await api.delete(`/ai/prompts/${id}`)
   }
 }

@@ -40,9 +40,13 @@ export function FloatingAIPanel() {
   
   const scrollRef = useRef<HTMLDivElement>(null)
 
+  // Prompt library templates
+  const [promptTemplates, setPromptTemplates] = useState<any[]>([])
+
   useEffect(() => {
     if (isOpen) {
       loadConversations()
+      loadTemplates()
     }
   }, [isOpen])
 
@@ -67,6 +71,26 @@ export function FloatingAIPanel() {
       setConversations(list)
     } catch (err) {
       console.error('Failed to load chat history threads', err)
+    }
+  }
+
+  const loadTemplates = async () => {
+    try {
+      const list = await aiService.getSavedPrompts()
+      setPromptTemplates(list)
+    } catch (err) {
+      console.error('Failed to load prompt templates library', err)
+    }
+  }
+
+  const handleSaveTemplate = async () => {
+    if (!prompt.trim()) return
+    const title = prompt.slice(0, 22) + '...'
+    try {
+      await aiService.savePrompt(title, prompt)
+      loadTemplates()
+    } catch (err) {
+      console.error('Failed to save prompt to library', err)
     }
   }
 
@@ -450,6 +474,22 @@ export function FloatingAIPanel() {
 
             </div>
 
+            {/* Prompt Template Library selectors */}
+            {promptTemplates.length > 0 && (
+              <div className="px-4 py-2 bg-[#171A1D] border-t border-white/[0.04] flex gap-1.5 overflow-x-auto whitespace-nowrap scrollbar-thin">
+                {promptTemplates.map((tmpl) => (
+                  <button
+                    key={tmpl.id}
+                    type="button"
+                    onClick={() => setPrompt(tmpl.content)}
+                    className="text-[9px] bg-[#1D2024] hover:bg-[#23272B] border border-white/[0.06] text-[#A7ADB5] hover:text-[#5BB98C] px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer flex-shrink-0"
+                  >
+                    {tmpl.title}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* Prompt Input Form */}
             <form onSubmit={handleSendPrompt} className="p-4 border-t border-white/[0.06] bg-[#1D2024]/40 flex gap-2">
               <input
@@ -459,6 +499,16 @@ export function FloatingAIPanel() {
                 placeholder="Ask workspace copilot..."
                 className="flex-1 px-3 py-2 border border-white/[0.06] bg-[#1D2024] text-xs text-white placeholder-[#7E848C] rounded-xl outline-none focus:border-[#5BB98C] transition-colors"
               />
+              {prompt.trim() && (
+                <button
+                  type="button"
+                  onClick={handleSaveTemplate}
+                  title="Save prompt as template"
+                  className="p-2 rounded-xl bg-[#1D2024] border border-white/[0.06] hover:bg-[#23272B] text-[#5BB98C] flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
+              )}
               <button
                 type="submit"
                 disabled={loading || !prompt.trim()}
