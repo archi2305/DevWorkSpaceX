@@ -220,7 +220,8 @@ def create_project(
         progress=0,
         owner_id=current_user.id,
         visibility=project_data.visibility or "Workspace",
-        workspace_id=project_data.workspace_id
+        workspace_id=project_data.workspace_id,
+        due_date=project_data.due_date
     )
     db_project.members.append(current_user)
     

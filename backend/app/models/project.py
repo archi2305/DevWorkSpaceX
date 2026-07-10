@@ -68,6 +68,9 @@ class Project(Base):
     # Project privacy visibility level ('Workspace', 'Private', 'Public')
     visibility: Mapped[str] = mapped_column(String(50), default="Workspace", nullable=False)
     
+    # Project deadline due date
+    due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

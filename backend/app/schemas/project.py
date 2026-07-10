@@ -21,6 +21,7 @@ class ProjectBase(BaseModel):
     is_archived: bool = Field(False)
     workspace_id: Optional[uuid.UUID] = None
     visibility: str = Field("Workspace", max_length=50)
+    due_date: Optional[datetime] = None
 
 class ProjectCreate(BaseModel):
     """
@@ -36,6 +37,7 @@ class ProjectCreate(BaseModel):
     priority: Optional[str] = Field("Medium", max_length=50)
     workspace_id: Optional[uuid.UUID] = None
     visibility: Optional[str] = Field("Workspace", max_length=50)
+    due_date: Optional[datetime] = None
 
 class ProjectUpdate(BaseModel):
     """
@@ -55,6 +57,7 @@ class ProjectUpdate(BaseModel):
     is_archived: Optional[bool] = Field(None)
     workspace_id: Optional[uuid.UUID] = None
     visibility: Optional[str] = Field(None, max_length=50)
+    due_date: Optional[datetime] = None
 
 class ProjectMember(BaseModel):
     """
