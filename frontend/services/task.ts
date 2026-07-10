@@ -31,8 +31,11 @@ export const taskService = {
   /**
    * Fetch tasks, optionally filtered by project_id.
    */
-  async getTasks(projectId?: string): Promise<TaskResponse[]> {
-    const params = projectId ? { project_id: projectId } : undefined
+  async getTasks(projectId?: string, filters?: Record<string, any>): Promise<TaskResponse[]> {
+    const params = {
+      ...(projectId ? { project_id: projectId } : {}),
+      ...filters
+    }
     const response = await api.get<TaskResponse[]>('/tasks', { params })
     return response.data
   },

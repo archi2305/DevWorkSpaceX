@@ -7,13 +7,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { 
   ArrowLeft, Calendar, User as UserIcon, Trash2, Edit3, 
   Clock, AlertCircle, X, Layers, CheckSquare, 
-  Sparkles, FileText, Archive, ArchiveRestore, Star, Pin, Plus, Tag
+  Sparkles, FileText, Archive, ArchiveRestore, Star, Pin, Plus, Tag, Filter
 } from 'lucide-react'
 import { projectService } from '@/services/project'
 import { taskService, TaskResponse } from '@/services/task'
 import { teamService } from '@/services/team'
 import { labelService } from '@/services/label'
 import { LabelsManager } from '@/components/labels/labels-manager'
+import { AdvancedFiltersPanel, FilterCriteria } from '@/components/filters/advanced-filters-panel'
 import { useAuth } from '@/hooks/useAuth'
 import { CommentsList } from '@/components/comments/comments-list'
 import { useCollaboration } from '@/hooks/use-collaboration'
@@ -52,10 +53,39 @@ export default function ProjectDetailsPage({ params }: PageProps) {
     retry: 1,
   })
 
+  // Advanced Filter state variables
+  const [filterCriteria, setFilterCriteria] = useState<FilterCriteria>({
+    statuses: [],
+    priorities: [],
+    dueDate: '',
+    sprintId: '',
+    labelIds: [],
+    assigneeId: '',
+    createdStart: '',
+    createdEnd: '',
+    updatedStart: '',
+    updatedEnd: ''
+  })
+  const [isAdvancedFiltersOpen, setIsAdvancedFiltersOpen] = useState(false)
+
+  // Map state to query string criteria params
+  const apiFilters = {
+    ...(filterCriteria.statuses.length > 0 ? { status: filterCriteria.statuses.join(',') } : {}),
+    ...(filterCriteria.priorities.length > 0 ? { priority: filterCriteria.priorities.join(',') } : {}),
+    ...(filterCriteria.dueDate ? { due_date: filterCriteria.dueDate } : {}),
+    ...(filterCriteria.sprintId ? { sprint_id: filterCriteria.sprintId } : {}),
+    ...(filterCriteria.labelIds.length > 0 ? { label_ids: filterCriteria.labelIds.join(',') } : {}),
+    ...(filterCriteria.assigneeId ? { assignee_id: filterCriteria.assigneeId } : {}),
+    ...(filterCriteria.createdStart ? { created_at_start: new Date(filterCriteria.createdStart).toISOString() } : {}),
+    ...(filterCriteria.createdEnd ? { created_at_end: new Date(filterCriteria.createdEnd + 'T23:59:59').toISOString() } : {}),
+    ...(filterCriteria.updatedStart ? { updated_at_start: new Date(filterCriteria.updatedStart).toISOString() } : {}),
+    ...(filterCriteria.updatedEnd ? { updated_at_end: new Date(filterCriteria.updatedEnd + 'T23:59:59').toISOString() } : {})
+  }
+
   // Fetch tasks associated with this project
   const { data: tasks = [], isLoading: tasksLoading } = useQuery({
-    queryKey: ['tasks', { project_id: id }],
-    queryFn: () => taskService.getTasks(id),
+    queryKey: ['tasks', { project_id: id, ...apiFilters }],
+    queryFn: () => taskService.getTasks(id, apiFilters),
   })
 
   // Editing modal fields
@@ -440,6 +470,16 @@ export default function ProjectDetailsPage({ params }: PageProps) {
         {isOwner && (
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setIsAdvancedFiltersOpen(!isAdvancedFiltersOpen)}
+              className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-semibold transition-all cursor-pointer shadow-sm hover:-translate-y-0.5 ${
+                isAdvancedFiltersOpen
+                  ? 'bg-[#5BB98C]/10 border-[#5BB98C]/20 text-[#5BB98C]'
+                  : 'bg-[#171A1D] border-white/[0.06] text-[#F5F5F5] hover:bg-[#23272B]'
+              }`}
+            >
+              <Filter className="h-3.5 w-3.5" /> Filters
+            </button>
+            <button
               onClick={() => setIsLabelManagerOpen(true)}
               className="inline-flex items-center gap-2 rounded-xl border border-white/[0.06] bg-[#171A1D] px-4 py-2.5 text-xs font-semibold text-[#F5F5F5] hover:bg-[#23272B] transition-all cursor-pointer shadow-sm hover:-translate-y-0.5"
             >
@@ -471,6 +511,36 @@ export default function ProjectDetailsPage({ params }: PageProps) {
           </div>
         )}
       </div>
+
+      {/* Advanced Filters Panel */}
+      {isAdvancedFiltersOpen && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full"
+        >
+          <AdvancedFiltersPanel
+            projectId={id}
+            criteria={filterCriteria}
+            onChange={setFilterCriteria}
+            onReset={() =>
+              setFilterCriteria({
+                statuses: [],
+                priorities: [],
+                dueDate: '',
+                sprintId: '',
+                labelIds: [],
+                assigneeId: '',
+                createdStart: '',
+                createdEnd: '',
+                updatedStart: '',
+                updatedEnd: ''
+              })
+            }
+            onClose={() => setIsAdvancedFiltersOpen(false)}
+          />
+        </motion.div>
+      )}
 
       {/* Main Details Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
