@@ -216,17 +216,7 @@ def get_unified_dashboard(
         "teamMembers": team_members
     }
 
-@router.get("/activities", response_model=List[ActivityLogResponse])
-def get_activities(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """
-    List user workspace timeline logs.
-    """
-    return db.query(ActivityLog).filter(
-        ActivityLog.user_id == current_user.id
-    ).order_by(ActivityLog.created_at.desc()).all()
+
 
 @router.get("/ai/suggestions", response_model=List[AISuggestionResponse])
 def get_ai_suggestions(

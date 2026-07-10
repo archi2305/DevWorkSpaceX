@@ -178,6 +178,11 @@ def update_task(
     if db_task.completed and not was_completed:
         log_action = "Task Completed"
         log_details = f"Task '{db_task.title}' was completed"
+    elif "assignee_id" in update_data and update_data["assignee_id"]:
+        log_action = "Task Assigned"
+        assignee_user = db.query(User).filter(User.id == db_task.assignee_id).first()
+        assignee_name = assignee_user.full_name if assignee_user else "someone"
+        log_details = f"Task '{db_task.title}' was assigned to {assignee_name}"
         
     db_log = ActivityLog(
         user_id=current_user.id,

@@ -8,7 +8,7 @@ class ActivityLog(Base):
     """
     SQLAlchemy database model mapping user and team actions to activity logs.
     """
-    __tablename__ = "activity_logs"
+    __tablename__ = "activities"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     
