@@ -23,6 +23,9 @@ from app.models.sprint import Sprint
 from app.models.suggestion import AISuggestion
 from app.models.workspace_member import WorkspaceMember
 from app.models.document import Document, DocumentVersion
+from app.models.file_asset import FileAsset
+from app.models.comment import Comment
+from app.models.ai import AIConversation, AIMessage
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

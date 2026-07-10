@@ -14,6 +14,7 @@ from app.api.document import router as document_router
 from app.api.file_asset import router as file_router
 from app.api.calendar import router as calendar_router
 from app.api.notification import router as notification_router, websocket_endpoint
+from app.api.ai import router as ai_router
 from app.core.config import settings
 
 # Initialize the FastAPI app
@@ -46,6 +47,7 @@ app.include_router(document_router)
 app.include_router(file_router)
 app.include_router(calendar_router)
 app.include_router(notification_router)
+app.include_router(ai_router)
 app.add_api_websocket_route("/notifications/ws", websocket_endpoint)
 
 # --- Global Exception Handlers ---
