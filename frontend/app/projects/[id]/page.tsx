@@ -1303,6 +1303,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                 </div>
               </form>
               </div>
+              </div>
 
               {/* Right Column: Comments Feed */}
               <div className="w-full md:w-1/2 border-t md:border-t-0 md:border-l border-white/[0.06] pt-6 md:pt-0 md:pl-6 overflow-y-auto max-h-[500px]">
