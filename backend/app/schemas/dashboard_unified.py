@@ -23,6 +23,7 @@ class NotificationResponse(BaseModel):
     title: str
     message: str
     is_read: bool
+    type: str
     created_at: datetime
 
     class Config:
