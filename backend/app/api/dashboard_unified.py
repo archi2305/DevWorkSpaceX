@@ -32,13 +32,23 @@ def seed_default_data_if_needed(db: Session, current_user: User):
     # 1. Seed Active Sprint if empty
     sprint = db.query(Sprint).first()
     if not sprint:
+        proj = db.query(Project).first()
+        if not proj:
+            proj = Project(
+                name="Default Project",
+                description="Auto-seeded for sprints board",
+                color="blue",
+                icon="🚀"
+            )
+            db.add(proj)
+            db.commit()
+            db.refresh(proj)
         sprint = Sprint(
+            project_id=proj.id,
             name="Sprint 24",
             start_date=datetime.utcnow() - timedelta(days=5),
             end_date=datetime.utcnow() + timedelta(days=9),
-            completed_tasks=12,
-            total_tasks=18,
-            velocity=42
+            status="Active"
         )
         db.add(sprint)
         db.commit()
@@ -163,7 +173,24 @@ def get_unified_dashboard(
     ).order_by(AISuggestion.created_at.desc()).all()
 
     # 6. Sprint Info
-    sprint = db.query(Sprint).first()
+    sprint_obj = db.query(Sprint).filter(Sprint.status == "Active").first()
+    if not sprint_obj:
+        sprint_obj = db.query(Sprint).first()
+
+    sprint = None
+    if sprint_obj:
+        done_cnt = db.query(func.count(Task.id)).filter(Task.sprint_id == sprint_obj.id, Task.completed == True).scalar() or 0
+        tot_cnt = db.query(func.count(Task.id)).filter(Task.sprint_id == sprint_obj.id).scalar() or 0
+        sprint = {
+            "id": sprint_obj.id,
+            "name": sprint_obj.name,
+            "start_date": sprint_obj.start_date or datetime.utcnow(),
+            "end_date": sprint_obj.end_date or (datetime.utcnow() + timedelta(days=14)),
+            "completed_tasks": done_cnt,
+            "total_tasks": tot_cnt,
+            "velocity": 42,
+            "created_at": sprint_obj.created_at
+        }
 
     # 7. Team online statuses
     workspace_members = db.query(WorkspaceMember).all()
@@ -238,8 +265,22 @@ def get_active_sprint(
     """
     Fetch active milestone stats.
     """
-    sprint = db.query(Sprint).first()
-    if not sprint:
+    sprint_obj = db.query(Sprint).filter(Sprint.status == "Active").first()
+    if not sprint_obj:
+        sprint_obj = db.query(Sprint).first()
+    if not sprint_obj:
         raise HTTPException(status_code=404, detail="Active sprint not found")
-    return sprint
+    
+    done_cnt = db.query(func.count(Task.id)).filter(Task.sprint_id == sprint_obj.id, Task.completed == True).scalar() or 0
+    tot_cnt = db.query(func.count(Task.id)).filter(Task.sprint_id == sprint_obj.id).scalar() or 0
+    return {
+        "id": sprint_obj.id,
+        "name": sprint_obj.name,
+        "start_date": sprint_obj.start_date or datetime.utcnow(),
+        "end_date": sprint_obj.end_date or (datetime.utcnow() + timedelta(days=14)),
+        "completed_tasks": done_cnt,
+        "total_tasks": tot_cnt,
+        "velocity": 42,
+        "created_at": sprint_obj.created_at
+    }
 
