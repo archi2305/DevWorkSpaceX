@@ -16,6 +16,7 @@ import {
   LogOut,
   FolderOpen,
   Calendar,
+  Activity,
 } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
@@ -28,7 +29,7 @@ const navItems = [
   { icon: MessageSquare, label: 'Messages', href: '/messages' },
   { icon: Zap, label: 'Quick Actions', href: '/quick-actions' },
   { icon: Users, label: 'Team', href: '/team' },
-  { icon: Briefcase, label: 'Workspace', href: '/workspace' },
+  { icon: Activity, label: 'Activity Timeline', href: '/activities' },
   { icon: BarChart3, label: 'Analytics', href: '/analytics' },
   { icon: BookOpen, label: 'Documentation', href: '/documentation' },
   { icon: Archive, label: 'Archives', href: '/archives' },
