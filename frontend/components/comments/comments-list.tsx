@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { commentService, CommentResponse } from '@/services/comment'
 import { useAuth } from '@/hooks/useAuth'
+import { useCollaboration } from '@/hooks/use-collaboration'
 import {
   MessageSquare,
   Send,
@@ -24,6 +25,7 @@ interface CommentsListProps {
 export function CommentsList({ taskId, projectId }: CommentsListProps) {
   const queryClient = useQueryClient()
   const { user } = useAuth()
+  const { sendCommentAdded, typingStates, sendTyping } = useCollaboration(projectId, taskId)
   
   // Inputs states
   const [newComment, setNewComment] = useState('')
@@ -54,6 +56,7 @@ export function CommentsList({ taskId, projectId }: CommentsListProps) {
     },
     onSuccess: () => {
       setNewComment('')
+      sendCommentAdded(taskId || projectId || '')
       queryClient.invalidateQueries({
         queryKey: taskId ? ['task-comments', taskId] : ['project-discussions', projectId]
       })
@@ -66,6 +69,7 @@ export function CommentsList({ taskId, projectId }: CommentsListProps) {
     onSuccess: () => {
       setReplyContent('')
       setActiveReplyId(null)
+      sendCommentAdded(taskId || projectId || '')
       queryClient.invalidateQueries({
         queryKey: taskId ? ['task-comments', taskId] : ['project-discussions', projectId]
       })
@@ -299,12 +303,24 @@ export function CommentsList({ taskId, projectId }: CommentsListProps) {
         </div>
       )}
 
+      {/* Typing indicator indicator */}
+      {typingStates[taskId || projectId || ''] && (
+        <div className="text-left px-1.5 py-0.5">
+          <p className="text-[9px] text-[#5BB98C] italic animate-pulse">
+            {typingStates[taskId || projectId || '']} is typing...
+          </p>
+        </div>
+      )}
+
       {/* Main Comment Input Form */}
-      <form onSubmit={handlePostComment} className="pt-2 flex gap-2">
+      <form onSubmit={handlePostComment} className="pt-1 flex gap-2">
         <input
           type="text"
           value={newComment}
-          onChange={(e) => setNewComment(e.target.value)}
+          onChange={(e) => {
+            setNewComment(e.target.value)
+            sendTyping(taskId || projectId || '', e.target.value.length > 0)
+          }}
           placeholder="Add comment, use @name to mention..."
           className="flex-1 px-3 py-2 border border-white/[0.06] bg-[#1D2024] rounded-xl text-xs text-white placeholder-[#7E848C] focus:border-[#5BB98C] outline-none transition-colors"
         />

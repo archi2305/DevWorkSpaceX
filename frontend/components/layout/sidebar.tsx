@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
+import { useCollaboration } from '@/hooks/use-collaboration'
 
 const navItems = [
   { icon: Home, label: 'Home', href: '/' },
@@ -40,6 +41,7 @@ const navItems = [
 export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const { user, logout } = useAuth()
+  const { onlineUsers } = useCollaboration()
 
   const getInitials = (name: string) => {
     return name
@@ -114,6 +116,27 @@ export function Sidebar() {
             )
           })}
         </nav>
+
+        {/* Presence status section */}
+        {!isCollapsed && onlineUsers.length > 0 && (
+          <div className="px-4 py-2 border-t border-sidebar-border/40 space-y-2 text-left">
+            <span className="text-[10px] font-bold text-[#7E848C] uppercase tracking-wider">Online ({onlineUsers.length})</span>
+            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+              {onlineUsers.map((ou) => (
+                <div
+                  key={ou.id}
+                  title={`${ou.full_name} (${ou.email})`}
+                  className="relative flex items-center justify-center h-6 w-6 rounded-full bg-[#1D2024] border border-white/[0.06] hover:scale-105 transition-transform"
+                >
+                  <span className="text-[8px] font-bold text-[#F5F5F5]">
+                    {ou.full_name.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase()}
+                  </span>
+                  <span className="absolute bottom-0 right-0 h-1.5 w-1.5 rounded-full bg-[#5BB98C] border border-[#111315]" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Profile Section */}
         <div className="border-t border-sidebar-border/40 px-2 py-4">

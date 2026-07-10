@@ -14,6 +14,7 @@ import { taskService } from '@/services/task'
 import { teamService } from '@/services/team'
 import { useAuth } from '@/hooks/useAuth'
 import { CommentsList } from '@/components/comments/comments-list'
+import { useCollaboration } from '@/hooks/use-collaboration'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -40,6 +41,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
   const router = useRouter()
   const { user } = useAuth()
   const queryClient = useQueryClient()
+  const { sendKanbanUpdate } = useCollaboration(id)
   
   // Fetch project details
   const { data: project, isLoading, error } = useQuery({
@@ -294,6 +296,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
   const handleDropTask = async (taskId: string, targetStatus: string) => {
     try {
       await taskService.updateTask(taskId, { status: targetStatus })
+      sendKanbanUpdate(taskId, targetStatus)
       queryClient.invalidateQueries({ queryKey: ['tasks', { project_id: id }] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['project', id] })
