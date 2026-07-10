@@ -9,6 +9,7 @@ from app.models.user import User
 from app.models.document import Document, DocumentVersion
 from app.models.activity import ActivityLog
 from app.schemas.document import DocumentCreate, DocumentUpdate, DocumentResponse, DocumentVersionResponse
+from app.api.notification import dispatch_notification
 
 router = APIRouter(prefix="/documents", tags=["Documentation"])
 
@@ -164,6 +165,16 @@ def update_document(
         
     db.commit()
     db.refresh(doc)
+    
+    if content_changed:
+        dispatch_notification(
+            db=db,
+            user_id=current_user.id,
+            title="Documentation Updated",
+            message=f"Document '{doc.title}' content was updated to version {doc.version}.",
+            notification_type="Info"
+        )
+        
     return doc
 
 @router.delete(
