@@ -44,14 +44,38 @@ class TaskUpdate(BaseModel):
     assignee_id: Optional[uuid.UUID] = None
     project_id: Optional[uuid.UUID] = None
 
+class TaskAssigneeResponse(BaseModel):
+    id: uuid.UUID
+    email: str
+    full_name: str
+    profile_image: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
 class TaskResponse(TaskBase):
     """
     Database representation schema returned to clients.
     """
     id: uuid.UUID
     assignee_id: Optional[uuid.UUID]
+    assignee: Optional[TaskAssigneeResponse] = None
     created_at: datetime
     updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class CommentCreate(BaseModel):
+    content: str
+
+class CommentResponse(BaseModel):
+    id: uuid.UUID
+    content: str
+    task_id: uuid.UUID
+    user_id: uuid.UUID
+    created_at: datetime
+    user: TaskAssigneeResponse
 
     class Config:
         from_attributes = True
