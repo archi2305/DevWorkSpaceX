@@ -10,6 +10,8 @@ class WorkspaceSettingsResponse(BaseModel):
     theme: str
     timezone: str
     allow_member_invites: bool
+    enable_email_notifications: bool
+    enable_desktop_notifications: bool
 
     class Config:
         from_attributes = True
@@ -20,6 +22,8 @@ class WorkspaceSettingsUpdate(BaseModel):
     theme: Optional[str] = None
     timezone: Optional[str] = None
     allow_member_invites: Optional[bool] = None
+    enable_email_notifications: Optional[bool] = None
+    enable_desktop_notifications: Optional[bool] = None
 
 class APIKeyResponse(BaseModel):
     id: uuid.UUID

@@ -16,6 +16,8 @@ class Workspace(Base):
     theme: Mapped[str] = mapped_column(String(50), default="dark", nullable=False)
     timezone: Mapped[str] = mapped_column(String(100), default="UTC", nullable=False)
     allow_member_invites: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    enable_email_notifications: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    enable_desktop_notifications: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
