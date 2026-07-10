@@ -8,8 +8,7 @@ from app.models.user import User
 from app.models.task import Task
 from app.models.project import Project
 from app.models.activity import ActivityLog
-from app.models.comment import Comment
-from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate, CommentCreate, CommentResponse
+from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate
 from app.api.notification import dispatch_notification
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
@@ -250,71 +249,4 @@ def delete_task(
         
     return None
 
-@router.post(
-    "/{task_id}/comments",
-    response_model=CommentResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Add a comment to a task"
-)
-def add_task_comment(
-    task_id: uuid.UUID,
-    comment_data: CommentCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    task = db.query(Task).filter(Task.id == task_id).first()
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found"
-        )
-        
-    db_comment = Comment(
-        content=comment_data.content,
-        task_id=task_id,
-        user_id=current_user.id
-    )
-    db.add(db_comment)
-    
-    # Log comment activity
-    db_log = ActivityLog(
-        user_id=current_user.id,
-        action="Comment Added",
-        details=f"{current_user.full_name} commented on task '{task.title}'",
-        target_type="Task",
-        target_name=task.title
-    )
-    db.add(db_log)
-    db.commit()
-    db.refresh(db_comment)
-    
-    # Dispatch notification to task assignee if it's not the comment creator!
-    if task.assignee_id and task.assignee_id != current_user.id:
-        dispatch_notification(
-            db=db,
-            user_id=task.assignee_id,
-            title="Comment Added",
-            message=f"{current_user.full_name} commented on task '{task.title}': {db_comment.content[:60]}",
-            notification_type="Mention"
-        )
-        
-    return db_comment
 
-@router.get(
-    "/{task_id}/comments",
-    response_model=List[CommentResponse],
-    summary="List comments for a task"
-)
-def get_task_comments(
-    task_id: uuid.UUID,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    task = db.query(Task).filter(Task.id == task_id).first()
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found"
-        )
-        
-    return db.query(Comment).filter(Comment.task_id == task_id).order_by(Comment.created_at.asc()).all()

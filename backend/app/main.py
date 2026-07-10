@@ -17,6 +17,7 @@ from app.api.notification import router as notification_router, websocket_endpoi
 from app.api.ai import router as ai_router
 from app.api.analytics import router as analytics_router
 from app.api.workspace import router as workspace_settings_router
+from app.api.comment import router as comments_router
 from app.core.config import settings
 
 # Initialize the FastAPI app
@@ -52,6 +53,7 @@ app.include_router(notification_router)
 app.include_router(ai_router)
 app.include_router(analytics_router)
 app.include_router(workspace_settings_router)
+app.include_router(comments_router)
 app.add_api_websocket_route("/notifications/ws", websocket_endpoint)
 
 # --- Global Exception Handlers ---
