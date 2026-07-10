@@ -13,6 +13,7 @@ import { projectService } from '@/services/project'
 import { taskService } from '@/services/task'
 import { teamService } from '@/services/team'
 import { useAuth } from '@/hooks/useAuth'
+import { CommentsList } from '@/components/comments/comments-list'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -810,6 +811,11 @@ export default function ProjectDetailsPage({ params }: PageProps) {
             )}
           </div>
 
+          {/* Project Discussions Panel */}
+          <div className="rounded-2xl border border-white/[0.06] bg-[#171A1D] p-6 space-y-4 shadow-lg">
+            <CommentsList projectId={project.id} />
+          </div>
+
           {/* Task Counter */}
           <div className="rounded-2xl border border-white/[0.06] bg-[#171A1D] p-6 space-y-4 shadow-lg">
             <h2 className="text-xs font-bold uppercase tracking-wider text-[#7E848C] text-left">Upcoming Project Tasks</h2>
@@ -1175,7 +1181,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-sm rounded-2xl border border-white/[0.06] bg-[#171A1D] p-6 shadow-2xl relative"
+              className="w-full max-w-3xl rounded-2xl border border-white/[0.06] bg-[#171A1D] p-6 shadow-2xl relative flex flex-col md:flex-row gap-6"
             >
               <button
                 onClick={() => setEditTargetTask(null)}
@@ -1184,8 +1190,11 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                 <X className="h-4.5 w-4.5" />
               </button>
 
-              <h3 className="text-base font-bold text-[#F5F5F5] mb-4 text-left">Edit Task Details</h3>
-              <form onSubmit={handleSaveTaskEdit} className="space-y-4">
+              {/* Left Column: Form details */}
+              <div className="w-full md:w-1/2 flex flex-col justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-[#F5F5F5] mb-4 text-left">Edit Task Details</h3>
+                  <form onSubmit={handleSaveTaskEdit} className="space-y-4">
                 <div className="space-y-1.5 text-left">
                   <label className="text-xs font-semibold text-[#A7ADB5] block">Task Title</label>
                   <input
@@ -1290,6 +1299,12 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                   </button>
                 </div>
               </form>
+              </div>
+
+              {/* Right Column: Comments Feed */}
+              <div className="w-full md:w-1/2 border-t md:border-t-0 md:border-l border-white/[0.06] pt-6 md:pt-0 md:pl-6 overflow-y-auto max-h-[500px]">
+                <CommentsList taskId={editTargetTask.id} />
+              </div>
             </motion.div>
           </div>
         )}
