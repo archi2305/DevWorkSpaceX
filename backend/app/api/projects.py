@@ -9,6 +9,7 @@ from app.models.user import User
 from app.models.project import Project
 from app.models.activity import ActivityLog
 from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate
+from app.api.notification import dispatch_notification
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
@@ -239,6 +240,16 @@ def create_project(
     
     db.commit()
     db.refresh(db_project)
+    
+    # Dispatch notification
+    dispatch_notification(
+        db=db,
+        user_id=current_user.id,
+        title="Project Created",
+        message=f"Project '{db_project.name}' was created.",
+        notification_type="Info"
+    )
+    
     return db_project
 
 @router.get(
