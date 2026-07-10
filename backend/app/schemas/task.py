@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
-from typing import Optional
+from app.schemas.label import LabelResponse
+from typing import Optional, List
 from pydantic import BaseModel, Field
 
 class TaskBase(BaseModel):
@@ -10,11 +11,11 @@ class TaskBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
     status: str = Field("Todo", max_length=50) # 'Todo', 'In Progress', 'Review', 'Done'
-    labels: Optional[str] = Field(None, max_length=255)
     due_date: Optional[str] = Field(None, max_length=50)
     priority: str = Field("medium", max_length=50) # 'low', 'medium', 'high'
     completed: bool = False
     project_id: Optional[uuid.UUID] = None
+    sprint_id: Optional[uuid.UUID] = None
 
 class TaskCreate(BaseModel):
     """
@@ -23,11 +24,11 @@ class TaskCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
     status: str = Field("Todo", max_length=50)
-    labels: Optional[str] = Field(None, max_length=255)
     due_date: Optional[str] = Field(None, max_length=50)
     priority: str = Field("medium", max_length=50)
     assignee_id: Optional[uuid.UUID] = None
     project_id: Optional[uuid.UUID] = None
+    sprint_id: Optional[uuid.UUID] = None
     completed: bool = False
 
 class TaskUpdate(BaseModel):
@@ -37,12 +38,12 @@ class TaskUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
     status: Optional[str] = Field(None, max_length=50)
-    labels: Optional[str] = Field(None, max_length=255)
     due_date: Optional[str] = Field(None, max_length=50)
     priority: Optional[str] = Field(None, max_length=50)
     completed: Optional[bool] = None
     assignee_id: Optional[uuid.UUID] = None
     project_id: Optional[uuid.UUID] = None
+    sprint_id: Optional[uuid.UUID] = None
 
 class TaskAssigneeResponse(BaseModel):
     id: uuid.UUID
@@ -60,6 +61,7 @@ class TaskResponse(TaskBase):
     id: uuid.UUID
     assignee_id: Optional[uuid.UUID]
     assignee: Optional[TaskAssigneeResponse] = None
+    labels: List[LabelResponse] = []
     created_at: datetime
     updated_at: datetime
 

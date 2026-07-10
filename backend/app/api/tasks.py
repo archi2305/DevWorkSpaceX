@@ -99,12 +99,12 @@ def create_task(
         title=task_data.title,
         description=task_data.description,
         status=task_data.status,
-        labels=task_data.labels,
         due_date=task_data.due_date,
         priority=task_data.priority,
         completed=is_completed,
         assignee_id=assignee_id,
-        project_id=task_data.project_id
+        project_id=task_data.project_id,
+        sprint_id=task_data.sprint_id
     )
     
     db.add(db_task)

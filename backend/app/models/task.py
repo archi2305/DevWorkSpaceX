@@ -20,7 +20,6 @@ class Task(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="Todo", nullable=False)
-    labels: Mapped[str | None] = mapped_column(String(255), nullable=True)
     
     # Task due date (text based for flexibility like 'Today', 'Tomorrow', 'Mar 15')
     due_date: Mapped[str | None] = mapped_column(String(50), nullable=True)
@@ -66,3 +65,4 @@ class Task(Base):
     project = relationship("Project", backref="tasks")
     assignee = relationship("User", backref="tasks")
     sprint = relationship("Sprint", backref="tasks")
+    labels = relationship("Label", secondary="task_labels", back_populates="tasks")
