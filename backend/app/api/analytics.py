@@ -20,6 +20,7 @@ router = APIRouter(prefix="/analytics", tags=["Analytics"])
 )
 def get_analytics_summary(
     project_id: Optional[uuid.UUID] = None,
+    workspace_id: Optional[uuid.UUID] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     db: Session = Depends(get_db),
@@ -48,6 +49,9 @@ def get_analytics_summary(
     task_filters = []
     if project_id:
         task_filters.append(Task.project_id == project_id)
+    elif workspace_id:
+        project_ids_subquery = db.query(Project.id).filter(Project.workspace_id == workspace_id).scalar_subquery()
+        task_filters.append(Task.project_id.in_(project_ids_subquery))
         
     # Overdue tasks scanner in Python
     all_incomplete_tasks = db.query(Task).filter(
@@ -83,6 +87,8 @@ def get_analytics_summary(
     projects_query = db.query(Project)
     if project_id:
         projects_query = projects_query.filter(Project.id == project_id)
+    elif workspace_id:
+        projects_query = projects_query.filter(Project.workspace_id == workspace_id)
         
     for p in projects_query.all():
         total_tasks = db.query(func.count(Task.id)).filter(Task.project_id == p.id).scalar() or 0
