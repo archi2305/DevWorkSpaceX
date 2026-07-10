@@ -9,6 +9,7 @@ from app.models.project import Project, project_members
 from app.models.workspace_member import WorkspaceMember
 from app.models.activity import ActivityLog
 from app.schemas.team import WorkspaceInvite, WorkspaceMemberUpdate, WorkspaceMemberResponse, ProjectMemberAdd
+from app.api.notification import dispatch_notification
 
 router = APIRouter(prefix="/workspace", tags=["Team Members"])
 
@@ -92,9 +93,18 @@ def invite_workspace_member(
         target_name=invite_data.full_name
     )
     db.add(db_log)
-    
     db.commit()
     db.refresh(member)
+    
+    # Dispatch notification
+    dispatch_notification(
+        db=db,
+        user_id=user.id,
+        title="Workspace Invitation",
+        message=f"You have been invited to join the workspace as a {member.role}.",
+        notification_type="Info"
+    )
+    
     return member
 
 @router.patch(
