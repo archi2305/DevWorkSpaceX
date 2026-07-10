@@ -26,6 +26,7 @@ from app.models.document import Document, DocumentVersion
 from app.models.file_asset import FileAsset
 from app.models.comment import Comment
 from app.models.ai import AIConversation, AIMessage
+from app.models.workspace import Workspace, APIKey, UserSession, ConnectedAccount
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
