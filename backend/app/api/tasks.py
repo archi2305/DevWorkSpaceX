@@ -4,10 +4,12 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.dependencies.db import get_db
 from app.dependencies.auth import get_current_user
+from datetime import datetime
 from app.models.user import User
 from app.models.task import Task
 from app.models.project import Project
 from app.models.activity import ActivityLog
+from app.models.label import Label
 from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate
 from app.api.notification import dispatch_notification
 
@@ -41,17 +43,65 @@ def recalculate_project_progress(project_id: uuid.UUID, db: Session):
 )
 def get_tasks(
     project_id: Optional[uuid.UUID] = None,
+    status: Optional[str] = None,
+    priority: Optional[str] = None,
+    due_date: Optional[str] = None,
+    sprint_id: Optional[uuid.UUID] = None,
+    label_ids: Optional[str] = None,
+    assignee_id: Optional[uuid.UUID] = None,
+    created_at_start: Optional[datetime] = None,
+    created_at_end: Optional[datetime] = None,
+    updated_at_start: Optional[datetime] = None,
+    updated_at_end: Optional[datetime] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
-    List tasks optionally filtered by project.
+    List tasks with advanced filtering parameters.
     """
     query = db.query(Task)
+    
     if project_id:
         query = query.filter(Task.project_id == project_id)
-    else:
-        query = query.filter(Task.assignee_id == current_user.id)
+    
+    if status:
+        status_list = [s.strip() for s in status.split(",") if s.strip()]
+        if status_list:
+            query = query.filter(Task.status.in_(status_list))
+
+    if priority:
+        priority_list = [p.strip() for p in priority.split(",") if p.strip()]
+        if priority_list:
+            query = query.filter(Task.priority.in_(priority_list))
+
+    if due_date:
+        query = query.filter(Task.due_date == due_date)
+
+    if sprint_id:
+        query = query.filter(Task.sprint_id == sprint_id)
+
+    if label_ids:
+        label_uuids = []
+        for lid in label_ids.split(","):
+            try:
+                label_uuids.append(uuid.UUID(lid.strip()))
+            except ValueError:
+                pass
+        if label_uuids:
+            query = query.filter(Task.labels.any(Label.id.in_(label_uuids)))
+
+    if assignee_id:
+        query = query.filter(Task.assignee_id == assignee_id)
+
+    if created_at_start:
+        query = query.filter(Task.created_at >= created_at_start)
+    if created_at_end:
+        query = query.filter(Task.created_at <= created_at_end)
+
+    if updated_at_start:
+        query = query.filter(Task.updated_at >= updated_at_start)
+    if updated_at_end:
+        query = query.filter(Task.updated_at <= updated_at_end)
         
     return query.order_by(Task.created_at.desc()).all()
 
