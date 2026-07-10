@@ -347,6 +347,31 @@ export default function DocumentationPage() {
               </div>
             )}
 
+            {/* Recent Documents */}
+            {filteredDocs.length > 0 && (
+              <div className="space-y-1.5 text-left">
+                <span className="text-[10px] font-bold text-[#7E848C] uppercase tracking-wider flex items-center gap-1.5">
+                  <Clock className="h-3 w-3 text-[#5BB98C]" /> Recent Pages
+                </span>
+                <div className="space-y-1">
+                  {[...filteredDocs]
+                    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+                    .slice(0, 3)
+                    .map(recent => (
+                      <button
+                        key={recent.id}
+                        onClick={() => setSelectedId(recent.id)}
+                        className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold truncate block transition-colors ${
+                          selectedId === recent.id ? 'bg-[#5BB98C]/15 text-[#5BB98C]' : 'text-[#A7ADB5] hover:bg-[#1D2024] hover:text-[#F5F5F5]'
+                        }`}
+                      >
+                        {recent.title}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+
             {/* Directory tree */}
             <div className="space-y-2 text-left">
               <span className="text-[10px] font-bold text-[#7E848C] uppercase tracking-wider block">Document Directory</span>
