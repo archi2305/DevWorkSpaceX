@@ -13,7 +13,8 @@ from app.models.github import (
     GithubCommit,
     GithubIssue,
     GithubBranch,
-    GithubDeployment
+    GithubDeployment,
+    GithubWorkflowRun
 )
 from app.schemas.github import (
     GithubRepositoryResponse,
@@ -25,7 +26,8 @@ from app.schemas.github import (
     GithubBranchResponse,
     GithubDeploymentResponse,
     LinkTaskRequest,
-    OAuthCallbackRequest
+    OAuthCallbackRequest,
+    GithubWorkflowRunResponse
 )
 
 router = APIRouter(prefix="/github", tags=["GitHub Integration"])
