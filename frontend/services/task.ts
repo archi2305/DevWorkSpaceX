@@ -156,5 +156,24 @@ export const taskService = {
   async getProjectDependencies(projectId: string): Promise<any[]> {
     const response = await api.get<any[]>(`/tasks/project/${projectId}/dependencies`)
     return response.data
+  },
+
+  async getTrashedTasks(): Promise<TaskResponse[]> {
+    const response = await api.get<TaskResponse[]>('/tasks/trash')
+    return response.data
+  },
+
+  async trashTask(id: string): Promise<TaskResponse> {
+    const response = await api.patch<TaskResponse>(`/tasks/${id}/trash`)
+    return response.data
+  },
+
+  async restoreTaskFromTrash(id: string): Promise<TaskResponse> {
+    const response = await api.patch<TaskResponse>(`/tasks/${id}/restore-trash`)
+    return response.data
+  },
+
+  async permanentDeleteTask(id: string): Promise<void> {
+    await api.delete(`/tasks/${id}/permanent`)
   }
 }
