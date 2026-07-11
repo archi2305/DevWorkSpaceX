@@ -537,3 +537,154 @@ def delete_project(
     db.delete(project)
     db.commit()
     return None
+
+@router.get(
+    "/templates/list",
+    summary="Get all project templates"
+)
+def list_project_templates(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return db.query(Project).filter(Project.is_template == True).all()
+
+@router.patch(
+    "/{project_id}/template",
+    summary="Save project as a template"
+)
+def save_project_as_template(
+    project_id: uuid.UUID,
+    is_template: bool = True,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    project.is_template = is_template
+    db.commit()
+    return {"message": f"Project template status set to {is_template}.", "is_template": project.is_template}
+
+@router.post(
+    "/{project_id}/duplicate",
+    summary="Duplicate an existing project",
+    description="Clones project details, milestones, releases, sprints, and tasks recursively."
+)
+def duplicate_project(
+    project_id: uuid.UUID,
+    new_name: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    source_project = db.query(Project).filter(Project.id == project_id).first()
+    if not source_project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    dup_project = Project(
+        name=new_name or f"{source_project.name} Copy",
+        slug=f"{source_project.slug}-copy-{uuid.uuid4().hex[:4]}",
+        description=source_project.description,
+        icon=source_project.icon,
+        cover_image=source_project.cover_image,
+        color=source_project.color,
+        status="Pending",
+        priority=source_project.priority,
+        owner_id=current_user.id,
+        is_template=False
+    )
+    db.add(dup_project)
+    db.flush()
+
+    # 1. Duplicate Sprints
+    from app.models.sprint import Sprint
+    sprints = db.query(Sprint).filter(Sprint.project_id == project_id).all()
+    sprint_map = {}
+    for spr in sprints:
+        dup_spr = Sprint(
+            project_id=dup_project.id,
+            name=spr.name,
+            goal=spr.goal,
+            duration=spr.duration,
+            status="Planned"
+        )
+        db.add(dup_spr)
+        db.flush()
+        sprint_map[spr.id] = dup_spr.id
+
+    # 2. Duplicate Milestones
+    from app.models.milestone import Milestone
+    milestones = db.query(Milestone).filter(Milestone.project_id == project_id).all()
+    milestone_map = {}
+    for ms in milestones:
+        dup_ms = Milestone(
+            project_id=dup_project.id,
+            title=ms.title,
+            description=ms.description,
+            due_date=ms.due_date,
+            status="Planned"
+        )
+        db.add(dup_ms)
+        db.flush()
+        milestone_map[ms.id] = dup_ms.id
+
+    # 3. Duplicate Releases
+    from app.models.release import Release
+    releases = db.query(Release).filter(Release.project_id == project_id).all()
+    release_map = {}
+    for rel in releases:
+        dup_rel = Release(
+            project_id=dup_project.id,
+            version=rel.version,
+            title=rel.title,
+            release_notes=rel.release_notes,
+            status="Draft"
+        )
+        db.add(dup_rel)
+        db.flush()
+        release_map[rel.id] = dup_rel.id
+
+    # 4. Duplicate Tasks
+    from app.models.task import Task
+    tasks = db.query(Task).filter(Task.project_id == project_id).all()
+    task_map = {}
+    for task in tasks:
+        dup_task = Task(
+            project_id=dup_project.id,
+            title=task.title,
+            description=task.description,
+            status=task.status,
+            priority=task.priority,
+            due_date=task.due_date,
+            assignee_id=task.assignee_id,
+            story_points=task.story_points,
+            estimated_time=task.estimated_time,
+            attachments=task.attachments,
+            completed=task.completed,
+            sprint_id=sprint_map.get(task.sprint_id),
+            milestone_id=milestone_map.get(task.milestone_id),
+            release_id=release_map.get(task.release_id)
+        )
+        db.add(dup_task)
+        db.flush()
+        task_map[task.id] = dup_task.id
+
+    # Second pass for parent links
+    for task in tasks:
+        if task.parent_id and task.parent_id in task_map:
+            dup_task_id = task_map[task.id]
+            db_task = db.query(Task).filter(Task.id == dup_task_id).first()
+            if db_task:
+                db_task.parent_id = task_map[task.parent_id]
+
+    db_log = ActivityLog(
+        user_id=current_user.id,
+        action="Project Duplicated",
+        details=f"Duplicated project '{source_project.name}' as '{dup_project.name}'",
+        target_type="Project",
+        target_name=dup_project.name
+    )
+    db.add(db_log)
+    db.commit()
+    db.refresh(dup_project)
+
+    return {"message": "Project duplicated successfully.", "project": {"id": str(dup_project.id), "name": dup_project.name}}
