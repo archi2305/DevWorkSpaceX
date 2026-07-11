@@ -25,6 +25,7 @@ from app.api.label import router as label_router
 from app.api.saved_filter import router as saved_filter_router
 from app.api.time_log import router as time_log_router
 from app.api.report import router as report_router
+from app.api.milestone import router as milestone_router
 from app.core.config import settings
 
 # Initialize the FastAPI app
@@ -58,6 +59,7 @@ app.include_router(file_router)
 app.include_router(calendar_router)
 app.include_router(notification_router)
 app.include_router(ai_router)
+app.include_router(milestone_router)
 app.include_router(analytics_router)
 app.include_router(workspace_settings_router)
 app.include_router(comments_router)
