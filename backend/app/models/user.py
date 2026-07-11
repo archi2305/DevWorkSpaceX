@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import String, Boolean, DateTime, func
+from sqlalchemy import String, Boolean, DateTime, func, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from app.database.db import Base
@@ -44,6 +44,11 @@ class User(Base):
         String(1024),
         nullable=True
     )
+
+    # Dynamic profile extensions
+    bio: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    skills: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    timezone: Mapped[Optional[str]] = mapped_column(String(100), default="UTC", nullable=True)
     
     # Account status flag
     is_active: Mapped[bool] = mapped_column(

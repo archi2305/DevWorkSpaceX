@@ -10,6 +10,9 @@ class UserBase(BaseModel):
     email: EmailStr
     full_name: str = Field(..., min_length=1, max_length=100, description="The user's display name")
     profile_image: Optional[str] = Field(None, max_length=1024, description="URL of the profile picture")
+    bio: Optional[str] = Field(None, max_length=1024, description="User bio")
+    skills: Optional[list] = Field(None, description="List of user skills")
+    timezone: Optional[str] = Field("UTC", max_length=100, description="User timezone")
 
 class UserRegister(UserBase):
     """
@@ -24,6 +27,13 @@ class UserLogin(BaseModel):
     """
     email: EmailStr
     password: str
+
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    profile_image: Optional[str] = None
+    bio: Optional[str] = None
+    skills: Optional[list] = None
+    timezone: Optional[str] = None
 
 class UserResponse(UserBase):
     """
