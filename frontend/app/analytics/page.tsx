@@ -14,11 +14,14 @@ import {
   Activity,
   LineChart,
   RefreshCw,
-  Loader
+  Loader,
+  Award,
+  Clock
 } from 'lucide-react'
 import { analyticsService } from '@/services/analytics'
 import { projectService } from '@/services/project'
 import { workspaceService } from '@/services/workspace'
+import { timeLogService } from '@/services/time-log'
 
 export default function AnalyticsPage() {
   const [selectedProjectId, setSelectedProjectId] = useState<string>('')
@@ -47,6 +50,12 @@ export default function AnalyticsPage() {
   const { data: workspaceSettings } = useQuery({
     queryKey: ['workspace-settings'],
     queryFn: () => workspaceService.getSettings()
+  })
+
+  // Load productivity report
+  const { data: productivityReport } = useQuery({
+    queryKey: ['productivity-report'],
+    queryFn: () => timeLogService.getProductivityReport()
   })
 
   const getPercentage = (value: number, total: number) => {
@@ -342,6 +351,63 @@ export default function AnalyticsPage() {
                 </div>
 
               </div>
+
+              {/* Productivity & Time Tracking Reports */}
+              {productivityReport && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-left mt-6">
+                  <div className="lg:col-span-2 p-5 rounded-2xl border border-white/[0.06] bg-[#171A1D] space-y-4">
+                    <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                      <Clock className="h-4 w-4 text-[#5BB98C]" /> Daily Logged Time (7 Days)
+                    </h3>
+                    <div className="h-48 flex items-end justify-between pt-6 border-b border-white/5 px-2">
+                      {productivityReport.daily_totals.map((day) => {
+                        const maxVal = Math.max(...productivityReport.daily_totals.map(d => d.logged_seconds), 3600)
+                        const heightPercent = getPercentage(day.logged_seconds, maxVal)
+                        const hoursLogged = (day.logged_seconds / 3600).toFixed(1)
+                        return (
+                          <div key={day.date} className="flex flex-col items-center group flex-1">
+                            <span className="text-[8px] text-[#5BB98C] font-extrabold opacity-0 group-hover:opacity-100 transition-opacity mb-1 bg-[#1D2024] border border-[#5BB98C]/20 px-1 py-0.2 rounded">
+                              {hoursLogged}h
+                            </span>
+                            <div
+                              style={{ height: `${Math.max(4, heightPercent)}%` }}
+                              className="w-8 bg-[#5BB98C] rounded-t-md hover:brightness-110 shadow-lg shadow-[#5BB98C]/10 transition-all cursor-pointer"
+                            />
+                            <span className="text-[8px] text-[#7E848C] mt-2 block font-medium">
+                              {new Date(day.date).toLocaleDateString(undefined, { weekday: 'short' })}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="p-5 rounded-2xl border border-white/[0.06] bg-[#171A1D] space-y-4 flex flex-col justify-between">
+                    <div className="space-y-4">
+                      <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                        <Award className="h-4 w-4 text-yellow-500" /> Productivity Evaluation
+                      </h3>
+                      <div className="space-y-2">
+                        <p className="text-[10px] text-[#A7ADB5] uppercase font-bold tracking-wide">Report Rating</p>
+                        <p className={`text-2xl font-extrabold uppercase ${
+                          productivityReport.productivity_rating === 'Elite' ? 'text-emerald-400' :
+                          productivityReport.productivity_rating === 'High' ? 'text-blue-400' :
+                          productivityReport.productivity_rating === 'Moderate' ? 'text-yellow-500' : 'text-red-400'
+                        }`}>
+                          {productivityReport.productivity_rating}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-white/[0.06] pt-4">
+                      <p className="text-[10px] text-[#7E848C]">Total tracked hours this week</p>
+                      <p className="text-3xl font-extrabold text-white mt-1">
+                        {productivityReport.total_logged_hours.toFixed(1)} hrs
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Overdue Deadlines Breakdown List */}
               {analytics.overdue_tasks.length > 0 && (

@@ -15,6 +15,8 @@ import { teamService } from '@/services/team'
 import { labelService } from '@/services/label'
 import { LabelsManager } from '@/components/labels/labels-manager'
 import { AdvancedFiltersPanel, FilterCriteria } from '@/components/filters/advanced-filters-panel'
+import { TimerWidget } from '@/components/time-logs/timer-widget'
+import { TimeLogsManager } from '@/components/time-logs/time-logs-manager'
 import { useAuth } from '@/hooks/useAuth'
 import { CommentsList } from '@/components/comments/comments-list'
 import { useCollaboration } from '@/hooks/use-collaboration'
@@ -866,6 +868,9 @@ export default function ProjectDetailsPage({ params }: PageProps) {
 
         {/* Right Sidebar details */}
         <div className="space-y-6">
+          {/* Active Timer Widget */}
+          <TimerWidget />
+
           {/* Metadata Card */}
           <div className="rounded-2xl border border-white/[0.06] bg-[#171A1D] p-6 space-y-4 shadow-lg">
             <h2 className="text-xs font-bold uppercase tracking-wider text-[#7E848C] text-left">Project Metadata</h2>
@@ -1510,9 +1515,14 @@ export default function ProjectDetailsPage({ params }: PageProps) {
               </div>
               </div>
 
-              {/* Right Column: Comments Feed */}
-              <div className="w-full md:w-1/2 border-t md:border-t-0 md:border-l border-white/[0.06] pt-6 md:pt-0 md:pl-6 overflow-y-auto max-h-[500px]">
-                <CommentsList taskId={editTargetTask.id} />
+              {/* Right Column: Time Tracking & Comments */}
+              <div className="w-full md:w-1/2 border-t md:border-t-0 md:border-l border-white/[0.06] pt-6 md:pt-0 md:pl-6 overflow-y-auto max-h-[550px] space-y-6">
+                <div>
+                  <TimeLogsManager projectId={id} taskId={editTargetTask.id} />
+                </div>
+                <div className="border-t border-white/[0.06] pt-4">
+                  <CommentsList taskId={editTargetTask.id} />
+                </div>
               </div>
             </motion.div>
           </div>
