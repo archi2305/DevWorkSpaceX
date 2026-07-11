@@ -22,6 +22,7 @@ import { analyticsService } from '@/services/analytics'
 import { projectService } from '@/services/project'
 import { workspaceService } from '@/services/workspace'
 import { timeLogService } from '@/services/time-log'
+import { insightsService } from '@/services/insights'
 
 export default function AnalyticsPage() {
   const [selectedProjectId, setSelectedProjectId] = useState<string>('')
@@ -56,6 +57,12 @@ export default function AnalyticsPage() {
   const { data: productivityReport } = useQuery({
     queryKey: ['productivity-report'],
     queryFn: () => timeLogService.getProductivityReport()
+  })
+
+  // Load workspace insights
+  const { data: insightsData, isLoading: loadingInsights } = useQuery({
+    queryKey: ['workspace-insights'],
+    queryFn: () => insightsService.getWorkspaceInsights()
   })
 
   const getPercentage = (value: number, total: number) => {
@@ -137,6 +144,30 @@ export default function AnalyticsPage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* AI Workspace Insights Widget */}
+        <div className="bg-[#171A1D] border border-[#5BB98C]/20 rounded-2xl p-5 text-left relative overflow-hidden shadow-lg">
+          <div className="absolute top-0 right-0 p-3 opacity-5 pointer-events-none">
+            <Zap className="h-24 w-24 text-[#5BB98C]" />
+          </div>
+          
+          <div className="flex items-center gap-2 mb-3">
+            <Zap className="h-4 w-4 text-[#5BB98C] animate-pulse" />
+            <h2 className="text-xs font-extrabold text-white uppercase tracking-wider">AI Executive Workspace Insights</h2>
+            <span className="text-[9px] bg-[#5BB98C]/15 text-[#5BB98C] px-2 py-0.5 rounded font-bold uppercase ml-auto">Real-time Metrics Scan</span>
+          </div>
+
+          {loadingInsights ? (
+            <div className="flex items-center gap-2 text-xs text-[#A7ADB5] py-4">
+              <Loader className="h-4 w-4 text-[#5BB98C] animate-spin" />
+              <span>Scanning project metrics and compiling risk analysis report...</span>
+            </div>
+          ) : (
+            <div className="text-xs text-[#A7ADB5] leading-relaxed space-y-4 font-normal whitespace-pre-wrap">
+              {insightsData?.insights}
+            </div>
+          )}
         </div>
 
         {isLoading ? (
