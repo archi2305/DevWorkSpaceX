@@ -52,6 +52,8 @@ class Task(Base):
     story_points: Mapped[int | None] = mapped_column(Integer, nullable=True)
     estimated_time: Mapped[int | None] = mapped_column(Integer, nullable=True) # Hours
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     attachments: Mapped[list | None] = mapped_column(JSON, default=list, nullable=True)
     
     # Scopes
