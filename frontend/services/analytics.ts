@@ -44,6 +44,12 @@ export interface OverdueTaskMetric {
 
 export interface AnalyticsSummaryResponse {
   overdue_count: number
+  active_tasks_count: number
+  completed_tasks_count: number
+  completion_rate: number
+  productivity_score: number
+  weekly_activity: any
+  monthly_activity: any
   project_progress: ProjectProgressMetric[]
   completed_trend: DayTrendMetric[]
   velocity: VelocityMetric[]
