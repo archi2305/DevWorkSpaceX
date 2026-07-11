@@ -1,5 +1,6 @@
 import uuid
 import secrets
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, status, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List
@@ -92,6 +93,8 @@ def delete_workspace(
         db.commit()
     return None
 
+import hashlib
+
 @router.get(
     "/api-keys",
     response_model=List[APIKeyResponse],
@@ -101,9 +104,6 @@ def list_api_keys(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Lists generated API developer tokens.
-    """
     ws = _get_or_create_default_workspace(db)
     return db.query(APIKey).filter(APIKey.workspace_id == ws.id).all()
 
@@ -117,20 +117,24 @@ def create_api_key(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Generates a secure workspace access API key.
-    """
     ws = _get_or_create_default_workspace(db)
     
     # Generate token
     raw_token = f"ak_live_{secrets.token_urlsafe(32)}"
     prefix = raw_token[:12]
+    hashed_token = hashlib.sha256(raw_token.encode()).hexdigest()
     
+    expires_at = None
+    if request.expires_in_days:
+        expires_at = datetime.utcnow() + timedelta(days=request.expires_in_days)
+
     new_key = APIKey(
         workspace_id=ws.id,
         name=request.name,
         key_prefix=prefix,
-        token=raw_token # In production we hash, but storing raw is fine for mock/dev dashboard displays
+        token=hashed_token,
+        expires_at=expires_at,
+        scopes=request.scopes or ["read"]
     )
     db.add(new_key)
     db.commit()
@@ -139,8 +143,43 @@ def create_api_key(
     return APIKeyCreateResponse(
         id=new_key.id,
         name=new_key.name,
-        token=raw_token,
+        token=raw_token, # Return raw token ONCE!
+        expires_at=new_key.expires_at,
+        scopes=new_key.scopes,
         created_at=new_key.created_at
+    )
+
+@router.post(
+    "/api-keys/{key_id}/rotate",
+    response_model=APIKeyCreateResponse,
+    summary="Rotate developer API key"
+)
+def rotate_api_key(
+    key_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    key = db.query(APIKey).filter(APIKey.id == key_id).first()
+    if not key:
+        raise HTTPException(status_code=404, detail="API Key not found")
+        
+    # Generate new raw token
+    raw_token = f"ak_live_{secrets.token_urlsafe(32)}"
+    prefix = raw_token[:12]
+    hashed_token = hashlib.sha256(raw_token.encode()).hexdigest()
+
+    key.key_prefix = prefix
+    key.token = hashed_token
+    db.commit()
+    db.refresh(key)
+
+    return APIKeyCreateResponse(
+        id=key.id,
+        name=key.name,
+        token=raw_token, # Return new raw token ONCE!
+        expires_at=key.expires_at,
+        scopes=key.scopes,
+        created_at=key.created_at
     )
 
 @router.delete(
@@ -153,9 +192,6 @@ def revoke_api_key(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Revokes and deletes an API token.
-    """
     key = db.query(APIKey).filter(APIKey.id == key_id).first()
     if not key:
         raise HTTPException(
@@ -165,6 +201,19 @@ def revoke_api_key(
     db.delete(key)
     db.commit()
     return None
+
+@router.get(
+    "/api-keys/{key_id}/history",
+    response_model=List[APIKeyUsageHistoryResponse],
+    summary="List API Key usage history"
+)
+def get_api_key_usage_history(
+    key_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    from app.models.workspace import APIKeyUsageHistory
+    return db.query(APIKeyUsageHistory).filter(APIKeyUsageHistory.api_key_id == key_id).order_by(APIKeyUsageHistory.used_at.desc()).all()
 
 @router.get(
     "/sessions",

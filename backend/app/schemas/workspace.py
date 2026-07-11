@@ -31,6 +31,9 @@ class APIKeyResponse(BaseModel):
     id: uuid.UUID
     name: str
     key_prefix: str
+    expires_at: Optional[datetime] = None
+    scopes: Optional[List[str]] = None
+    last_used_at: Optional[datetime] = None
     created_at: datetime
 
     class Config:
@@ -38,12 +41,27 @@ class APIKeyResponse(BaseModel):
 
 class APIKeyCreateRequest(BaseModel):
     name: str
+    expires_in_days: Optional[int] = None
+    scopes: Optional[List[str]] = None
 
 class APIKeyCreateResponse(BaseModel):
     id: uuid.UUID
     name: str
     token: str
+    expires_at: Optional[datetime] = None
+    scopes: Optional[List[str]] = None
     created_at: datetime
+
+class APIKeyUsageHistoryResponse(BaseModel):
+    id: uuid.UUID
+    api_key_id: uuid.UUID
+    endpoint: str
+    method: str
+    status_code: int
+    used_at: datetime
+
+    class Config:
+        from_attributes = True
 
 class UserSessionResponse(BaseModel):
     id: uuid.UUID

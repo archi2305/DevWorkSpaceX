@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Boolean, ForeignKey, DateTime
+from sqlalchemy import String, Boolean, ForeignKey, DateTime, JSON, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database.db import Base
 
@@ -33,7 +33,27 @@ class APIKey(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     key_prefix: Mapped[str] = mapped_column(String(16), nullable=False)
     token: Mapped[str] = mapped_column(String(255), nullable=False)
+    
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    scopes: Mapped[list | None] = mapped_column(JSON, nullable=True) # e.g. ["read", "write"]
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+class APIKeyUsageHistory(Base):
+    """
+    Model storing usage history of developer API keys.
+    """
+    __tablename__ = "api_key_usage_history"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    api_key_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("api_keys.id", ondelete="CASCADE"), nullable=False)
+    endpoint: Mapped[str] = mapped_column(String(255), nullable=False)
+    method: Mapped[str] = mapped_column(String(10), nullable=False)
+    status_code: Mapped[int] = mapped_column(Integer, nullable=False)
+    used_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    api_key = relationship("APIKey", backref="history")
 
 class UserSession(Base):
     """

@@ -26,7 +26,7 @@ from app.models.document import Document, DocumentVersion
 from app.models.file_asset import FileAsset
 from app.models.comment import Comment, CommentReply
 from app.models.ai import AIConversation, AIMessage
-from app.models.workspace import Workspace, APIKey, UserSession, ConnectedAccount
+from app.models.workspace import Workspace, APIKey, UserSession, ConnectedAccount, APIKeyUsageHistory
 from app.models.milestone import Milestone
 from app.models.release import Release
 from app.models.automation_rule import AutomationRule
