@@ -17,15 +17,20 @@ from app.api.notification import router as notification_router, websocket_endpoi
 from app.api.ai import router as ai_router
 from app.api.analytics import router as analytics_router
 from app.api.workspace import router as workspace_settings_router
-from app.api.comment import router as comments_router
 from app.api.activity import router as activity_timeline_router
 from app.api.collaboration import router as collaboration_router
 from app.api.sprint import router as sprint_router
 from app.api.label import router as label_router
 from app.api.saved_filter import router as saved_filter_router
+from app.api.milestone import router as milestone_router
+from app.api.release import router as release_router
+from app.api.notification import router as notification_router, websocket_endpoint
+from app.api.ai import router as ai_router
+from app.api.analytics import router as analytics_router
+from app.api.workspace import router as workspace_settings_router
+from app.api.comment import router as comments_router
 from app.api.time_log import router as time_log_router
 from app.api.report import router as report_router
-from app.api.milestone import router as milestone_router
 from app.core.config import settings
 
 # Initialize the FastAPI app
@@ -60,6 +65,7 @@ app.include_router(calendar_router)
 app.include_router(notification_router)
 app.include_router(ai_router)
 app.include_router(milestone_router)
+app.include_router(release_router)
 app.include_router(analytics_router)
 app.include_router(workspace_settings_router)
 app.include_router(comments_router)
