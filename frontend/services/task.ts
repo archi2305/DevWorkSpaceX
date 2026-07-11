@@ -17,12 +17,16 @@ export interface TaskResponse {
   title: string
   description: string | null
   status: string
-  labels: string | null
+  labels: any[]
   due_date: string | null
   priority: string
   completed: boolean
   assignee_id: string | null
   project_id: string | null
+  story_points?: number | null
+  estimated_time?: number | null
+  is_archived?: boolean
+  attachments?: { name: string; url: string }[] | null
   created_at: string
   updated_at: string
 }
@@ -51,7 +55,7 @@ export const taskService = {
   /**
    * Create a new task in the workspace.
    */
-  async createTask(data: TaskCreateInput): Promise<TaskResponse> {
+  async createTask(data: any): Promise<TaskResponse> {
     const response = await api.post<TaskResponse>('/tasks', data)
     return response.data
   },
@@ -77,5 +81,29 @@ export const taskService = {
    */
   async deleteTask(taskId: string): Promise<void> {
     await api.delete(`/tasks/${taskId}`)
+  },
+
+  /**
+   * Duplicate a task.
+   */
+  async duplicateTask(taskId: string): Promise<TaskResponse> {
+    const response = await api.post<TaskResponse>(`/tasks/${taskId}/duplicate`)
+    return response.data
+  },
+
+  /**
+   * Archive a task.
+   */
+  async archiveTask(taskId: string): Promise<TaskResponse> {
+    const response = await api.post<TaskResponse>(`/tasks/${taskId}/archive`)
+    return response.data
+  },
+
+  /**
+   * Restore a task.
+   */
+  async restoreTask(taskId: string): Promise<TaskResponse> {
+    const response = await api.post<TaskResponse>(`/tasks/${taskId}/restore`)
+    return response.data
   },
 }

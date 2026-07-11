@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Boolean, DateTime, ForeignKey
+from sqlalchemy import String, Boolean, DateTime, ForeignKey, Integer, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database.db import Base
 
@@ -47,6 +47,12 @@ class Task(Base):
         ForeignKey("sprints.id", ondelete="SET NULL"),
         nullable=True
     )
+
+    # Production extensions
+    story_points: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    estimated_time: Mapped[int | None] = mapped_column(Integer, nullable=True) # Hours
+    is_archived: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    attachments: Mapped[list | None] = mapped_column(JSON, default=list, nullable=True)
     
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(

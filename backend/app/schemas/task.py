@@ -16,6 +16,10 @@ class TaskBase(BaseModel):
     completed: bool = False
     project_id: Optional[uuid.UUID] = None
     sprint_id: Optional[uuid.UUID] = None
+    story_points: Optional[int] = None
+    estimated_time: Optional[int] = None
+    is_archived: bool = False
+    attachments: Optional[List[dict]] = []
 
 class TaskCreate(BaseModel):
     """
@@ -30,6 +34,10 @@ class TaskCreate(BaseModel):
     project_id: Optional[uuid.UUID] = None
     sprint_id: Optional[uuid.UUID] = None
     completed: bool = False
+    story_points: Optional[int] = None
+    estimated_time: Optional[int] = None
+    is_archived: bool = False
+    attachments: Optional[List[dict]] = []
 
 class TaskUpdate(BaseModel):
     """
@@ -44,6 +52,10 @@ class TaskUpdate(BaseModel):
     assignee_id: Optional[uuid.UUID] = None
     project_id: Optional[uuid.UUID] = None
     sprint_id: Optional[uuid.UUID] = None
+    story_points: Optional[int] = None
+    estimated_time: Optional[int] = None
+    is_archived: Optional[bool] = None
+    attachments: Optional[List[dict]] = None
 
 class TaskAssigneeResponse(BaseModel):
     id: uuid.UUID

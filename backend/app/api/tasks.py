@@ -1,5 +1,5 @@
 import uuid
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, status, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.dependencies.db import get_db
@@ -20,12 +20,15 @@ def recalculate_project_progress(project_id: uuid.UUID, db: Session):
     Recalculates a project's overall progress based on its tasks' status.
     Progress = (Tasks marked as 'Done' or 'completed' / Total tasks) * 100
     """
-    total_tasks = db.query(Task).filter(Task.project_id == project_id).count()
+    total_tasks = db.query(Task).filter(
+        (Task.project_id == project_id) & (Task.is_archived == False)
+    ).count()
     if total_tasks == 0:
         return
         
     completed_tasks = db.query(Task).filter(
         (Task.project_id == project_id) & 
+        (Task.is_archived == False) &
         ((Task.completed == True) | (Task.status == "Done"))
     ).count()
     
@@ -49,6 +52,7 @@ def get_tasks(
     sprint_id: Optional[uuid.UUID] = None,
     label_ids: Optional[str] = None,
     assignee_id: Optional[uuid.UUID] = None,
+    is_archived: Optional[bool] = Query(False),
     created_at_start: Optional[datetime] = None,
     created_at_end: Optional[datetime] = None,
     updated_at_start: Optional[datetime] = None,
@@ -93,6 +97,9 @@ def get_tasks(
     if assignee_id:
         query = query.filter(Task.assignee_id == assignee_id)
 
+    if is_archived is not None:
+        query = query.filter(Task.is_archived == is_archived)
+
     if created_at_start:
         query = query.filter(Task.created_at >= created_at_start)
     if created_at_end:
@@ -121,7 +128,8 @@ def get_upcoming_tasks(
     tasks = db.query(Task).filter(
         (Task.assignee_id == current_user.id) &
         (Task.completed == False) &
-        (Task.status != "Done")
+        (Task.status != "Done") &
+        (Task.is_archived == False)
     ).order_by(Task.created_at.desc()).all()
     return tasks
 
@@ -141,8 +149,6 @@ def create_task(
     Create a new task. Defaults assignee to creator if not specified.
     """
     assignee_id = task_data.assignee_id or current_user.id
-    
-    # Sync completed boolean based on status value
     is_completed = task_data.completed or task_data.status == "Done"
     
     db_task = Task(
@@ -154,7 +160,11 @@ def create_task(
         completed=is_completed,
         assignee_id=assignee_id,
         project_id=task_data.project_id,
-        sprint_id=task_data.sprint_id
+        sprint_id=task_data.sprint_id,
+        story_points=task_data.story_points,
+        estimated_time=task_data.estimated_time,
+        is_archived=task_data.is_archived,
+        attachments=task_data.attachments
     )
     
     db.add(db_task)
@@ -213,7 +223,6 @@ def update_task(
     was_completed = db_task.completed
     old_project_id = db_task.project_id
     
-    # Standard Pydantic model update loop
     update_data = task_update.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_task, key, value)
@@ -222,7 +231,6 @@ def update_task(
     if "status" in update_data:
         db_task.completed = (db_task.status == "Done")
         
-    # Log completions or changes
     log_action = "Task Updated"
     log_details = f"Task '{db_task.title}' details were updated"
     if db_task.completed and not was_completed:
@@ -255,7 +263,7 @@ def update_task(
         
     db.refresh(db_task)
     
-    # Dispatch notifications on status change or reassignments
+    # Dispatch notifications
     if db_task.completed and not was_completed:
         dispatch_notification(db, db_task.assignee_id, "Task Completed", f"Task '{db_task.title}' was completed.", "Info")
     if "assignee_id" in update_data and update_data["assignee_id"] != current_user.id:
@@ -297,11 +305,132 @@ def delete_task(
     db.delete(db_task)
     db.commit()
     
-    # Recalculate project progress
     if project_id:
         recalculate_project_progress(project_id, db)
         db.commit()
         
     return None
+
+@router.post(
+    "/{task_id}/duplicate",
+    response_model=TaskResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Duplicate a task",
+)
+def duplicate_task(
+    task_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    source_task = db.query(Task).filter(Task.id == task_id).first()
+    if not source_task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found"
+        )
+
+    new_task = Task(
+        title=f"{source_task.title} Copy",
+        description=source_task.description,
+        status=source_task.status,
+        due_date=source_task.due_date,
+        priority=source_task.priority,
+        completed=source_task.completed,
+        assignee_id=source_task.assignee_id,
+        project_id=source_task.project_id,
+        sprint_id=source_task.sprint_id,
+        story_points=source_task.story_points,
+        estimated_time=source_task.estimated_time,
+        is_archived=source_task.is_archived,
+        attachments=source_task.attachments
+    )
+    db.add(new_task)
+    
+    db_log = ActivityLog(
+        user_id=current_user.id,
+        action="Task Duplicated",
+        details=f"Task '{source_task.title}' was duplicated to '{new_task.title}'",
+        target_type="Task",
+        target_name=new_task.title
+    )
+    db.add(db_log)
+    db.commit()
+    db.refresh(new_task)
+
+    if new_task.project_id:
+        recalculate_project_progress(new_task.project_id, db)
+        db.commit()
+
+    return new_task
+
+@router.post(
+    "/{task_id}/archive",
+    response_model=TaskResponse,
+    summary="Archive a task",
+)
+def archive_task(
+    task_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    db_task = db.query(Task).filter(Task.id == task_id).first()
+    if not db_task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found"
+        )
+
+    db_task.is_archived = True
+    db_log = ActivityLog(
+        user_id=current_user.id,
+        action="Task Archived",
+        details=f"Task '{db_task.title}' was archived",
+        target_type="Task",
+        target_name=db_task.title
+    )
+    db.add(db_log)
+    db.commit()
+    db.refresh(db_task)
+
+    if db_task.project_id:
+        recalculate_project_progress(db_task.project_id, db)
+        db.commit()
+
+    return db_task
+
+@router.post(
+    "/{task_id}/restore",
+    response_model=TaskResponse,
+    summary="Restore a task",
+)
+def restore_task(
+    task_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    db_task = db.query(Task).filter(Task.id == task_id).first()
+    if not db_task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found"
+        )
+
+    db_task.is_archived = False
+    db_log = ActivityLog(
+        user_id=current_user.id,
+        action="Task Restored",
+        details=f"Task '{db_task.title}' was restored",
+        target_type="Task",
+        target_name=db_task.title
+    )
+    db.add(db_log)
+    db.commit()
+    db.refresh(db_task)
+
+    if db_task.project_id:
+        recalculate_project_progress(db_task.project_id, db)
+        db.commit()
+
+    return db_task
 
 

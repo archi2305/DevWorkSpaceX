@@ -139,6 +139,17 @@ export default function ProjectDetailsPage({ params }: PageProps) {
   const [editTaskPriority, setEditTaskPriority] = useState('Medium')
   const [editTaskDueDate, setEditTaskDueDate] = useState('')
   const [editTaskAssigneeId, setEditTaskAssigneeId] = useState('')
+
+  // Extended fields for creation
+  const [taskStoryPoints, setTaskStoryPoints] = useState<number | ''>('')
+  const [taskEstimatedTime, setTaskEstimatedTime] = useState<number | ''>('')
+
+  // Extended fields for editing
+  const [editStoryPoints, setEditStoryPoints] = useState<number | ''>('')
+  const [editEstimatedTime, setEditEstimatedTime] = useState<number | ''>('')
+  const [editAttachments, setEditAttachments] = useState<{ name: string; url: string }[]>([])
+  const [newAttachmentName, setNewAttachmentName] = useState('')
+  const [newAttachmentUrl, setNewAttachmentUrl] = useState('')
   
   const [saveLoading, setSaveLoading] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -158,7 +169,6 @@ export default function ProjectDetailsPage({ params }: PageProps) {
     }
   }, [project])
 
-  // Sync edit task parameters once target task selected
   useEffect(() => {
     if (editTargetTask) {
       setEditTaskTitle(editTargetTask.title)
@@ -168,6 +178,9 @@ export default function ProjectDetailsPage({ params }: PageProps) {
       setEditTaskDueDate(editTargetTask.due_date || '')
       setEditTaskAssigneeId(editTargetTask.assignee_id || '')
       setEditLabelIds((editTargetTask.labels || []).map(l => l.id))
+      setEditStoryPoints(editTargetTask.story_points ?? '')
+      setEditEstimatedTime(editTargetTask.estimated_time ?? '')
+      setEditAttachments(editTargetTask.attachments || [])
     }
   }, [editTargetTask])
 
@@ -183,6 +196,9 @@ export default function ProjectDetailsPage({ params }: PageProps) {
         priority: editTaskPriority,
         due_date: editTaskDueDate || null,
         assignee_id: editTaskAssigneeId || null,
+        story_points: editStoryPoints === '' ? null : Number(editStoryPoints),
+        estimated_time: editEstimatedTime === '' ? null : Number(editEstimatedTime),
+        attachments: editAttachments,
         completed: editTaskStatus === 'Done'
       } as any)
       await labelService.assignLabelsToTask(editTargetTask.id, editLabelIds)
@@ -293,6 +309,8 @@ export default function ProjectDetailsPage({ params }: PageProps) {
         due_date: taskDueDate || undefined,
         assignee_id: taskAssigneeId || undefined,
         project_id: id,
+        story_points: taskStoryPoints === '' ? undefined : Number(taskStoryPoints),
+        estimated_time: taskEstimatedTime === '' ? undefined : Number(taskEstimatedTime),
         completed: taskStatus === 'Done'
       })
       if (selectedLabelIds.length > 0) {
@@ -309,10 +327,62 @@ export default function ProjectDetailsPage({ params }: PageProps) {
       setTaskPriority('Medium')
       setTaskDueDate('')
       setTaskAssigneeId('')
+      setTaskStoryPoints('')
+      setTaskEstimatedTime('')
     } catch (err) {
       alert('Failed to create task.')
     } finally {
       setSaveLoading(false)
+    }
+  }
+
+  const handleDuplicateTask = async (taskId: string) => {
+    try {
+      await taskService.duplicateTask(taskId)
+      queryClient.invalidateQueries({ queryKey: ['tasks', { project_id: id }] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['project', id] })
+      setEditTargetTask(null)
+    } catch {
+      alert('Failed to duplicate task.')
+    }
+  }
+
+  const handleArchiveTask = async (taskId: string) => {
+    try {
+      await taskService.archiveTask(taskId)
+      queryClient.invalidateQueries({ queryKey: ['tasks', { project_id: id }] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['project', id] })
+      setEditTargetTask(null)
+    } catch {
+      alert('Failed to archive task.')
+    }
+  }
+
+  const handleRestoreTask = async (taskId: string) => {
+    try {
+      await taskService.restoreTask(taskId)
+      queryClient.invalidateQueries({ queryKey: ['tasks', { project_id: id }] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['project', id] })
+      setEditTargetTask(null)
+    } catch {
+      alert('Failed to restore task.')
+    }
+  }
+
+  const handleDeleteTaskDirect = async (taskId: string) => {
+    const confirmDelete = window.confirm('Are you sure you want to delete this task?')
+    if (!confirmDelete) return
+    try {
+      await taskService.deleteTask(taskId)
+      queryClient.invalidateQueries({ queryKey: ['tasks', { project_id: id }] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['project', id] })
+      setEditTargetTask(null)
+    } catch {
+      alert('Failed to delete task.')
     }
   }
 
@@ -1330,14 +1400,28 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                   </select>
                 </div>
 
-                <div className="space-y-1.5 text-left">
-                  <label className="text-xs font-semibold text-[#A7ADB5] block">Due Date (Optional)</label>
-                  <input
-                    type="date"
-                    value={taskDueDate}
-                    onChange={(e) => setTaskDueDate(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-xs text-[#F5F5F5] focus:border-[#5BB98C] outline-none cursor-pointer"
-                  />
+                <div className="grid grid-cols-2 gap-3 text-left">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-[#A7ADB5] block">Story Points</label>
+                    <input
+                      type="number"
+                      value={taskStoryPoints}
+                      onChange={(e) => setTaskStoryPoints(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="e.g. 5"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-xs text-[#F5F5F5] focus:border-[#5BB98C] outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-[#A7ADB5] block">Estimate (Hours)</label>
+                    <input
+                      type="number"
+                      value={taskEstimatedTime}
+                      onChange={(e) => setTaskEstimatedTime(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="e.g. 16"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-xs text-[#F5F5F5] focus:border-[#5BB98C] outline-none"
+                    />
+                  </div>
                 </div>
 
                 <div className="flex gap-2 justify-end pt-2 border-t border-white/[0.06]">
@@ -1382,7 +1466,41 @@ export default function ProjectDetailsPage({ params }: PageProps) {
               {/* Left Column: Form details */}
               <div className="w-full md:w-1/2 flex flex-col justify-between">
                 <div>
-                  <h3 className="text-base font-bold text-[#F5F5F5] mb-4 text-left">Edit Task Details</h3>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-base font-bold text-[#F5F5F5] text-left">Edit Task Details</h3>
+                    <div className="flex gap-2 mr-6">
+                      <button
+                        type="button"
+                        onClick={() => handleDuplicateTask(editTargetTask.id)}
+                        title="Duplicate Task"
+                        className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white transition-colors cursor-pointer"
+                      >
+                        <Layers className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (editTargetTask.is_archived) {
+                            handleRestoreTask(editTargetTask.id)
+                          } else {
+                            handleArchiveTask(editTargetTask.id)
+                          }
+                        }}
+                        title={editTargetTask.is_archived ? "Restore Task" : "Archive Task"}
+                        className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white transition-colors cursor-pointer"
+                      >
+                        {editTargetTask.is_archived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteTaskDirect(editTargetTask.id)}
+                        title="Delete Task"
+                        className="p-1.5 rounded-lg bg-[#EB5757]/10 hover:bg-[#EB5757]/20 text-[#EB5757] transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
                   <form onSubmit={handleSaveTaskEdit} className="space-y-4">
                 <div className="space-y-1.5 text-left">
                   <label className="text-xs font-semibold text-[#A7ADB5] block">Task Title</label>
@@ -1483,6 +1601,80 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                       </option>
                     ))}
                   </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-left">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-[#A7ADB5] block">Story Points</label>
+                    <input
+                      type="number"
+                      value={editStoryPoints}
+                      onChange={(e) => setEditStoryPoints(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="e.g. 5"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-xs text-[#F5F5F5] focus:border-[#5BB98C] outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-[#A7ADB5] block">Estimate (Hours)</label>
+                    <input
+                      type="number"
+                      value={editEstimatedTime}
+                      onChange={(e) => setEditEstimatedTime(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="e.g. 16"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-xs text-[#F5F5F5] focus:border-[#5BB98C] outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 text-left">
+                  <label className="text-xs font-semibold text-[#A7ADB5] block">Attachments</label>
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newAttachmentName}
+                        onChange={(e) => setNewAttachmentName(e.target.value)}
+                        placeholder="File name (e.g. Design Spec)"
+                        className="flex-1 px-3 py-1.5 border border-white/[0.06] bg-[#1D2024] text-xs text-white rounded-lg outline-none"
+                      />
+                      <input
+                        type="text"
+                        value={newAttachmentUrl}
+                        onChange={(e) => setNewAttachmentUrl(e.target.value)}
+                        placeholder="Link URL"
+                        className="flex-1 px-3 py-1.5 border border-white/[0.06] bg-[#1D2024] text-xs text-white rounded-lg outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (newAttachmentName.trim() && newAttachmentUrl.trim()) {
+                            setEditAttachments(prev => [...prev, { name: newAttachmentName, url: newAttachmentUrl }])
+                            setNewAttachmentName('')
+                            setNewAttachmentUrl('')
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-[#5BB98C] text-[#111315] font-bold rounded-lg text-xs"
+                      >
+                        Add
+                      </button>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5">
+                      {editAttachments.map((att, idx) => (
+                        <div key={idx} className="flex items-center gap-1.5 px-2.5 py-1 bg-white/5 border border-white/10 rounded-lg text-[10px] text-white">
+                          <a href={att.url} target="_blank" rel="noopener noreferrer" className="hover:underline">{att.name}</a>
+                          <button
+                            type="button"
+                            onClick={() => setEditAttachments(prev => prev.filter((_, i) => i !== idx))}
+                            className="text-[#EB5757] hover:text-white"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-1.5 text-left">
