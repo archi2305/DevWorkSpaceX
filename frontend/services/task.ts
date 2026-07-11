@@ -146,5 +146,13 @@ export const taskService = {
    */
   async removeDependency(taskId: string, depId: string): Promise<void> {
     await api.delete(`/tasks/${taskId}/dependencies/${depId}`)
+  },
+
+  /**
+   * Fetch all task dependencies in a project.
+   */
+  async getProjectDependencies(projectId: string): Promise<any[]> {
+    const response = await api.get<any[]>(`/tasks/project/${projectId}/dependencies`)
+    return response.data
   }
 }
