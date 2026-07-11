@@ -27,6 +27,8 @@ export interface TaskResponse {
   story_points?: number | null
   estimated_time?: number | null
   is_archived?: boolean
+  is_deleted?: boolean
+  deleted_at?: string | null
   attachments?: { name: string; url: string }[] | null
   sprint_id?: string | null
   milestone_id?: string | null

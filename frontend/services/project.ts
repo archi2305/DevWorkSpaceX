@@ -29,6 +29,8 @@ export interface ProjectResponse {
   is_pinned: boolean
   is_archived: boolean
   is_template: boolean
+  is_deleted?: boolean
+  deleted_at?: string | null
   owner_id: string
   workspace_id: string | null
   visibility: string
