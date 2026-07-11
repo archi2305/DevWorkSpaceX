@@ -549,7 +549,7 @@ export default function DocumentationPage() {
                               <button
                                 onClick={() => {
                                   if (confirm(`Restore to version snapshot V${ver.version_number}?`)) {
-                                    restoreMutation.mutate({ id: selectedId, version: ver.version_number })
+                                    restoreMutation.mutate({ id: selectedId!, version: ver.version_number })
                                   }
                                 }}
                                 className="w-full py-1.5 mt-2 rounded bg-[#5BB98C] hover:bg-[#5BB98C]/90 text-[#111315] font-bold text-[9px] text-center transition-colors cursor-pointer"
