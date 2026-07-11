@@ -17,6 +17,7 @@ import {
   FolderOpen,
   Calendar,
   Activity,
+  FileText
 } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
@@ -25,6 +26,7 @@ import { useCollaboration } from '@/hooks/use-collaboration'
 const navItems = [
   { icon: Home, label: 'Home', href: '/' },
   { icon: Files, label: 'Projects', href: '/projects' },
+  { icon: Briefcase, label: 'Sprints', href: '/sprints' },
   { icon: FolderOpen, label: 'Files', href: '/files' },
   { icon: Calendar, label: 'Calendar', href: '/calendar' },
   { icon: MessageSquare, label: 'Messages', href: '/messages' },
@@ -32,6 +34,7 @@ const navItems = [
   { icon: Users, label: 'Team', href: '/team' },
   { icon: Activity, label: 'Activity Timeline', href: '/activities' },
   { icon: BarChart3, label: 'Analytics', href: '/analytics' },
+  { icon: FileText, label: 'Reports', href: '/reports' },
   { icon: BookOpen, label: 'Documentation', href: '/documentation' },
   { icon: Archive, label: 'Archives', href: '/archives' },
   { icon: Settings, label: 'Settings', href: '/settings' },

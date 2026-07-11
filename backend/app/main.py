@@ -23,6 +23,8 @@ from app.api.collaboration import router as collaboration_router
 from app.api.sprint import router as sprint_router
 from app.api.label import router as label_router
 from app.api.saved_filter import router as saved_filter_router
+from app.api.time_log import router as time_log_router
+from app.api.report import router as report_router
 from app.core.config import settings
 
 # Initialize the FastAPI app
@@ -64,6 +66,8 @@ app.include_router(collaboration_router)
 app.include_router(sprint_router)
 app.include_router(label_router)
 app.include_router(saved_filter_router)
+app.include_router(time_log_router)
+app.include_router(report_router)
 app.add_api_websocket_route("/notifications/ws", websocket_endpoint)
 
 # --- Global Exception Handlers ---
