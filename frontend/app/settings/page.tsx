@@ -19,7 +19,9 @@ import {
   Check,
   Loader,
   Plus,
-  User as UserIcon
+  User as UserIcon,
+  RefreshCw,
+  Clock
 } from 'lucide-react'
 import { workspaceService, WorkspaceSettings, APIKey, UserSession, ConnectedAccount } from '@/services/workspace'
 import { userPreferenceService } from '@/services/user-preference'
@@ -86,11 +88,32 @@ export default function SettingsPage() {
     }
   })
 
+  // API Key creation parameters
+  const [expiresInDays, setExpiresInDays] = useState<number>(30)
+  const [keyScopes, setKeyScopes] = useState<string[]>(['read'])
+  const [activeHistoryKeyId, setActiveHistoryKeyId] = useState<string | null>(null)
+
+  // Query API Key usage history
+  const { data: keyHistory = [], isLoading: loadingHistory } = useQuery({
+    queryKey: ['workspace-api-key-history', activeHistoryKeyId],
+    queryFn: () => workspaceService.getAPIKeyHistory(activeHistoryKeyId!),
+    enabled: !!activeHistoryKeyId
+  })
+
   const createKeyMutation = useMutation({
-    mutationFn: (name: string) => workspaceService.createAPIKey(name),
+    mutationFn: (data: { name: string; expires_in_days?: number; scopes?: string[] }) =>
+      workspaceService.createAPIKey(data.name, data.expires_in_days, data.scopes),
     onSuccess: (data) => {
       setGeneratedKeyToken(data.token)
       setNewKeyName('')
+      queryClient.invalidateQueries({ queryKey: ['workspace-api-keys'] })
+    }
+  })
+
+  const rotateKeyMutation = useMutation({
+    mutationFn: (keyId: string) => workspaceService.rotateAPIKey(keyId),
+    onSuccess: (data) => {
+      setGeneratedKeyToken(data.token)
       queryClient.invalidateQueries({ queryKey: ['workspace-api-keys'] })
     }
   })
@@ -484,16 +507,34 @@ export default function SettingsPage() {
                           <div key={key.id} className="p-3 border border-white/[0.04] bg-[#1D2024] rounded-xl flex items-center justify-between">
                             <div>
                               <p className="text-xs font-semibold text-white">{key.name}</p>
-                              <span className="text-[9px] text-[#7E848C] font-mono">Prefix: {key.key_prefix} | Generated {new Date(key.created_at).toLocaleDateString()}</span>
+                              <span className="text-[9px] text-[#7E848C] font-mono block mt-0.5">
+                                Prefix: {key.key_prefix} | Scopes: ({key.scopes?.join(', ') || 'read'}) | Expires: {key.expires_at ? new Date(key.expires_at).toLocaleDateString() : 'Never'}
+                              </span>
                             </div>
 
-                            <button
-                              onClick={() => revokeKeyMutation.mutate(key.id)}
-                              className="p-2 rounded-lg bg-white/5 hover:bg-[#EB5757]/15 hover:text-[#EB5757] text-[#7E848C] transition-colors cursor-pointer"
-                              title="Revoke Token"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => rotateKeyMutation.mutate(key.id)}
+                                className="p-1.5 rounded-lg border border-white/[0.08] hover:bg-white/5 text-yellow-400 transition-colors cursor-pointer"
+                                title="Rotate API Key"
+                              >
+                                <RefreshCw className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setActiveHistoryKeyId(key.id)}
+                                className="p-1.5 rounded-lg border border-white/[0.08] hover:bg-white/5 text-white transition-colors cursor-pointer"
+                                title="Usage History Logs"
+                              >
+                                <Clock className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => revokeKeyMutation.mutate(key.id)}
+                                className="p-1.5 rounded-lg border border-white/[0.08] hover:bg-white/5 text-red-400 transition-colors cursor-pointer"
+                                title="Revoke Token"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                           </div>
                         ))
                       )}
@@ -502,6 +543,31 @@ export default function SettingsPage() {
                       )}
                     </div>
 
+                    {/* API Key Usage History logs */}
+                    {activeHistoryKeyId && (
+                      <div className="p-4 border border-white/[0.06] bg-[#1D2024] rounded-xl space-y-3">
+                        <h4 className="text-xs font-bold text-white flex justify-between items-center">
+                          <span>Usage history logs</span>
+                          <button onClick={() => setActiveHistoryKeyId(null)} className="text-[10px] text-[#A7ADB5] hover:text-white">Close</button>
+                        </h4>
+                        <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+                          {loadingHistory ? (
+                            <div className="flex justify-center"><Loader className="h-3.5 w-3.5 animate-spin text-[#5BB98C]" /></div>
+                          ) : (
+                            keyHistory.map((hist) => (
+                              <div key={hist.id} className="p-2 border border-white/[0.04] bg-[#121416] rounded-lg flex items-center justify-between text-[10px]">
+                                <span className="font-mono text-white">{hist.method} {hist.endpoint}</span>
+                                <span className={hist.status_code < 400 ? 'text-green-400' : 'text-red-400'}>{hist.status_code}</span>
+                              </div>
+                            ))
+                          )}
+                          {keyHistory.length === 0 && !loadingHistory && (
+                            <div className="text-[#7E848C] text-center py-4">No usage history recorded.</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     {/* New Key Generator Form */}
                     <div className="pt-6 border-t border-white/[0.06] space-y-4">
                       <div>
@@ -509,21 +575,63 @@ export default function SettingsPage() {
                         <p className="text-[10px] text-[#A7ADB5] mt-0.5">API tokens are displayed once. Save them securely.</p>
                       </div>
 
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={newKeyName}
-                          onChange={(e) => setNewKeyName(e.target.value)}
-                          placeholder="e.g. CI/CD Deployment Token"
-                          className="flex-1 px-3.5 py-2 border border-white/[0.06] bg-[#1D2024] rounded-xl text-xs text-white placeholder-[#7E848C] focus:border-[#5BB98C] outline-none transition-colors"
-                        />
-                        <button
-                          onClick={() => createKeyMutation.mutate(newKeyName)}
-                          disabled={!newKeyName.trim() || createKeyMutation.isPending}
-                          className="px-4 py-2 bg-[#5BB98C] hover:bg-[#5BB98C]/90 text-[#111315] font-semibold rounded-xl text-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
-                        >
-                          <Plus className="h-4 w-4" /> Generate Key
-                        </button>
+                      <div className="space-y-3">
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={newKeyName}
+                            onChange={(e) => setNewKeyName(e.target.value)}
+                            placeholder="e.g. CI/CD Deployment Token"
+                            className="flex-1 px-3.5 py-2 border border-white/[0.06] bg-[#1D2024] rounded-xl text-xs text-white placeholder-[#7E848C] focus:border-[#5BB98C] outline-none transition-colors"
+                          />
+                          <button
+                            onClick={() => createKeyMutation.mutate({ name: newKeyName, expires_in_days: expiresInDays, scopes: keyScopes })}
+                            disabled={!newKeyName.trim() || createKeyMutation.isPending}
+                            className="px-4 py-2 bg-[#5BB98C] hover:bg-[#5BB98C]/90 text-[#111315] font-semibold rounded-xl text-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+                          >
+                            <Plus className="h-4 w-4" /> Generate Key
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-[#A7ADB5] uppercase tracking-wider block">Expiration</label>
+                            <select
+                              value={expiresInDays}
+                              onChange={(e) => setExpiresInDays(parseInt(e.target.value))}
+                              className="w-full px-3.5 py-2 border border-white/[0.06] bg-[#1D2024] rounded-xl text-xs text-white"
+                            >
+                              <option value={7}>7 Days</option>
+                              <option value={30}>30 Days</option>
+                              <option value={90}>90 Days</option>
+                              <option value={0}>No Expiration</option>
+                            </select>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-[#A7ADB5] uppercase tracking-wider block">Permissions Scopes</label>
+                            <div className="flex gap-4 pt-1.5">
+                              <label className="flex items-center gap-1.5 text-xs text-white cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={keyScopes.includes('read')}
+                                  onChange={(e) => setKeyScopes(e.target.checked ? [...keyScopes, 'read'] : keyScopes.filter(s => s !== 'read'))}
+                                  className="rounded text-[#5BB98C] bg-[#1D2024] h-3.5 w-3.5"
+                                />
+                                read
+                              </label>
+                              <label className="flex items-center gap-1.5 text-xs text-white cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={keyScopes.includes('write')}
+                                  onChange={(e) => setKeyScopes(e.target.checked ? [...keyScopes, 'write'] : keyScopes.filter(s => s !== 'write'))}
+                                  className="rounded text-[#5BB98C] bg-[#1D2024] h-3.5 w-3.5"
+                                />
+                                write
+                              </label>
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
                       {/* Display generated key */}
