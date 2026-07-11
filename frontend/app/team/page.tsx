@@ -20,6 +20,7 @@ import {
   Loader
 } from 'lucide-react'
 import { teamService, WorkspaceMember } from '@/services/team'
+import { invitationService } from '@/services/invitation'
 import { useCollaboration } from '@/hooks/use-collaboration'
 
 const rolesList = ['Owner', 'Admin', 'Developer', 'Designer', 'Viewer']
@@ -49,7 +50,7 @@ export default function TeamPage() {
 
   // Invite mutation
   const inviteMutation = useMutation({
-    mutationFn: teamService.inviteMember,
+    mutationFn: ({ email, role }: { email: string; role: string }) => invitationService.inviteMember(email, role),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workspace-members'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
@@ -93,11 +94,10 @@ export default function TeamPage() {
 
   const handleInviteSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!inviteEmail.trim() || !inviteName.trim()) return
+    if (!inviteEmail.trim()) return
     setInviteError(null)
     inviteMutation.mutate({
       email: inviteEmail,
-      full_name: inviteName,
       role: inviteRole
     })
   }
@@ -366,17 +366,6 @@ export default function TeamPage() {
                 )}
 
                 <form onSubmit={handleInviteSubmit} className="space-y-4">
-                  <div className="space-y-1.5 text-left">
-                    <label className="text-xs font-semibold text-[#A7ADB5] block">Full Name</label>
-                    <input
-                      type="text"
-                      required
-                      value={inviteName}
-                      onChange={(e) => setInviteName(e.target.value)}
-                      placeholder="e.g. Robin Van Persie"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-sm text-[#F5F5F5] focus:border-[#5BB98C] outline-none"
-                    />
-                  </div>
 
                   <div className="space-y-1.5 text-left">
                     <label className="text-xs font-semibold text-[#A7ADB5] block">Email Address</label>
