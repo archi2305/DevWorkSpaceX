@@ -14,6 +14,7 @@ class Workspace(Base):
     name: Mapped[str] = mapped_column(String(255), default="My Workspace", nullable=False)
     logo_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     theme: Mapped[str] = mapped_column(String(50), default="dark", nullable=False)
+    accent_color: Mapped[str] = mapped_column(String(50), default="#5BB98C", nullable=False)
     timezone: Mapped[str] = mapped_column(String(100), default="UTC", nullable=False)
     allow_member_invites: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     enable_email_notifications: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
