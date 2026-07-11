@@ -18,11 +18,13 @@ import {
   Copy,
   Check,
   Loader,
-  Plus
+  Plus,
+  User as UserIcon
 } from 'lucide-react'
 import { workspaceService, WorkspaceSettings, APIKey, UserSession, ConnectedAccount } from '@/services/workspace'
+import { userPreferenceService } from '@/services/user-preference'
 
-type SettingsTab = 'general' | 'api-keys' | 'security' | 'integrations' | 'billing' | 'danger'
+type SettingsTab = 'general' | 'preferences' | 'api-keys' | 'security' | 'integrations' | 'billing' | 'danger'
 
 export default function SettingsPage() {
   const queryClient = useQueryClient()
@@ -63,7 +65,20 @@ export default function SettingsPage() {
     enabled: activeTab === 'integrations'
   })
 
+  const { data: preferences, isLoading: loadingPrefs } = useQuery({
+    queryKey: ['user-preferences'],
+    queryFn: () => userPreferenceService.getPreferences(),
+    enabled: activeTab === 'preferences'
+  })
+
   // Mutations
+  const updatePrefsMutation = useMutation({
+    mutationFn: (data: any) => userPreferenceService.updatePreferences(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-preferences'] })
+    }
+  })
+
   const updateSettingsMutation = useMutation({
     mutationFn: (data: Partial<WorkspaceSettings>) => workspaceService.updateSettings(data),
     onSuccess: () => {
@@ -152,6 +167,15 @@ export default function SettingsPage() {
           >
             <Settings className="h-4 w-4" /> General
           </button>
+
+          <button
+            onClick={() => setActiveTab('preferences')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-left transition-colors cursor-pointer ${
+              activeTab === 'preferences' ? 'bg-[#5BB98C]/10 text-[#5BB98C]' : 'text-[#A7ADB5] hover:bg-white/5 hover:text-white'
+            }`}
+          >
+            <UserIcon className="h-4 w-4" /> Preferences
+          </button>
           
           <button
             onClick={() => setActiveTab('api-keys')}
@@ -210,6 +234,98 @@ export default function SettingsPage() {
           ) : (
             settings && (
               <>
+                {/* 1. Preferences Tab */}
+                {activeTab === 'preferences' && (
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-sm font-bold text-white">User Preferences</h3>
+                      <p className="text-[11px] text-[#A7ADB5] mt-1">Manage your personalized experience within the workspace.</p>
+                    </div>
+                    {loadingPrefs ? (
+                      <div className="flex justify-center py-6">
+                        <Loader className="h-4 w-4 text-[#5BB98C] animate-spin" />
+                      </div>
+                    ) : (
+                      preferences && (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-[#A7ADB5] uppercase tracking-wider block">UI Theme</label>
+                              <select
+                                value={preferences.theme}
+                                onChange={(e) => updatePrefsMutation.mutate({ theme: e.target.value })}
+                                className="w-full px-3.5 py-2 border border-white/[0.06] bg-[#1D2024] rounded-xl text-xs text-white"
+                              >
+                                <option value="System">System Default</option>
+                                <option value="Dark">Dark Mode</option>
+                                <option value="Light">Light Mode</option>
+                              </select>
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-[#A7ADB5] uppercase tracking-wider block">Accent Color (Hex)</label>
+                              <input
+                                type="text"
+                                value={preferences.accent_color}
+                                onChange={(e) => updatePrefsMutation.mutate({ accent_color: e.target.value })}
+                                className="w-full px-3.5 py-2 border border-white/[0.06] bg-[#1D2024] rounded-xl text-xs text-white"
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-[#A7ADB5] uppercase tracking-wider block">Interface Language</label>
+                              <select
+                                value={preferences.language}
+                                onChange={(e) => updatePrefsMutation.mutate({ language: e.target.value })}
+                                className="w-full px-3.5 py-2 border border-white/[0.06] bg-[#1D2024] rounded-xl text-xs text-white"
+                              >
+                                <option value="en">English (US)</option>
+                                <option value="es">Español</option>
+                                <option value="fr">Français</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className="pt-2 space-y-3">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                id="shortcuts_enabled"
+                                checked={preferences.keyboard_shortcuts_enabled}
+                                onChange={(e) => updatePrefsMutation.mutate({ keyboard_shortcuts_enabled: e.target.checked })}
+                                className="rounded border-white/10 bg-[#1D2024] text-[#5BB98C] h-4 w-4"
+                              />
+                              <label htmlFor="shortcuts_enabled" className="text-xs text-[#F5F5F5]">Enable Global Keyboard Shortcuts</label>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                id="email_notify"
+                                checked={preferences.email_notifications}
+                                onChange={(e) => updatePrefsMutation.mutate({ email_notifications: e.target.checked })}
+                                className="rounded border-white/10 bg-[#1D2024] text-[#5BB98C] h-4 w-4"
+                              />
+                              <label htmlFor="email_notify" className="text-xs text-[#F5F5F5]">Receive Email Notifications</label>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                id="in_app_notify"
+                                checked={preferences.in_app_notifications}
+                                onChange={(e) => updatePrefsMutation.mutate({ in_app_notifications: e.target.checked })}
+                                className="rounded border-white/10 bg-[#1D2024] text-[#5BB98C] h-4 w-4"
+                              />
+                              <label htmlFor="in_app_notify" className="text-xs text-[#F5F5F5]">Receive In-App Push Notifications</label>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    )}
+                  </div>
+                )}
+
                 {/* 1. General Tab */}
                 {activeTab === 'general' && (
                   <div className="space-y-6">
