@@ -51,6 +51,17 @@ export interface GithubDeployment {
   updated_at: string
 }
 
+export interface GithubWorkflowRun {
+  id: string
+  repository_id: string
+  run_number: number
+  event: string
+  status: string
+  conclusion?: string
+  html_url: string
+  created_at: string
+}
+
 export const githubService = {
   async getOAuthUrl(): Promise<string> {
     const response = await api.get<{ url: string }>('/github/oauth/url')
@@ -104,6 +115,13 @@ export const githubService = {
 
   async getDeployments(repositoryId: string): Promise<GithubDeployment[]> {
     const response = await api.get<GithubDeployment[]>('/github/deployments', {
+      params: { repository_id: repositoryId }
+    })
+    return response.data
+  },
+
+  async getWorkflowRuns(repositoryId: string): Promise<GithubWorkflowRun[]> {
+    const response = await api.get<GithubWorkflowRun[]>('/github/workflow-runs', {
       params: { repository_id: repositoryId }
     })
     return response.data
