@@ -58,3 +58,19 @@ class ConnectedAccount(Base):
     provider: Mapped[str] = mapped_column(String(50), nullable=False) # 'github' or 'slack'
     username: Mapped[str] = mapped_column(String(255), nullable=False)
     connected_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+class WorkspaceInvitation(Base):
+    """
+    Model representing secure pending workspace user invites.
+    """
+    __tablename__ = "workspace_invitations"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[str] = mapped_column(String(50), nullable=False) # Owner, Admin, Developer, Viewer
+    token: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    invited_by_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    status: Mapped[str] = mapped_column(String(50), default="pending", nullable=False) # pending, accepted, rejected, cancelled
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)

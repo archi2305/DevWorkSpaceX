@@ -34,6 +34,7 @@ from app.api.comment import router as comments_router
 from app.api.time_log import router as time_log_router
 from app.api.report import router as report_router
 from app.api.github import router as github_router
+from app.api.invitation import router as invitation_router
 from app.core.config import settings
 
 # Initialize the FastAPI app
@@ -82,6 +83,7 @@ app.include_router(label_router)
 app.include_router(saved_filter_router)
 app.include_router(time_log_router)
 app.include_router(report_router)
+app.include_router(invitation_router)
 app.add_api_websocket_route("/notifications/ws", websocket_endpoint)
 
 # --- Global Exception Handlers ---

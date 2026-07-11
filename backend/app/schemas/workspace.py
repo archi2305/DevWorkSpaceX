@@ -66,3 +66,21 @@ class ConnectedAccountResponse(BaseModel):
 class ConnectedAccountCreateRequest(BaseModel):
     provider: str
     username: str
+
+class WorkspaceInvitationCreate(BaseModel):
+    email: str
+    role: str # Owner, Admin, Developer, Viewer
+
+class WorkspaceInvitationResponse(BaseModel):
+    id: uuid.UUID
+    workspace_id: uuid.UUID
+    email: str
+    role: str
+    token: str
+    invited_by_id: uuid.UUID
+    status: str
+    created_at: datetime
+    expires_at: datetime
+
+    class Config:
+        from_attributes = True
