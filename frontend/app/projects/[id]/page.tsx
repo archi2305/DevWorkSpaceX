@@ -21,6 +21,7 @@ import { TimeLogsManager } from '@/components/time-logs/time-logs-manager'
 import { useAuth } from '@/hooks/useAuth'
 import { CommentsList } from '@/components/comments/comments-list'
 import { useCollaboration } from '@/hooks/use-collaboration'
+import { CustomFieldsSection } from '@/components/custom-fields/CustomFieldsSection'
 
 import {
   DndContext,
@@ -1851,6 +1852,9 @@ export default function ProjectDetailsPage({ params }: PageProps) {
               {/* Right Column: Subtasks, Dependencies, Visual Graph, Time Tracking & Comments */}
               <div className="w-full md:w-1/2 border-t md:border-t-0 md:border-l border-white/[0.06] pt-6 md:pt-0 md:pl-6 overflow-y-auto max-h-[600px] space-y-6 text-left">
                 
+                {/* Custom Fields Section */}
+                <CustomFieldsSection entityId={editTargetTask.id} targetType="Task" />
+
                 {/* 1. Subtasks Widget */}
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold text-[#A7ADB5] uppercase tracking-wider flex items-center gap-1.5">
