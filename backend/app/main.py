@@ -25,6 +25,7 @@ from app.api.saved_filter import router as saved_filter_router
 from app.api.milestone import router as milestone_router
 from app.api.release import router as release_router
 from app.api.workload import router as workload_router
+from app.api.automation import router as automation_router
 from app.api.notification import router as notification_router, websocket_endpoint
 from app.api.ai import router as ai_router
 from app.api.analytics import router as analytics_router
@@ -68,6 +69,7 @@ app.include_router(ai_router)
 app.include_router(milestone_router)
 app.include_router(release_router)
 app.include_router(workload_router)
+app.include_router(automation_router)
 app.include_router(analytics_router)
 app.include_router(workspace_settings_router)
 app.include_router(comments_router)
