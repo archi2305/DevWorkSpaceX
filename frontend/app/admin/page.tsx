@@ -22,12 +22,24 @@ import { projectService } from '@/services/project'
 import { fileService } from '@/services/file'
 import { workspaceService } from '@/services/workspace'
 import { auditService } from '@/services/audit'
+import { customFieldService } from '@/services/custom-field'
 
 export default function AdminPanelPage() {
   const queryClient = useQueryClient()
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'projects' | 'storage' | 'workspace' | 'audit'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'projects' | 'storage' | 'workspace' | 'audit' | 'custom-fields'>('overview')
+
+  // Form states for Custom Fields
+  const [cfName, setCfName] = useState('')
+  const [cfType, setCfType] = useState<'Text' | 'Number' | 'Date' | 'Dropdown' | 'Checkbox' | 'URL'>('Text')
+  const [cfTarget, setCfTarget] = useState<'Project' | 'Task'>('Task')
+  const [cfOptions, setCfOptions] = useState('')
 
   // 1. Fetch Datasets
+  const { data: fieldDefs = [], refetch: refetchDefs } = useQuery({
+    queryKey: ['admin-custom-field-defs'],
+    queryFn: () => customFieldService.getDefinitions()
+  })
+
   const { data: members = [], isLoading: loadingMembers } = useQuery({
     queryKey: ['workspace-members'],
     queryFn: teamService.getWorkspaceMembers
@@ -90,6 +102,23 @@ export default function AdminPanelPage() {
     }
   })
 
+  const createCfMutation = useMutation({
+    mutationFn: (data: { name: string; field_type: any; target_type: any; options?: string[] }) =>
+      customFieldService.createDefinition(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-custom-field-defs'] })
+      setCfName('')
+      setCfOptions('')
+    }
+  })
+
+  const deleteCfMutation = useMutation({
+    mutationFn: (id: string) => customFieldService.deleteDefinition(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-custom-field-defs'] })
+    }
+  })
+
   // Calculations
   const totalStorage = files.reduce((acc, curr) => acc + (curr.size || 0), 0)
   const formatBytes = (bytes: number) => {
@@ -125,7 +154,8 @@ export default function AdminPanelPage() {
             { id: 'projects', label: 'Projects', icon: Briefcase },
             { id: 'storage', label: 'Storage', icon: HardDrive },
             { id: 'workspace', label: 'Branding', icon: Settings },
-            { id: 'audit', label: 'Audit Logs', icon: Activity }
+            { id: 'audit', label: 'Audit Logs', icon: Activity },
+            { id: 'custom-fields', label: 'Custom Fields', icon: Settings }
           ] as const).map((tab) => {
             const isActive = activeTab === tab.id
             const Icon = tab.icon
@@ -325,7 +355,7 @@ export default function AdminPanelPage() {
               </div>
             )}
 
-            {/* TAB 6: AUDIT LOGS */}
+             {/* TAB 6: AUDIT LOGS */}
             {activeTab === 'audit' && (
               <div className="border border-white/[0.06] bg-[#171A1D] rounded-2xl overflow-hidden text-left shadow-md">
                 <table className="w-full text-xs text-[#A7ADB5] border-collapse">
@@ -346,6 +376,118 @@ export default function AdminPanelPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {/* TAB 7: CUSTOM FIELDS */}
+            {activeTab === 'custom-fields' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-left">
+                <div className="lg:col-span-2 border border-white/[0.06] bg-[#171A1D] rounded-2xl p-5 space-y-4 shadow-md">
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider">Dynamic Fields Definitions</h3>
+                  <div className="divide-y divide-white/[0.06]">
+                    {fieldDefs.map((def: any) => (
+                      <div key={def.id} className="py-3 flex items-center justify-between">
+                        <div>
+                          <span className="text-xs font-bold text-white block">{def.name}</span>
+                          <span className="text-[10px] text-[#A7ADB5]">
+                            Applied to: <strong className="text-white">{def.target_type}</strong> • Type: <strong className="text-white">{def.field_type}</strong>
+                            {def.options && ` • Options: (${def.options.join(', ')})`}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => deleteCfMutation.mutate(def.id)}
+                          className="p-1.5 rounded-lg border border-red-500/20 hover:bg-red-500/10 text-red-400 transition-all cursor-pointer"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                    {fieldDefs.length === 0 && (
+                      <div className="py-12 text-center text-xs text-[#7E848C]">
+                        No custom fields configured yet.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="border border-white/[0.06] bg-[#171A1D] rounded-2xl p-5 space-y-4 shadow-md self-start">
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider">Create Custom Field</h3>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      if (!cfName.trim()) return
+                      createCfMutation.mutate({
+                        name: cfName,
+                        field_type: cfType,
+                        target_type: cfTarget,
+                        options: cfOptions ? cfOptions.split(',').map((o) => o.trim()) : undefined
+                      })
+                    }}
+                    className="space-y-4"
+                  >
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-[#A7ADB5] font-bold uppercase block">Field Name</label>
+                      <input
+                        type="text"
+                        required
+                        value={cfName}
+                        onChange={(e) => setCfName(e.target.value)}
+                        placeholder="e.g. Estimate Confidence"
+                        className="w-full bg-[#121416] border border-white/[0.08] text-white px-3 py-2 text-xs rounded-xl focus:outline-none focus:border-[#5BB98C]"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-[#A7ADB5] font-bold uppercase block">Target entity</label>
+                      <select
+                        value={cfTarget}
+                        onChange={(e) => setCfTarget(e.target.value as 'Project' | 'Task')}
+                        className="w-full bg-[#121416] border border-white/[0.08] text-white px-3 py-2 text-xs rounded-xl focus:outline-none focus:border-[#5BB98C]"
+                      >
+                        <option value="Task">Tasks</option>
+                        <option value="Project">Projects</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-[#A7ADB5] font-bold uppercase block">Field Type</label>
+                      <select
+                        value={cfType}
+                        onChange={(e) => setCfType(e.target.value as any)}
+                        className="w-full bg-[#121416] border border-white/[0.08] text-white px-3 py-2 text-xs rounded-xl focus:outline-none focus:border-[#5BB98C]"
+                      >
+                        <option value="Text">Text</option>
+                        <option value="Number">Number</option>
+                        <option value="Date">Date</option>
+                        <option value="Dropdown">Dropdown</option>
+                        <option value="Checkbox">Checkbox</option>
+                        <option value="URL">URL</option>
+                      </select>
+                    </div>
+
+                    {cfType === 'Dropdown' && (
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-[#A7ADB5] font-bold uppercase block">Options (Comma Separated)</label>
+                        <input
+                          type="text"
+                          required
+                          value={cfOptions}
+                          onChange={(e) => setCfOptions(e.target.value)}
+                          placeholder="Low, Medium, High"
+                          className="w-full bg-[#121416] border border-white/[0.08] text-white px-3 py-2 text-xs rounded-xl focus:outline-none focus:border-[#5BB98C]"
+                        />
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={createCfMutation.isPending}
+                      className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#5BB98C] hover:bg-[#5BB98C]/90 text-[#111315] font-bold py-2.5 text-xs transition-all cursor-pointer shadow-md disabled:opacity-50"
+                    >
+                      Define Field
+                    </button>
+                  </form>
+                </div>
               </div>
             )}
 
