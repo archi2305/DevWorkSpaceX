@@ -186,5 +186,24 @@ export const projectService = {
       params: newName ? { new_name: newName } : {}
     })
     return response.data
+  },
+
+  async getTrashedProjects(): Promise<ProjectResponse[]> {
+    const response = await api.get<ProjectResponse[]>('/projects/trash')
+    return response.data
+  },
+
+  async trashProject(id: string): Promise<ProjectResponse> {
+    const response = await api.patch<ProjectResponse>(`/projects/${id}/trash`)
+    return response.data
+  },
+
+  async restoreProjectFromTrash(id: string): Promise<ProjectResponse> {
+    const response = await api.patch<ProjectResponse>(`/projects/${id}/restore-trash`)
+    return response.data
+  },
+
+  async permanentDeleteProject(id: string): Promise<void> {
+    await api.delete(`/projects/${id}/permanent`)
   }
 }
