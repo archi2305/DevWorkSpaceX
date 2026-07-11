@@ -55,6 +55,7 @@ class Project(Base):
     is_favorite: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_pinned: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_template: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     
     # Owner ID representing the project creator
     owner_id: Mapped[uuid.UUID] = mapped_column(
