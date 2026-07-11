@@ -15,6 +15,7 @@ class WorkspaceMember(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     workspace_id: Mapped[uuid.UUID] = mapped_column(nullable=False, default=uuid.uuid4)
     role: Mapped[str] = mapped_column(String(50), default="Developer", nullable=False)
+    weekly_capacity_hours: Mapped[int] = mapped_column(nullable=False, default=40)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships
