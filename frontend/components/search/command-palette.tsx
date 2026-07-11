@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTheme } from 'next-themes'
 import {
   Search,
   Folder,
@@ -13,34 +14,46 @@ import {
   History,
   X,
   Loader,
-  CornerDownLeft
+  CornerDownLeft,
+  Terminal
 } from 'lucide-react'
 import { searchService, GlobalSearchResponse } from '@/services/search'
 
 export function CommandPalette() {
   const router = useRouter()
+  const { theme, setTheme } = useTheme()
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [results, setResults] = useState<GlobalSearchResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [recentSearches, setRecentSearches] = useState<string[]>([])
+  const [recentCommands, setRecentCommands] = useState<string[]>([])
   const [activeIndex, setActiveIndex] = useState(0)
   
   const paletteRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // Predefined Commands
+  const staticCommands = [
+    { id: 'cmd-create-task', type: 'command', title: 'Create Task', url: '/calendar' },
+    { id: 'cmd-create-project', type: 'command', title: 'Create Project', url: '/projects' },
+    { id: 'cmd-switch-theme', type: 'command', title: 'Switch Theme (Dark / Light)', url: 'theme-switch' }
+  ]
+
   // Focus input on open
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 80)
-      const saved = localStorage.getItem('recent_workspace_searches')
-      if (saved) {
-        try {
-          setRecentSearches(JSON.parse(saved))
-        } catch {
-          setRecentSearches([])
-        }
+      
+      const savedSearches = localStorage.getItem('recent_workspace_searches')
+      if (savedSearches) {
+        try { setRecentSearches(JSON.parse(savedSearches)) } catch { setRecentSearches([]) }
+      }
+
+      const savedCommands = localStorage.getItem('recent_palette_commands')
+      if (savedCommands) {
+        try { setRecentCommands(JSON.parse(savedCommands)) } catch { setRecentCommands([]) }
       }
     } else {
       setQuery('')
@@ -103,7 +116,18 @@ export function CommandPalette() {
   const getFlattenedItems = (): { id: string; type: string; title: string; url: string }[] => {
     const items: { id: string; type: string; title: string; url: string }[] = []
 
+    // 1. Matched commands
+    const matchedCommands = staticCommands.filter(c => c.title.toLowerCase().includes(query.toLowerCase()))
+    matchedCommands.forEach(c => items.push(c))
+
+    // 2. Recent commands if query is empty
     if (!query.trim()) {
+      recentCommands.forEach((cTitle, idx) => {
+        const matchingCmd = staticCommands.find(sc => sc.title === cTitle)
+        if (matchingCmd) {
+          items.push({ id: `recent-cmd-${idx}`, type: 'recent-command', title: cTitle, url: matchingCmd.url })
+        }
+      })
       recentSearches.forEach((s, idx) => {
         items.push({ id: `recent-${idx}`, type: 'recent', title: s, url: '' })
       })
@@ -159,6 +183,8 @@ export function CommandPalette() {
           const item = flattenedItems[activeIndex]
           if (item.type === 'recent') {
             setQuery(item.title)
+          } else if (item.type === 'command' || item.type === 'recent-command') {
+            executeCommand(item.title, item.url)
           } else {
             navigateToResult(item.url)
           }
@@ -194,9 +220,31 @@ export function CommandPalette() {
     router.push(url)
   }
 
+  const executeCommand = (title: string, url: string) => {
+    // Save to Recent Commands list
+    setRecentCommands((prev) => {
+      const filtered = prev.filter((t) => t !== title)
+      const next = [title, ...filtered].slice(0, 5)
+      localStorage.setItem('recent_palette_commands', JSON.stringify(next))
+      return next
+    })
+
+    if (url === 'theme-switch') {
+      setTheme(theme === 'dark' ? 'light' : 'dark')
+      setIsOpen(false)
+    } else {
+      navigateToResult(url)
+    }
+  }
+
   const clearRecentSearches = () => {
     localStorage.removeItem('recent_workspace_searches')
     setRecentSearches([])
+  }
+
+  const clearRecentCommands = () => {
+    localStorage.removeItem('recent_palette_commands')
+    setRecentCommands([])
   }
 
   if (!isOpen) return null
@@ -225,7 +273,7 @@ export function CommandPalette() {
           <input
             ref={inputRef}
             type="text"
-            placeholder="Type to search workspace..."
+            placeholder="Type to search workspace or select commands..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="flex-1 bg-transparent text-sm text-white placeholder-[#7E848C] outline-none"
@@ -242,42 +290,99 @@ export function CommandPalette() {
         {/* Scrollable Results body */}
         <div className="flex-1 overflow-y-auto p-3 space-y-4">
           
-          {/* 1. Show Recent Searches if query empty */}
-          {!query.trim() && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-[10px] font-bold text-[#7E848C] uppercase tracking-wider px-2">
-                <span className="flex items-center gap-1"><History className="h-3 w-3" /> Recent Searches</span>
-                {recentSearches.length > 0 && (
-                  <button onClick={clearRecentSearches} className="hover:text-white cursor-pointer uppercase">Clear</button>
-                )}
+          {/* 1. Predefined / Filtered Commands */}
+          {staticCommands.filter(c => c.title.toLowerCase().includes(query.toLowerCase())).length > 0 && (
+            <div className="space-y-1">
+              <div className="text-[10px] font-bold text-[#7E848C] uppercase tracking-wider px-2 flex items-center gap-1">
+                <Terminal className="h-3 w-3 text-[#5BB98C]" /> Commands
               </div>
-              <div className="space-y-1">
-                {recentSearches.map((s, idx) => {
-                  const isCurrentActive = activeIndex === absoluteCounter++
-                  return (
-                    <button
-                      key={idx}
-                      onClick={() => setQuery(s)}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all cursor-pointer text-left ${
-                        isCurrentActive ? 'bg-[#5BB98C]/10 text-white' : 'text-[#A7ADB5] hover:bg-white/5 hover:text-white'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <History className="h-3.5 w-3.5 text-[#7E848C]" />
-                        <span>{s}</span>
-                      </div>
-                      <CornerDownLeft className={`h-3.5 w-3.5 text-[#5BB98C] transition-opacity ${isCurrentActive ? 'opacity-100' : 'opacity-0'}`} />
-                    </button>
-                  )
-                })}
-                {recentSearches.length === 0 && (
-                  <p className="text-[11px] text-[#7E848C] italic px-2 py-1">No recent searches recorded.</p>
-                )}
-              </div>
+              {staticCommands.filter(c => c.title.toLowerCase().includes(query.toLowerCase())).map((cmd) => {
+                const isCurrentActive = activeIndex === absoluteCounter++
+                return (
+                  <button
+                    key={cmd.id}
+                    onClick={() => executeCommand(cmd.title, cmd.url)}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs border border-transparent transition-all cursor-pointer text-left ${
+                      isCurrentActive ? 'bg-[#5BB98C]/15 text-white border-[#5BB98C]/20' : 'text-[#A7ADB5] hover:bg-[#5BB98C]/10 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Terminal className="h-3.5 w-3.5 text-[#5BB98C]" />
+                      <span>{highlightMatch(cmd.title, query)}</span>
+                    </div>
+                    <CornerDownLeft className={`h-3.5 w-3.5 text-[#5BB98C] transition-opacity ${isCurrentActive ? 'opacity-100' : 'opacity-0'}`} />
+                  </button>
+                )
+              })}
             </div>
           )}
 
-          {/* 2. Show Results if loaded */}
+          {/* 2. Show Recent Commands & Searches if query empty */}
+          {!query.trim() && (
+            <>
+              {recentCommands.length > 0 && (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-[10px] font-bold text-[#7E848C] uppercase tracking-wider px-2">
+                    <span className="flex items-center gap-1"><History className="h-3 w-3" /> Recent Commands</span>
+                    <button onClick={clearRecentCommands} className="hover:text-white cursor-pointer uppercase">Clear</button>
+                  </div>
+                  {recentCommands.map((cTitle, idx) => {
+                    const isCurrentActive = activeIndex === absoluteCounter++
+                    const matchingCmd = staticCommands.find(sc => sc.title === cTitle)
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => executeCommand(cTitle, matchingCmd?.url || '')}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all cursor-pointer text-left ${
+                          isCurrentActive ? 'bg-[#5BB98C]/10 text-white' : 'text-[#A7ADB5] hover:bg-white/5 hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Terminal className="h-3.5 w-3.5 text-[#7E848C]" />
+                          <span>{cTitle}</span>
+                        </div>
+                        <CornerDownLeft className={`h-3.5 w-3.5 text-[#5BB98C] transition-opacity ${isCurrentActive ? 'opacity-100' : 'opacity-0'}`} />
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-[10px] font-bold text-[#7E848C] uppercase tracking-wider px-2">
+                  <span className="flex items-center gap-1"><History className="h-3 w-3" /> Recent Searches</span>
+                  {recentSearches.length > 0 && (
+                    <button onClick={clearRecentSearches} className="hover:text-white cursor-pointer uppercase">Clear</button>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  {recentSearches.map((s, idx) => {
+                    const isCurrentActive = activeIndex === absoluteCounter++
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => setQuery(s)}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all cursor-pointer text-left ${
+                          isCurrentActive ? 'bg-[#5BB98C]/10 text-white' : 'text-[#A7ADB5] hover:bg-white/5 hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <History className="h-3.5 w-3.5 text-[#7E848C]" />
+                          <span>{s}</span>
+                        </div>
+                        <CornerDownLeft className={`h-3.5 w-3.5 text-[#5BB98C] transition-opacity ${isCurrentActive ? 'opacity-100' : 'opacity-0'}`} />
+                      </button>
+                    )
+                  })}
+                  {recentSearches.length === 0 && (
+                    <p className="text-[11px] text-[#7E848C] italic px-2 py-1">No recent searches recorded.</p>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* 3. Show Results if loaded */}
           {query.trim() && results && (
             <div className="space-y-4">
               
@@ -464,7 +569,7 @@ export function CommandPalette() {
 
         {/* Footer shortcuts helper */}
         <div className="px-4 py-2 border-t border-white/[0.04] bg-[#141618] text-[9px] text-[#7E848C] flex items-center justify-between">
-          <span>Search projects, tasks, team, docs, comments, files...</span>
+          <span>Search projects, tasks, team, docs, commands (Theme, Create Task)...</span>
           <div className="flex gap-2">
             <span>↑↓ to navigate</span>
             <span>ESC to close</span>
