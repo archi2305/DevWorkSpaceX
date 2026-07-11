@@ -140,7 +140,7 @@ export default function AnalyticsPage() {
               {/* Summary KPIs Row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-left">
                 
-                {/* KPI 1 */}
+                {/* KPI 1: Active Projects */}
                 <div className="p-5 rounded-2xl border border-white/[0.06] bg-[#171A1D] relative overflow-hidden">
                   <FolderKanban className="absolute right-4 top-4 h-9 w-9 text-blue-500/10" />
                   <p className="text-[10px] font-bold text-[#A7ADB5] uppercase tracking-wider">Active Projects</p>
@@ -148,17 +148,31 @@ export default function AnalyticsPage() {
                   <span className="text-[9px] text-[#5BB98C] mt-1.5 block">Aggregated in workspace</span>
                 </div>
 
-                {/* KPI 2 */}
+                {/* KPI 2: Active Tasks */}
                 <div className="p-5 rounded-2xl border border-white/[0.06] bg-[#171A1D] relative overflow-hidden">
-                  <TrendingUp className="absolute right-4 top-4 h-9 w-9 text-[#5BB98C]/10" />
-                  <p className="text-[10px] font-bold text-[#A7ADB5] uppercase tracking-wider">Tasks Done (30d)</p>
-                  <p className="text-3xl font-extrabold text-[#5BB98C] mt-2">
-                    {analytics.completed_trend.reduce((acc, curr) => acc + curr.count, 0)}
-                  </p>
-                  <span className="text-[9px] text-[#A7ADB5] mt-1.5 block">Completed items</span>
+                  <Activity className="absolute right-4 top-4 h-9 w-9 text-indigo-500/10" />
+                  <p className="text-[10px] font-bold text-[#A7ADB5] uppercase tracking-wider">Active Tasks</p>
+                  <p className="text-3xl font-extrabold text-white mt-2">{analytics.active_tasks_count ?? 0}</p>
+                  <span className="text-[9px] text-[#A7ADB5] mt-1.5 block">Currently in progress</span>
                 </div>
 
-                {/* KPI 3 */}
+                {/* KPI 3: Completed Tasks */}
+                <div className="p-5 rounded-2xl border border-white/[0.06] bg-[#171A1D] relative overflow-hidden">
+                  <TrendingUp className="absolute right-4 top-4 h-9 w-9 text-[#5BB98C]/10" />
+                  <p className="text-[10px] font-bold text-[#A7ADB5] uppercase tracking-wider">Completed Tasks</p>
+                  <p className="text-3xl font-extrabold text-[#5BB98C] mt-2">{analytics.completed_tasks_count ?? 0}</p>
+                  <span className="text-[9px] text-[#A7ADB5] mt-1.5 block">Total completed items</span>
+                </div>
+
+                {/* KPI 4: Completion Rate */}
+                <div className="p-5 rounded-2xl border border-white/[0.06] bg-[#171A1D] relative overflow-hidden">
+                  <LineChart className="absolute right-4 top-4 h-9 w-9 text-[#5BB98C]/10" />
+                  <p className="text-[10px] font-bold text-[#A7ADB5] uppercase tracking-wider">Completion Rate</p>
+                  <p className="text-3xl font-extrabold text-white mt-2">{(analytics.completion_rate ?? 0)}%</p>
+                  <span className="text-[9px] text-[#A7ADB5] mt-1.5 block">Completed vs active tasks</span>
+                </div>
+
+                {/* KPI 5: Current Velocity */}
                 <div className="p-5 rounded-2xl border border-white/[0.06] bg-[#171A1D] relative overflow-hidden">
                   <Zap className="absolute right-4 top-4 h-9 w-9 text-yellow-500/10" />
                   <p className="text-[10px] font-bold text-[#A7ADB5] uppercase tracking-wider">Current Velocity</p>
@@ -168,7 +182,7 @@ export default function AnalyticsPage() {
                   <span className="text-[9px] text-[#A7ADB5] mt-1.5 block">Weekly completion rate</span>
                 </div>
 
-                {/* KPI 4 */}
+                {/* KPI 6: Overdue Alerts */}
                 <div className={`p-5 rounded-2xl border relative overflow-hidden ${
                   analytics.overdue_count > 0 ? 'border-[#EB5757]/20 bg-[#EB5757]/5' : 'border-white/[0.06] bg-[#171A1D]'
                 }`}>
@@ -178,6 +192,24 @@ export default function AnalyticsPage() {
                     {analytics.overdue_count}
                   </p>
                   <span className="text-[9px] text-[#A7ADB5] mt-1.5 block">Incomplete past deadlines</span>
+                </div>
+
+                {/* KPI 7: Productivity Score */}
+                <div className="p-5 rounded-2xl border border-white/[0.06] bg-[#171A1D] relative overflow-hidden">
+                  <TrendingUp className="absolute right-4 top-4 h-9 w-9 text-emerald-500/10" />
+                  <p className="text-[10px] font-bold text-[#A7ADB5] uppercase tracking-wider">Productivity Score</p>
+                  <p className="text-3xl font-extrabold text-emerald-400 mt-2">{(analytics.productivity_score ?? 100)} / 100</p>
+                  <span className="text-[9px] text-[#A7ADB5] mt-1.5 block">Weighted efficiency index</span>
+                </div>
+
+                {/* KPI 8: Weekly / Monthly Activity */}
+                <div className="p-5 rounded-2xl border border-white/[0.06] bg-[#171A1D] relative overflow-hidden">
+                  <Users className="absolute right-4 top-4 h-9 w-9 text-purple-500/10" />
+                  <p className="text-[10px] font-bold text-[#A7ADB5] uppercase tracking-wider">Workspace Activity</p>
+                  <p className="text-3xl font-extrabold text-white mt-2">
+                    {analytics.weekly_activity ?? 0} <span className="text-xs font-semibold text-[#A7ADB5]">/ 7d</span>
+                  </p>
+                  <span className="text-[9px] text-[#A7ADB5] mt-1.5 block">{analytics.monthly_activity ?? 0} actions / 30d</span>
                 </div>
               </div>
 

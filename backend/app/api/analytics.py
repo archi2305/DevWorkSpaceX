@@ -197,7 +197,32 @@ def get_analytics_summary(
             "actions": row[1]
         })
 
+    # 9. Additional Metrics
+    active_tasks_count = db.query(func.count(Task.id)).filter(
+        *task_filters,
+        Task.completed == False
+    ).scalar() or 0
 
+    completed_tasks_count = db.query(func.count(Task.id)).filter(
+        *task_filters,
+        Task.completed == True
+    ).scalar() or 0
+
+    total_tasks_count = active_tasks_count + completed_tasks_count
+    completion_rate = round((completed_tasks_count / total_tasks_count * 100), 1) if total_tasks_count > 0 else 0.0
+
+    # Productivity Score = completion_rate - (overdue_count * 5)
+    productivity_score = max(0, min(100, int(completion_rate - (overdue_count * 5))))
+
+    seven_days_ago = today - timedelta(days=7)
+    weekly_activity = db.query(func.count(ActivityLog.id)).filter(
+        ActivityLog.created_at >= seven_days_ago
+    ).scalar() or 0
+
+    thirty_days_ago = today - timedelta(days=30)
+    monthly_activity = db.query(func.count(ActivityLog.id)).filter(
+        ActivityLog.created_at >= thirty_days_ago
+    ).scalar() or 0
 
     return {
         "overdue_count": overdue_count,
@@ -207,5 +232,11 @@ def get_analytics_summary(
         "burndown": burndown_data,
         "workload": workload_data,
         "most_active_members": active_members,
-        "overdue_tasks": overdue_tasks
+        "overdue_tasks": overdue_tasks,
+        "active_tasks_count": active_tasks_count,
+        "completed_tasks_count": completed_tasks_count,
+        "completion_rate": completion_rate,
+        "productivity_score": productivity_score,
+        "weekly_activity": weekly_activity,
+        "monthly_activity": monthly_activity
     }
