@@ -220,6 +220,7 @@ export default function ActivitiesPage() {
               <option value="Task">Tasks</option>
               <option value="Comment">Comments</option>
               <option value="Document">Documents</option>
+              <option value="File">Files</option>
             </select>
           </div>
 
