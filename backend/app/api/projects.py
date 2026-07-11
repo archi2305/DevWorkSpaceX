@@ -39,8 +39,9 @@ def get_projects(
     current_user: User = Depends(get_current_user)
 ):
     query = db.query(Project).filter(
-        (Project.owner_id == current_user.id) |
-        (Project.members.any(id=current_user.id))
+        ((Project.owner_id == current_user.id) |
+        (Project.members.any(id=current_user.id))) &
+        (Project.is_deleted == False)
     )
     
     # Filter constraints
@@ -692,3 +693,103 @@ def duplicate_project(
     db.refresh(dup_project)
 
     return {"message": "Project duplicated successfully.", "project": {"id": str(dup_project.id), "name": dup_project.name}}
+
+@router.get("/trash", response_model=List[ProjectResponse], summary="Get all trashed projects")
+def get_trashed_projects(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Perform automatic cleanup of trash older than 30 days
+    limit_date = datetime.utcnow() - timedelta(days=30)
+    old_trashed = db.query(Project).filter(
+        Project.is_deleted == True,
+        Project.deleted_at < limit_date
+    ).all()
+    for proj in old_trashed:
+        db.delete(proj)
+    db.commit()
+
+    return db.query(Project).filter(
+        Project.is_deleted == True
+    ).all()
+
+@router.patch("/{project_id}/trash", response_model=ProjectResponse, summary="Send project to trash")
+def trash_project(
+    project_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    project.is_deleted = True
+    project.deleted_at = datetime.utcnow()
+
+    # Trash all tasks under this project too
+    from app.models.task import Task
+    tasks = db.query(Task).filter(Task.project_id == project_id).all()
+    for task in tasks:
+        task.is_deleted = True
+        task.deleted_at = datetime.utcnow()
+
+    log = ActivityLog(
+        user_id=current_user.id,
+        action="Project Trashed",
+        details=f"Project '{project.name}' moved to trash."
+    )
+    db.add(log)
+    db.commit()
+    db.refresh(project)
+    return project
+
+@router.patch("/{project_id}/restore-trash", response_model=ProjectResponse, summary="Restore project from trash")
+def restore_project_trash(
+    project_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    project.is_deleted = False
+    project.deleted_at = None
+
+    # Restore all tasks under this project too
+    from app.models.task import Task
+    tasks = db.query(Task).filter(Task.project_id == project_id).all()
+    for task in tasks:
+        task.is_deleted = False
+        task.deleted_at = None
+
+    log = ActivityLog(
+        user_id=current_user.id,
+        action="Project Restored",
+        details=f"Project '{project.name}' restored from trash."
+    )
+    db.add(log)
+    db.commit()
+    db.refresh(project)
+    return project
+
+@router.delete("/{project_id}/permanent", summary="Permanently delete a project")
+def permanent_delete_project(
+    project_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    db.delete(project)
+
+    log = ActivityLog(
+        user_id=current_user.id,
+        action="Project Perm Deleted",
+        details=f"Project '{project.name}' permanently deleted."
+    )
+    db.add(log)
+    db.commit()
+    return {"status": "success", "detail": f"Project permanently deleted."}
