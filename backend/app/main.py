@@ -33,6 +33,7 @@ from app.api.workspace import router as workspace_settings_router
 from app.api.comment import router as comments_router
 from app.api.time_log import router as time_log_router
 from app.api.report import router as report_router
+from app.api.github import router as github_router
 from app.core.config import settings
 
 # Initialize the FastAPI app
@@ -73,6 +74,7 @@ app.include_router(automation_router)
 app.include_router(analytics_router)
 app.include_router(workspace_settings_router)
 app.include_router(comments_router)
+app.include_router(github_router)
 app.include_router(activity_timeline_router)
 app.include_router(collaboration_router)
 app.include_router(sprint_router)
