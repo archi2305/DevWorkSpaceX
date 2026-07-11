@@ -7,7 +7,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { 
   ArrowLeft, Calendar, User as UserIcon, Trash2, Edit3, 
   Clock, AlertCircle, X, Layers, CheckSquare, 
-  Sparkles, FileText, Archive, ArchiveRestore, Star, Pin, Plus, Tag, Filter
+  Sparkles, FileText, Archive, ArchiveRestore, Star, Pin, Plus, Tag, Filter, Edit, Move, Check
 } from 'lucide-react'
 import { projectService } from '@/services/project'
 import { taskService, TaskResponse } from '@/services/task'
@@ -20,6 +20,28 @@ import { TimeLogsManager } from '@/components/time-logs/time-logs-manager'
 import { useAuth } from '@/hooks/useAuth'
 import { CommentsList } from '@/components/comments/comments-list'
 import { useCollaboration } from '@/hooks/use-collaboration'
+
+import {
+  DndContext,
+  DragOverlay,
+  closestCorners,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragStartEvent,
+  useDroppable
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  horizontalListSortingStrategy,
+  verticalListSortingStrategy,
+  useSortable
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -129,6 +151,14 @@ export default function ProjectDetailsPage({ params }: PageProps) {
   const [taskPriority, setTaskPriority] = useState('Medium')
   const [taskDueDate, setTaskDueDate] = useState('')
   const [taskAssigneeId, setTaskAssigneeId] = useState('')
+
+  // Kanban Board States
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([])
+  const [activeTask, setActiveTask] = useState<TaskResponse | null>(null)
+  const [activeColumnId, setActiveColumnId] = useState<string | null>(null)
+  const [newColTitle, setNewColTitle] = useState('')
+  const [editingColId, setEditingColId] = useState<string | null>(null)
+  const [renameTitle, setRenameTitle] = useState('')
 
   // Task editing fields
   const [editTargetTask, setEditTargetTask] = useState<TaskResponse | null>(null)
@@ -407,15 +437,167 @@ export default function ProjectDetailsPage({ params }: PageProps) {
     }
   }
 
-  const handleDropTask = async (taskId: string, targetStatus: string) => {
+  const getSyncedColumns = () => {
+    const rawCols = project?.kanban_columns || [
+      { id: 'Todo', title: 'To Do', taskIds: [] },
+      { id: 'In Progress', title: 'In Progress', taskIds: [] },
+      { id: 'Review', title: 'Review', taskIds: [] },
+      { id: 'Done', title: 'Done', taskIds: [] }
+    ]
+
+    const filteredTasks = tasks.filter(t => !filterLabelId || t.labels.some(l => l.id === filterLabelId))
+    const activeTaskIds = new Set(filteredTasks.map(t => t.id))
+    const allocatedTaskIds = new Set<string>()
+
+    const syncedCols = rawCols.map(col => {
+      const validTaskIds = col.taskIds.filter(tid => activeTaskIds.has(tid))
+      validTaskIds.forEach(tid => allocatedTaskIds.add(tid))
+      return { ...col, taskIds: validTaskIds }
+    })
+
+    if (syncedCols.length > 0) {
+      filteredTasks.forEach(t => {
+        if (!allocatedTaskIds.has(t.id)) {
+          const matchedCol = syncedCols.find(col => col.id === t.status) || syncedCols[0]
+          matchedCol.taskIds.push(t.id)
+        }
+      })
+    }
+
+    return syncedCols
+  }
+
+  const handleBulkMove = async (targetColId: string) => {
+    if (selectedTaskIds.length === 0) return
     try {
-      await taskService.updateTask(taskId, { status: targetStatus })
-      sendKanbanUpdate(taskId, targetStatus)
+      await Promise.all(
+        selectedTaskIds.map(tid => taskService.updateTask(tid, { status: targetColId, completed: targetColId === 'Done' }))
+      )
+      const currentCols = getSyncedColumns()
+      const updated = currentCols.map(col => {
+        const filtered = col.taskIds.filter(tid => !selectedTaskIds.includes(tid))
+        if (col.id === targetColId) {
+          return { ...col, taskIds: [...filtered, ...selectedTaskIds] }
+        }
+        return { ...col, taskIds: filtered }
+      })
+
+      await projectService.updateProject(id, { kanban_columns: updated })
+      setSelectedTaskIds([])
       queryClient.invalidateQueries({ queryKey: ['tasks', { project_id: id }] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['project', id] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
     } catch (err) {
-      console.error('Failed to drop task status', err)
+      alert('Failed to perform bulk move operation.')
+    }
+  }
+
+  const handleAddColumn = async (title: string) => {
+    if (!title.trim()) return
+    const newColId = title.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now().toString().slice(-4)
+    const currentCols = getSyncedColumns()
+    const updated = [...currentCols, { id: newColId, title, taskIds: [] }]
+    await projectService.updateProject(id, { kanban_columns: updated })
+    queryClient.invalidateQueries({ queryKey: ['project', id] })
+  }
+
+  const handleRenameColumn = async (colId: string, newTitle: string) => {
+    if (!newTitle.trim()) return
+    const currentCols = getSyncedColumns()
+    const updated = currentCols.map(col => col.id === colId ? { ...col, title: newTitle } : col)
+    await projectService.updateProject(id, { kanban_columns: updated })
+    queryClient.invalidateQueries({ queryKey: ['project', id] })
+  }
+
+  const handleDeleteColumn = async (colId: string) => {
+    const currentCols = getSyncedColumns()
+    if (currentCols.length <= 1) {
+      alert('You must keep at least one column on the Kanban board.')
+      return
+    }
+    const targetCol = currentCols.find(col => col.id === colId)
+    const remainingCols = currentCols.filter(col => col.id !== colId)
+    
+    if (targetCol && targetCol.taskIds.length > 0) {
+      const fallbackColId = remainingCols[0].id
+      await Promise.all(
+        targetCol.taskIds.map(tid => taskService.updateTask(tid, { status: fallbackColId }))
+      )
+      remainingCols[0].taskIds = [...remainingCols[0].taskIds, ...targetCol.taskIds]
+    }
+
+    await projectService.updateProject(id, { kanban_columns: remainingCols })
+    queryClient.invalidateQueries({ queryKey: ['tasks', { project_id: id }] })
+    queryClient.invalidateQueries({ queryKey: ['project', id] })
+    queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+  }
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event
+    const activeId = active.id as string
+    const matchedTask = tasks.find(t => t.id === activeId)
+    if (matchedTask) {
+      setActiveTask(matchedTask)
+    } else {
+      setActiveColumnId(activeId)
+    }
+  }
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    setActiveTask(null)
+    setActiveColumnId(null)
+    if (!over) return
+
+    const activeId = active.id as string
+    const overId = over.id as string
+    const currentCols = getSyncedColumns()
+
+    const activeColIdx = currentCols.findIndex(c => c.id === activeId)
+    const overColIdx = currentCols.findIndex(c => c.id === overId)
+    if (activeColIdx !== -1 && overColIdx !== -1) {
+      if (activeColIdx !== overColIdx) {
+        const updated = arrayMove(currentCols, activeColIdx, overColIdx)
+        await projectService.updateProject(id, { kanban_columns: updated })
+        queryClient.invalidateQueries({ queryKey: ['project', id] })
+      }
+      return
+    }
+
+    let sourceCol = currentCols.find(col => col.taskIds.includes(activeId))
+    let destCol = currentCols.find(col => col.id === overId || col.taskIds.includes(overId))
+
+    if (!sourceCol || !destCol) return
+
+    if (sourceCol.id === destCol.id) {
+      const activeIdx = sourceCol.taskIds.indexOf(activeId)
+      const overIdx = sourceCol.taskIds.indexOf(overId)
+      if (activeIdx !== -1 && overIdx !== -1 && activeIdx !== overIdx) {
+        sourceCol.taskIds = arrayMove(sourceCol.taskIds, activeIdx, overIdx)
+        await projectService.updateProject(id, { kanban_columns: currentCols })
+        queryClient.invalidateQueries({ queryKey: ['project', id] })
+      }
+    } else {
+      sourceCol.taskIds = sourceCol.taskIds.filter(tid => tid !== activeId)
+      const overIdx = destCol.taskIds.indexOf(overId)
+      if (overIdx !== -1) {
+        destCol.taskIds.splice(overIdx, 0, activeId)
+      } else {
+        destCol.taskIds.push(activeId)
+      }
+
+      await taskService.updateTask(activeId, { status: destCol.id, completed: destCol.id === 'Done' })
+      sendKanbanUpdate(activeId, destCol.id)
+      await projectService.updateProject(id, { kanban_columns: currentCols })
+      
+      queryClient.invalidateQueries({ queryKey: ['tasks', { project_id: id }] })
+      queryClient.invalidateQueries({ queryKey: ['project', id] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
     }
   }
 
@@ -683,238 +865,112 @@ export default function ProjectDetailsPage({ params }: PageProps) {
               </div>
             )}
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* To Do Column */}
-              <div
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault()
-                  const taskId = e.dataTransfer.getData('text/plain')
-                  if (taskId) handleDropTask(taskId, 'Todo')
-                }}
-                className="rounded-2xl border border-white/[0.06] bg-[#171A1D] p-4 flex flex-col min-h-[340px] shadow-sm hover:shadow-md transition-shadow duration-300"
-              >
-                <div className="flex items-center justify-between border-b border-white/[0.06] pb-2 mb-4">
-                  <span className="text-xs font-bold text-[#F5F5F5] uppercase tracking-wider">To Do</span>
-                  <span className="text-[10px] bg-[#1D2024] text-[#A7ADB5] rounded-full px-2 py-0.5 border border-white/[0.06] font-semibold">{columnTasks.todo.length}</span>
+            {/* Multi-select Actions Toolbar */}
+            {selectedTaskIds.length > 0 && (
+              <div className="flex items-center justify-between bg-[#5BB98C]/15 border border-[#5BB98C]/30 p-3.5 rounded-2xl text-left">
+                <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <Check className="h-4.5 w-4.5 text-[#5BB98C]" /> {selectedTaskIds.length} tasks selected
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-[#A7ADB5] uppercase">Bulk Move to:</span>
+                  <select
+                    onChange={(e) => {
+                      if (e.target.value) handleBulkMove(e.target.value)
+                    }}
+                    value=""
+                    className="px-3 py-1.5 bg-[#1D2024] border border-white/5 rounded-xl text-xs text-white outline-none cursor-pointer"
+                  >
+                    <option value="">Choose Column...</option>
+                    {getSyncedColumns().map(col => (
+                      <option key={col.id} value={col.id}>{col.title}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => setSelectedTaskIds([])}
+                    className="text-xs font-bold text-[#EB5757] hover:underline px-2.5 py-1.5"
+                  >
+                    Clear Selection
+                  </button>
                 </div>
-                
-                {columnTasks.todo.length === 0 ? (
-                  <div className="flex-1 flex flex-col items-center justify-center text-center p-4 border border-dashed border-white/[0.06] rounded-xl bg-[#111315]/40">
-                    <Layers className="h-7 w-7 text-[#7E848C]/40 mb-2" />
-                    <p className="text-xs text-[#7E848C] font-semibold">No tasks here</p>
+              </div>
+            )}
+
+            {/* Kanban Columns Grid wrapper with DndContext */}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCorners}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin">
+                <SortableContext
+                  items={getSyncedColumns().map(c => c.id)}
+                  strategy={horizontalListSortingStrategy}
+                >
+                  {getSyncedColumns().map(col => (
+                    <SortableColumn
+                      key={col.id}
+                      col={col}
+                      tasks={tasks}
+                      filterLabelId={filterLabelId}
+                      selectedTaskIds={selectedTaskIds}
+                      setSelectedTaskIds={setSelectedTaskIds}
+                      editingColId={editingColId}
+                      setEditingColId={setEditingColId}
+                      renameTitle={renameTitle}
+                      setRenameTitle={setRenameTitle}
+                      handleRenameColumn={handleRenameColumn}
+                      handleDeleteColumn={handleDeleteColumn}
+                      setEditTargetTask={setEditTargetTask}
+                      handleDeleteTask={handleDeleteTask}
+                      handleToggleTask={handleToggleTask}
+                      setIsTaskCreateOpen={setIsTaskCreateOpen}
+                    />
+                  ))}
+                </SortableContext>
+
+                {/* Column CRUD: Create Column Button */}
+                <div className="w-80 flex-shrink-0 rounded-2xl border border-dashed border-white/[0.06] bg-[#171A1D]/20 p-4 h-48 flex flex-col justify-center items-center text-center">
+                  <p className="text-xs font-bold text-[#7E848C]">Add Custom Status</p>
+                  <div className="mt-3 flex gap-1.5 w-full">
+                    <input
+                      type="text"
+                      placeholder="Column Title"
+                      value={newColTitle}
+                      onChange={(e) => setNewColTitle(e.target.value)}
+                      className="flex-1 px-3 py-1.5 bg-[#1D2024] border border-white/[0.06] rounded-xl text-xs text-white outline-none focus:border-[#5BB98C]"
+                    />
                     <button
-                      onClick={() => setIsTaskCreateOpen(true)}
-                      className="mt-3 text-[10px] font-bold text-[#5BB98C] hover:text-[#B7E4C7] transition-all"
+                      onClick={() => {
+                        if (newColTitle.trim()) {
+                          handleAddColumn(newColTitle)
+                          setNewColTitle('')
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-[#5BB98C] text-[#111315] font-bold rounded-xl text-xs"
                     >
-                      + Create Task
+                      Add
                     </button>
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    {columnTasks.todo.map(task => (
-                      <div
-                        key={task.id}
-                        draggable={true}
-                        onDragStart={(e) => {
-                          e.dataTransfer.setData('text/plain', task.id)
-                          e.dataTransfer.effectAllowed = 'move'
-                        }}
-                        className="p-3 rounded-xl border border-white/[0.06] bg-[#1D2024] hover:bg-[#23272B] hover:border-[#5BB98C]/30 hover:scale-[1.02] hover:-translate-y-0.5 transition-all duration-200 flex flex-col gap-1.5 text-left relative group shadow-sm cursor-grab active:cursor-grabbing"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex flex-col gap-1">
-                            <span className="text-xs font-semibold text-[#F5F5F5]">{task.title}</span>
-                            {task.labels && task.labels.length > 0 && (
-                              <div className="flex flex-wrap gap-1">
-                                {task.labels.map(lbl => (
-                                  <span key={lbl.id} className="text-[7.5px] px-1 py-0.5 rounded font-bold text-[#111315]" style={{ backgroundColor: lbl.color }}>
-                                    {lbl.name}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <button onClick={() => handleToggleTask(task.id, task.completed)} className="text-[#7E848C] hover:text-[#5BB98C] transition-colors cursor-pointer">
-                            <CheckSquare className="h-4 w-4" />
-                          </button>
-                        </div>
-                        <div className="flex justify-between items-center text-[9px] text-[#A7ADB5]">
-                          <div className="flex items-center gap-2 font-semibold">
-                            <span>{task.priority}</span>
-                            {task.assignee && (
-                              <span title={`Assigned to ${task.assignee.full_name}`} className="text-[8px] bg-[#1D2024] border border-white/[0.06] text-[#5BB98C] rounded-full px-1.5 py-0.5 font-bold uppercase">
-                                {task.assignee.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                            <button onClick={() => setEditTargetTask(task)} className="text-[#5BB98C] hover:text-[#B7E4C7] font-semibold cursor-pointer">
-                              Edit
-                            </button>
-                            <button onClick={() => handleDeleteTask(task.id)} className="text-[#EB5757] hover:text-red-400 font-semibold cursor-pointer">
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                </div>
               </div>
 
-              {/* In Progress Column */}
-              <div
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault()
-                  const taskId = e.dataTransfer.getData('text/plain')
-                  if (taskId) handleDropTask(taskId, 'In Progress')
-                }}
-                className="rounded-2xl border border-white/[0.06] bg-[#171A1D] p-4 flex flex-col min-h-[340px] shadow-sm hover:shadow-md transition-shadow duration-300"
-              >
-                <div className="flex items-center justify-between border-b border-white/[0.06] pb-2 mb-4">
-                  <span className="text-xs font-bold text-[#F5F5F5] uppercase tracking-wider">In Progress</span>
-                  <span className="text-[10px] bg-[#1D2024] text-[#A7ADB5] rounded-full px-2 py-0.5 border border-white/[0.06] font-semibold">{columnTasks.inprogress.length}</span>
-                </div>
-                
-                {columnTasks.inprogress.length === 0 ? (
-                  <div className="flex-1 flex flex-col items-center justify-center text-center p-4 border border-dashed border-white/[0.06] rounded-xl bg-[#111315]/40">
-                    <Layers className="h-7 w-7 text-[#7E848C]/40 mb-2" />
-                    <p className="text-xs text-[#7E848C] font-semibold">No tasks here</p>
-                    <button
-                      onClick={() => setIsTaskCreateOpen(true)}
-                      className="mt-3 text-[10px] font-bold text-[#5BB98C] hover:text-[#B7E4C7] transition-all"
-                    >
-                      + Create Task
-                    </button>
+              {/* Drag Overlay Portal */}
+              <DragOverlay>
+                {activeTask ? (
+                  <div className="p-3 rounded-xl border border-[#5BB98C]/40 bg-[#1D2024] flex flex-col gap-1.5 text-left opacity-90 shadow-2xl w-72">
+                    <span className="text-xs font-semibold text-[#F5F5F5]">{activeTask.title}</span>
+                    <span className="text-[9px] text-[#A7ADB5]">{activeTask.priority}</span>
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    {columnTasks.inprogress.map(task => (
-                      <div
-                        key={task.id}
-                        draggable={true}
-                        onDragStart={(e) => {
-                          e.dataTransfer.setData('text/plain', task.id)
-                          e.dataTransfer.effectAllowed = 'move'
-                        }}
-                        className="p-3 rounded-xl border border-white/[0.06] bg-[#1D2024] hover:bg-[#23272B] hover:border-[#5BB98C]/30 hover:scale-[1.02] hover:-translate-y-0.5 transition-all duration-200 flex flex-col gap-1.5 text-left relative group shadow-sm cursor-grab active:cursor-grabbing"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex flex-col gap-1">
-                            <span className="text-xs font-semibold text-[#F5F5F5]">{task.title}</span>
-                            {task.labels && task.labels.length > 0 && (
-                              <div className="flex flex-wrap gap-1">
-                                {task.labels.map(lbl => (
-                                  <span key={lbl.id} className="text-[7.5px] px-1 py-0.5 rounded font-bold text-[#111315]" style={{ backgroundColor: lbl.color }}>
-                                    {lbl.name}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <button onClick={() => handleToggleTask(task.id, task.completed)} className="text-[#7E848C] hover:text-[#5BB98C] transition-colors cursor-pointer">
-                            <CheckSquare className="h-4 w-4" />
-                          </button>
-                        </div>
-                        <div className="flex justify-between items-center text-[9px] text-[#A7ADB5]">
-                          <div className="flex items-center gap-2 font-semibold">
-                            <span className="text-[#EB5757]">{task.priority}</span>
-                            {task.assignee && (
-                              <span title={`Assigned to ${task.assignee.full_name}`} className="text-[8px] bg-[#1D2024] border border-white/[0.06] text-[#5BB98C] rounded-full px-1.5 py-0.5 font-bold uppercase">
-                                {task.assignee.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                            <button onClick={() => setEditTargetTask(task)} className="text-[#5BB98C] hover:text-[#B7E4C7] font-semibold cursor-pointer">
-                              Edit
-                            </button>
-                            <button onClick={() => handleDeleteTask(task.id)} className="text-[#EB5757] hover:text-red-400 font-semibold cursor-pointer">
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                ) : activeColumnId ? (
+                  <div className="w-80 rounded-2xl border border-white/10 bg-[#171A1D] p-4 flex flex-col min-h-[340px] opacity-90 shadow-2xl text-left">
+                    <span className="text-xs font-bold text-[#F5F5F5] uppercase tracking-wider">
+                      {getSyncedColumns().find(c => c.id === activeColumnId)?.title || "Column"}
+                    </span>
                   </div>
-                )}
-              </div>
-
-              {/* Done Column */}
-              <div
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault()
-                  const taskId = e.dataTransfer.getData('text/plain')
-                  if (taskId) handleDropTask(taskId, 'Done')
-                }}
-                className="rounded-2xl border border-white/[0.06] bg-[#171A1D] p-4 flex flex-col min-h-[340px] shadow-sm hover:shadow-md transition-shadow duration-300"
-              >
-                <div className="flex items-center justify-between border-b border-white/[0.06] pb-2 mb-4">
-                  <span className="text-xs font-bold text-[#F5F5F5] uppercase tracking-wider">Done</span>
-                  <span className="text-[10px] bg-[#1D2024] text-[#A7ADB5] rounded-full px-2 py-0.5 border border-white/[0.06] font-semibold">{columnTasks.done.length}</span>
-                </div>
-                
-                {columnTasks.done.length === 0 ? (
-                  <div className="flex-1 flex flex-col items-center justify-center text-center p-4 border border-dashed border-white/[0.06] rounded-xl bg-[#111315]/40">
-                    <Layers className="h-7 w-7 text-[#7E848C]/40 mb-2" />
-                    <p className="text-xs text-[#7E848C] font-semibold">No tasks here</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {columnTasks.done.map(task => (
-                      <div
-                        key={task.id}
-                        draggable={true}
-                        onDragStart={(e) => {
-                          e.dataTransfer.setData('text/plain', task.id)
-                          e.dataTransfer.effectAllowed = 'move'
-                        }}
-                        className="p-3 rounded-xl border border-white/[0.06] bg-[#1D2024] hover:bg-[#23272B] hover:border-[#5BB98C]/30 hover:scale-[1.02] hover:-translate-y-0.5 opacity-70 hover:opacity-100 transition-all duration-200 flex flex-col gap-1.5 text-left relative group shadow-sm cursor-grab active:cursor-grabbing"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex flex-col gap-1">
-                            <span className="text-xs font-semibold text-[#A7ADB5] line-through">{task.title}</span>
-                            {task.labels && task.labels.length > 0 && (
-                              <div className="flex flex-wrap gap-1">
-                                {task.labels.map(lbl => (
-                                  <span key={lbl.id} className="text-[7.5px] px-1 py-0.5 rounded font-bold text-[#111315]" style={{ backgroundColor: lbl.color }}>
-                                    {lbl.name}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <button onClick={() => handleToggleTask(task.id, task.completed)} className="text-[#5BB98C] hover:text-[#B7E4C7] transition-colors cursor-pointer">
-                            <CheckSquare className="h-4 w-4 fill-current" />
-                          </button>
-                        </div>
-                        <div className="flex justify-between items-center text-[9px] text-[#7E848C]">
-                          <div className="flex items-center gap-2 font-semibold text-[#5BB98C]">
-                            <span>Completed</span>
-                            {task.assignee && (
-                              <span title={`Assigned to ${task.assignee.full_name}`} className="text-[8px] bg-[#1D2024] border border-white/[0.06] text-[#5BB98C]/60 rounded-full px-1.5 py-0.5 font-bold uppercase">
-                                {task.assignee.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                            <button onClick={() => setEditTargetTask(task)} className="text-[#5BB98C] hover:text-[#B7E4C7] font-semibold cursor-pointer">
-                              Edit
-                            </button>
-                            <button onClick={() => handleDeleteTask(task.id)} className="text-[#EB5757] hover:text-red-400 font-semibold cursor-pointer">
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
           </div>
 
           {/* Empty Documentation Placeholder */}
@@ -1772,6 +1828,249 @@ export default function ProjectDetailsPage({ params }: PageProps) {
           </div>
         )}
       </AnimatePresence>
+    </div>
+  )
+}
+
+interface SortableColumnProps {
+  col: any
+  tasks: TaskResponse[]
+  filterLabelId: string
+  selectedTaskIds: string[]
+  setSelectedTaskIds: React.Dispatch<React.SetStateAction<string[]>>
+  editingColId: string | null
+  setEditingColId: (id: string | null) => void
+  renameTitle: string
+  setRenameTitle: (title: string) => void
+  handleRenameColumn: (colId: string, newTitle: string) => void
+  handleDeleteColumn: (colId: string) => void
+  setEditTargetTask: (task: TaskResponse) => void
+  handleDeleteTask: (taskId: string) => void
+  handleToggleTask: (taskId: string, currentCompleted: boolean) => void
+  setIsTaskCreateOpen: (open: boolean) => void
+}
+
+function SortableColumn({
+  col,
+  tasks,
+  filterLabelId,
+  selectedTaskIds,
+  setSelectedTaskIds,
+  editingColId,
+  setEditingColId,
+  renameTitle,
+  setRenameTitle,
+  handleRenameColumn,
+  handleDeleteColumn,
+  setEditTargetTask,
+  handleDeleteTask,
+  handleToggleTask,
+  setIsTaskCreateOpen
+}: SortableColumnProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: col.id,
+    data: { type: 'column' }
+  })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.3 : 1
+  }
+
+  const matchedTasks = col.taskIds
+    .map((tid: any) => tasks.find(t => t.id === tid))
+    .filter(Boolean) as TaskResponse[]
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="w-80 flex-shrink-0 rounded-2xl border border-white/[0.06] bg-[#171A1D] p-4 flex flex-col min-h-[340px] shadow-sm text-left"
+    >
+      <div className="flex items-center justify-between border-b border-white/[0.06] pb-2 mb-4">
+        <div className="flex items-center gap-2 flex-1 min-w-0" {...attributes} {...listeners}>
+          <Move className="h-3.5 w-3.5 text-[#7E848C] cursor-grab active:cursor-grabbing flex-shrink-0" />
+          {editingColId === col.id ? (
+            <input
+              type="text"
+              value={renameTitle}
+              onChange={(e) => setRenameTitle(e.target.value)}
+              onBlur={() => {
+                handleRenameColumn(col.id, renameTitle)
+                setEditingColId(null)
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleRenameColumn(col.id, renameTitle)
+                  setEditingColId(null)
+                }
+              }}
+              autoFocus
+              className="bg-[#1D2024] border border-[#5BB98C] rounded-lg px-2 py-0.5 text-xs text-white outline-none w-full"
+            />
+          ) : (
+            <span
+              onDoubleClick={() => {
+                setEditingColId(col.id)
+                setRenameTitle(col.title)
+              }}
+              className="text-xs font-bold text-[#F5F5F5] uppercase tracking-wider truncate cursor-pointer hover:text-white"
+              title="Double click to rename"
+            >
+              {col.title}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1.5 ml-2">
+          <span className="text-[10px] bg-[#1D2024] text-[#A7ADB5] rounded-full px-2 py-0.5 border border-white/[0.06] font-semibold">
+            {matchedTasks.length}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setEditingColId(col.id)
+              setRenameTitle(col.title)
+            }}
+            className="text-[#7E848C] hover:text-white p-0.5 transition-colors cursor-pointer"
+            title="Rename Column"
+          >
+            <Edit className="h-3 w-3" />
+          </button>
+          <button
+            type="button"
+            onClick={() => handleDeleteColumn(col.id)}
+            className="text-[#7E848C] hover:text-[#EB5757] p-0.5 transition-colors cursor-pointer"
+            title="Delete Column"
+          >
+            <Trash2 className="h-3 w-3" />
+          </button>
+        </div>
+      </div>
+
+      <SortableContext items={col.taskIds} strategy={verticalListSortingStrategy}>
+        <div className="space-y-2 flex-1">
+          {matchedTasks.map(task => (
+            <SortableTask
+              key={task.id}
+              task={task}
+              isSelected={selectedTaskIds.includes(task.id)}
+              onSelectToggle={(checked) => {
+                setSelectedTaskIds(prev =>
+                  checked ? [...prev, task.id] : prev.filter(tid => tid !== task.id)
+                )
+              }}
+              setEditTargetTask={setEditTargetTask}
+              handleDeleteTask={handleDeleteTask}
+              handleToggleTask={handleToggleTask}
+            />
+          ))}
+
+          {matchedTasks.length === 0 && (
+            <div className="h-36 flex flex-col items-center justify-center text-center p-4 border border-dashed border-white/[0.06] rounded-xl bg-[#111315]/40">
+              <Layers className="h-7 w-7 text-[#7E848C]/40 mb-2" />
+              <p className="text-xs text-[#7E848C] font-semibold">No tasks here</p>
+              <button
+                type="button"
+                onClick={() => setIsTaskCreateOpen(true)}
+                className="mt-3 text-[10px] font-bold text-[#5BB98C] hover:text-[#B7E4C7] transition-all cursor-pointer"
+              >
+                + Create Task
+              </button>
+            </div>
+          )}
+        </div>
+      </SortableContext>
+    </div>
+  )
+}
+
+interface SortableTaskProps {
+  task: TaskResponse
+  isSelected: boolean
+  onSelectToggle: (checked: boolean) => void
+  setEditTargetTask: (task: TaskResponse) => void
+  handleDeleteTask: (taskId: string) => void
+  handleToggleTask: (taskId: string, currentCompleted: boolean) => void
+}
+
+function SortableTask({
+  task,
+  isSelected,
+  onSelectToggle,
+  setEditTargetTask,
+  handleDeleteTask,
+  handleToggleTask
+}: SortableTaskProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: task.id,
+    data: { type: 'task' }
+  })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.3 : 1
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`p-3 rounded-xl border border-white/[0.06] bg-[#1D2024] hover:bg-[#23272B] hover:border-[#5BB98C]/30 transition-all duration-200 flex flex-col gap-1.5 text-left relative group shadow-sm ${
+        isSelected ? 'border-[#5BB98C]' : ''
+      }`}
+    >
+      <div className="flex items-start gap-2">
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={(e) => onSelectToggle(e.target.checked)}
+          className="mt-0.5 rounded border-white/10 bg-[#1D2024] text-[#5BB98C] focus:ring-[#5BB98C] h-3.5 w-3.5 cursor-pointer animate-none"
+        />
+
+        <div className="flex-1 min-w-0" {...attributes} {...listeners}>
+          <span className={`text-xs font-semibold text-[#F5F5F5] break-words cursor-grab active:cursor-grabbing ${task.completed ? 'line-through opacity-60' : ''}`}>
+            {task.title}
+          </span>
+          {task.labels && task.labels.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {task.labels.map(lbl => (
+                <span key={lbl.id} className="text-[7.5px] px-1 py-0.5 rounded font-bold text-[#111315]" style={{ backgroundColor: lbl.color }}>
+                  {lbl.name}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        <button
+          onClick={() => handleToggleTask(task.id, task.completed)}
+          className={`text-[#7E848C] hover:text-[#5BB98C] transition-colors cursor-pointer flex-shrink-0 ${task.completed ? 'text-[#5BB98C]' : ''}`}
+        >
+          <CheckSquare className="h-4 w-4 fill-current" />
+        </button>
+      </div>
+
+      <div className="flex justify-between items-center text-[9px] text-[#A7ADB5] mt-1">
+        <div className="flex items-center gap-2 font-semibold">
+          <span>{task.priority}</span>
+          {task.assignee && (
+            <span title={`Assigned to ${task.assignee.full_name}`} className="text-[8px] bg-[#1D2024] border border-white/[0.06] text-[#5BB98C] rounded-full px-1.5 py-0.5 font-bold uppercase">
+              {task.assignee.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
+            </span>
+          )}
+        </div>
+        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <button onClick={() => setEditTargetTask(task)} className="text-[#5BB98C] hover:text-[#B7E4C7] font-semibold cursor-pointer">
+            Edit
+          </button>
+          <button onClick={() => handleDeleteTask(task.id)} className="text-[#EB5757] hover:text-red-400 font-semibold cursor-pointer">
+            Delete
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

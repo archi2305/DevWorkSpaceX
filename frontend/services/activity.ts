@@ -10,8 +10,8 @@ export interface UserMini {
 export interface ActivityResponse {
   id: string
   user_id: string
-  action: str
-  details: str
+  action: string
+  details: string
   target_type: string | null
   target_name: string | null
   created_at: string
