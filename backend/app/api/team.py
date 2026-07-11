@@ -365,13 +365,6 @@ def get_workspace_permissions(
             "delete_projects": False,
             "delete_workspace": False
         },
-        "Manager": {
-            "manage_workspace": False,
-            "invite_members": True,
-            "create_projects": True,
-            "delete_projects": False,
-            "delete_workspace": False
-        },
         "Developer": {
             "manage_workspace": False,
             "invite_members": False,
@@ -379,7 +372,14 @@ def get_workspace_permissions(
             "delete_projects": False,
             "delete_workspace": False
         },
-        "Guest": {
+        "Designer": {
+            "manage_workspace": False,
+            "invite_members": False,
+            "create_projects": True,
+            "delete_projects": False,
+            "delete_workspace": False
+        },
+        "Viewer": {
             "manage_workspace": False,
             "invite_members": False,
             "create_projects": False,
