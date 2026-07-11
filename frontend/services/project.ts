@@ -11,6 +11,7 @@ export interface ProjectCreateInput {
   priority?: string
   visibility?: string
   workspace_id?: string
+  kanban_columns?: any[]
 }
 
 export interface ProjectResponse {
@@ -30,6 +31,7 @@ export interface ProjectResponse {
   owner_id: string
   workspace_id: string | null
   visibility: string
+  kanban_columns: Array<{ id: string; title: string; taskIds: string[] }> | null
   created_at: string
   updated_at: string
   members: Array<{
