@@ -8,6 +8,7 @@ class WorkspaceSettingsResponse(BaseModel):
     name: str
     logo_url: Optional[str] = None
     theme: str
+    accent_color: str
     timezone: str
     allow_member_invites: bool
     enable_email_notifications: bool
@@ -20,6 +21,7 @@ class WorkspaceSettingsUpdate(BaseModel):
     name: Optional[str] = None
     logo_url: Optional[str] = None
     theme: Optional[str] = None
+    accent_color: Optional[str] = None
     timezone: Optional[str] = None
     allow_member_invites: Optional[bool] = None
     enable_email_notifications: Optional[bool] = None
