@@ -1556,6 +1556,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
             </motion.div>
           </div>
         )}
+      </AnimatePresence>
       {/* Label Manager Modal Overlay */}
       <AnimatePresence>
         {isLabelManagerOpen && (
