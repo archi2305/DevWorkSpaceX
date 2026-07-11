@@ -10,6 +10,7 @@ from app.models.user import User
 from app.models.workspace import Workspace, WorkspaceInvitation, WorkspaceMember
 from app.schemas.workspace import WorkspaceInvitationCreate, WorkspaceInvitationResponse
 from app.models.activity import ActivityLog
+from app.dependencies.rbac import PermissionChecker
 
 router = APIRouter(prefix="/workspace/invitations", tags=["Workspace Invitations"])
 
@@ -17,7 +18,8 @@ router = APIRouter(prefix="/workspace/invitations", tags=["Workspace Invitations
 def invite_user(
     data: WorkspaceInvitationCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    has_perm: bool = Depends(PermissionChecker("invite_members"))
 ):
     # Check if workspace exists
     workspace = db.query(Workspace).first()
