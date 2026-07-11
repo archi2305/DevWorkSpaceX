@@ -22,7 +22,7 @@ import {
 import { teamService, WorkspaceMember } from '@/services/team'
 import { useCollaboration } from '@/hooks/use-collaboration'
 
-const rolesList = ['Owner', 'Admin', 'Manager', 'Developer', 'Designer', 'Viewer']
+const rolesList = ['Owner', 'Admin', 'Developer', 'Designer', 'Viewer']
 
 export default function TeamPage() {
   const queryClient = useQueryClient()
@@ -316,9 +316,9 @@ export default function TeamPage() {
                 {[
                   { role: 'Owner', manage: true, invite: true, create: true, del_proj: true, del_ws: true },
                   { role: 'Admin', manage: true, invite: true, create: true, del_proj: false, del_ws: false },
-                  { role: 'Manager', manage: false, invite: true, create: true, del_proj: false, del_ws: false },
                   { role: 'Developer', manage: false, invite: false, create: true, del_proj: false, del_ws: false },
-                  { role: 'Guest', manage: false, invite: false, create: false, del_proj: false, del_ws: false },
+                  { role: 'Designer', manage: false, invite: false, create: true, del_proj: false, del_ws: false },
+                  { role: 'Viewer', manage: false, invite: false, create: false, del_proj: false, del_ws: false },
                 ].map((row) => (
                   <tr key={row.role} className="hover:bg-white/[0.02] transition-colors">
                     <td className="py-3 font-bold text-white">{row.role}</td>
@@ -475,24 +475,52 @@ export default function TeamPage() {
 
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <h4 className="text-xs font-bold text-[#7E848C] uppercase tracking-wider">Account Metadata</h4>
+                    <h4 className="text-xs font-bold text-[#7E848C] uppercase tracking-wider">Account Metadata & Workload</h4>
                     <div className="grid grid-cols-2 gap-2.5 bg-[#1D2024] border border-white/[0.06] rounded-xl p-3.5 text-xs">
                       <div className="flex flex-col gap-1">
                         <span className="text-[10px] text-[#7E848C]">Joined</span>
                         <span className="text-white font-bold">{new Date(selectedMember.created_at).toLocaleDateString()}</span>
                       </div>
                       <div className="flex flex-col gap-1">
-                        <span className="text-[10px] text-[#7E848C]">Projects Count</span>
-                        <span className="text-[#5BB98C] font-extrabold">{profileDetails?.projects_count ?? 0}</span>
+                        <span className="text-[10px] text-[#7E848C]">Workload State</span>
+                        {(() => {
+                          const tc = profileDetails?.tasks_count ?? 0
+                          if (tc >= 8) return <span className="text-[#EB5757] font-bold">High Load ({tc})</span>
+                          if (tc >= 4) return <span className="text-orange-400 font-bold">Medium Load ({tc})</span>
+                          if (tc > 0) return <span className="text-[#5BB98C] font-bold">Optimal ({tc})</span>
+                          return <span className="text-[#7E848C] font-medium">None</span>
+                        })()}
                       </div>
                       <div className="flex flex-col gap-1">
-                        <span className="text-[10px] text-[#7E848C]">Tasks Assigned</span>
-                        <span className="text-[#5BB98C] font-extrabold">{profileDetails?.tasks_count ?? 0}</span>
+                        <span className="text-[10px] text-[#7E848C]">Projects Count</span>
+                        <span className="text-[#5BB98C] font-extrabold">{profileDetails?.projects_count ?? 0}</span>
                       </div>
                       <div className="flex flex-col gap-1">
                         <span className="text-[10px] text-[#7E848C]">Status</span>
                         <span className="text-[#5BB98C] font-bold">Active</span>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Workload Assignments */}
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold text-[#7E848C] uppercase tracking-wider">Active Task Assignments</h4>
+                    <div className="bg-[#1D2024] border border-white/[0.06] rounded-xl p-3.5 text-xs text-[#A7ADB5] space-y-2 max-h-[150px] overflow-y-auto">
+                      {isProfileLoading ? (
+                        <div className="flex justify-center py-2"><Loader className="h-4 w-4 text-[#5BB98C] animate-spin" /></div>
+                      ) : (profileDetails as any)?.assigned_tasks?.length > 0 ? (
+                        (profileDetails as any).assigned_tasks.map((task: any) => (
+                          <div key={task.id} className="flex justify-between items-center border-b border-white/[0.04] pb-1.5 last:border-0 last:pb-0">
+                            <span className="text-white font-semibold truncate max-w-[200px]" title={task.title}>{task.title}</span>
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <span className="text-[9px] bg-white/5 px-1.5 py-0.5 rounded text-[#A7ADB5]">{task.status}</span>
+                              <span className="text-[8px] text-[#EB5757] font-bold uppercase">{task.priority}</span>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="italic text-[10px] text-[#7E848C]">No active task assignments.</p>
+                      )}
                     </div>
                   </div>
 
