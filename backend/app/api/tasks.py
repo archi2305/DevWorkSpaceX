@@ -10,7 +10,7 @@ from app.models.task import Task
 from app.models.project import Project
 from app.models.activity import ActivityLog
 from app.models.label import Label
-from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate
+from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate, TaskDependencyResponse
 from app.api.notification import dispatch_notification
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
