@@ -7,7 +7,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { 
   ArrowLeft, Calendar, User as UserIcon, Trash2, Edit3, 
   Clock, AlertCircle, X, Layers, CheckSquare, 
-  Sparkles, FileText, Archive, ArchiveRestore, Star, Pin, Plus, Tag, Filter, Edit, Move, Check
+  Sparkles, FileText, Archive, ArchiveRestore, Star, Pin, Plus, Tag, Filter, Edit, Move, Check,
+  Link2, Network, GitFork, Lock, PlusCircle, AlertOctagon
 } from 'lucide-react'
 import { projectService } from '@/services/project'
 import { taskService, TaskResponse } from '@/services/task'
@@ -184,6 +185,12 @@ export default function ProjectDetailsPage({ params }: PageProps) {
   const [saveLoading, setSaveLoading] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
+  // Dependency & Subtask state fields
+  const [editParentTaskId, setEditParentTaskId] = useState('')
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState('')
+  const [newDepTargetId, setNewDepTargetId] = useState('')
+  const [newDepType, setNewDepType] = useState('blocked_by')
+
   // Sync edit form parameters once query resolves
   useEffect(() => {
     if (project) {
@@ -211,8 +218,68 @@ export default function ProjectDetailsPage({ params }: PageProps) {
       setEditStoryPoints(editTargetTask.story_points ?? '')
       setEditEstimatedTime(editTargetTask.estimated_time ?? '')
       setEditAttachments(editTargetTask.attachments || [])
+      setEditParentTaskId(editTargetTask.parent_id || '')
     }
   }, [editTargetTask])
+
+  // Subtask & Dependency Query Hooks
+  const { data: projectDependencies = [], refetch: refetchProjectDeps } = useQuery({
+    queryKey: ['project-dependencies', id],
+    queryFn: () => taskService.getProjectDependencies(id),
+    enabled: !!id
+  })
+
+  const { data: subtasksList = [], refetch: refetchSubtasks } = useQuery({
+    queryKey: ['subtasks', editTargetTask?.id],
+    queryFn: () => taskService.getSubtasks(editTargetTask!.id),
+    enabled: !!editTargetTask?.id
+  })
+
+  const { data: dependenciesList = [], refetch: refetchDeps } = useQuery({
+    queryKey: ['dependencies', editTargetTask?.id],
+    queryFn: () => taskService.getDependencies(editTargetTask!.id),
+    enabled: !!editTargetTask?.id
+  })
+
+  const handleAddSubtask = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editTargetTask || !newSubtaskTitle.trim()) return
+    try {
+      await taskService.createTask({
+        title: newSubtaskTitle,
+        project_id: id,
+        parent_id: editTargetTask.id
+      })
+      setNewSubtaskTitle('')
+      queryClient.invalidateQueries({ queryKey: ['tasks', { project_id: id }] })
+      refetchSubtasks()
+    } catch (err) {
+      alert('Failed to add subtask.')
+    }
+  }
+
+  const handleAddDependency = async () => {
+    if (!editTargetTask || !newDepTargetId) return
+    try {
+      await taskService.addDependency(editTargetTask.id, newDepTargetId, newDepType)
+      setNewDepTargetId('')
+      refetchDeps()
+      refetchProjectDeps()
+    } catch (err) {
+      alert('Failed to add dependency link.')
+    }
+  }
+
+  const handleRemoveDependency = async (depId: string) => {
+    if (!editTargetTask) return
+    try {
+      await taskService.removeDependency(editTargetTask.id, depId)
+      refetchDeps()
+      refetchProjectDeps()
+    } catch (err) {
+      alert('Failed to remove dependency link.')
+    }
+  }
 
   const handleSaveTaskEdit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -226,6 +293,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
         priority: editTaskPriority,
         due_date: editTaskDueDate || null,
         assignee_id: editTaskAssigneeId || null,
+        parent_id: editParentTaskId || null,
         story_points: editStoryPoints === '' ? null : Number(editStoryPoints),
         estimated_time: editEstimatedTime === '' ? null : Number(editEstimatedTime),
         attachments: editAttachments,
@@ -925,6 +993,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                       handleDeleteTask={handleDeleteTask}
                       handleToggleTask={handleToggleTask}
                       setIsTaskCreateOpen={setIsTaskCreateOpen}
+                      projectDependencies={projectDependencies}
                     />
                   ))}
                 </SortableContext>
@@ -1659,6 +1728,22 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                   </select>
                 </div>
 
+                <div className="space-y-1.5 text-left">
+                  <label className="text-xs font-semibold text-[#A7ADB5] block">Parent Task (Optional)</label>
+                  <select
+                    value={editParentTaskId}
+                    onChange={(e) => setEditParentTaskId(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-white/[0.06] bg-[#1D2024] text-xs text-[#F5F5F5] outline-none focus:border-[#5BB98C] cursor-pointer"
+                  >
+                    <option value="" className="bg-[#171A1D]">None (Root Task)</option>
+                    {tasks.filter(t => t.id !== editTargetTask.id && !t.parent_id).map((t) => (
+                      <option key={t.id} value={t.id} className="bg-[#171A1D]">
+                        {t.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3 text-left">
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-[#A7ADB5] block">Story Points</label>
@@ -1763,9 +1848,215 @@ export default function ProjectDetailsPage({ params }: PageProps) {
               </div>
               </div>
 
-              {/* Right Column: Time Tracking & Comments */}
-              <div className="w-full md:w-1/2 border-t md:border-t-0 md:border-l border-white/[0.06] pt-6 md:pt-0 md:pl-6 overflow-y-auto max-h-[550px] space-y-6">
-                <div>
+              {/* Right Column: Subtasks, Dependencies, Visual Graph, Time Tracking & Comments */}
+              <div className="w-full md:w-1/2 border-t md:border-t-0 md:border-l border-white/[0.06] pt-6 md:pt-0 md:pl-6 overflow-y-auto max-h-[600px] space-y-6 text-left">
+                
+                {/* 1. Subtasks Widget */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-[#A7ADB5] uppercase tracking-wider flex items-center gap-1.5">
+                    <Layers className="h-3.5 w-3.5 text-[#5BB98C]" /> Subtasks ({subtasksList.filter(s => s.completed).length}/{subtasksList.length})
+                  </h4>
+
+                  <div className="space-y-2 max-h-[140px] overflow-y-auto pr-1">
+                    {subtasksList.map((sub) => (
+                      <div key={sub.id} className="flex items-center justify-between p-2.5 bg-[#1D2024]/80 border border-white/[0.04] rounded-xl hover:border-white/10 transition-all">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={sub.completed}
+                            onChange={async (e) => {
+                              try {
+                                await taskService.updateTask(sub.id, { completed: e.target.checked })
+                                refetchSubtasks()
+                                queryClient.invalidateQueries({ queryKey: ['tasks', { project_id: id }] })
+                              } catch (err) {
+                                alert('Failed to update subtask status.')
+                              }
+                            }}
+                            className="rounded border-white/10 bg-[#1D2024] text-[#5BB98C] focus:ring-[#5BB98C] h-3.5 w-3.5 cursor-pointer"
+                          />
+                          <span className={`text-xs ${sub.completed ? 'line-through text-[#7E848C]' : 'text-white'}`}>{sub.title}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (confirm('Delete subtask?')) {
+                              try {
+                                await taskService.deleteTask(sub.id)
+                                refetchSubtasks()
+                                queryClient.invalidateQueries({ queryKey: ['tasks', { project_id: id }] })
+                              } catch (err) {
+                                alert('Failed to delete subtask.')
+                              }
+                            }
+                          }}
+                          className="text-[#EB5757] hover:text-red-400 p-1 rounded hover:bg-white/5"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                    {subtasksList.length === 0 && (
+                      <p className="text-[10px] text-[#7E848C] italic">No subtasks created for this task.</p>
+                    )}
+                  </div>
+
+                  <form onSubmit={handleAddSubtask} className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Add new subtask..."
+                      value={newSubtaskTitle}
+                      onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                      className="flex-1 px-3 py-1.5 border border-white/[0.06] bg-[#1D2024] text-xs text-white rounded-lg outline-none focus:border-[#5BB98C]"
+                    />
+                    <button
+                      type="submit"
+                      className="px-3 py-1.5 bg-[#5BB98C] text-[#111315] font-bold rounded-lg text-xs hover:bg-[#5BB98C]/90"
+                    >
+                      Add
+                    </button>
+                  </form>
+                </div>
+
+                {/* 2. Task Dependencies Widget */}
+                <div className="border-t border-white/[0.06] pt-4 space-y-3">
+                  <h4 className="text-xs font-bold text-[#A7ADB5] uppercase tracking-wider flex items-center gap-1.5">
+                    <Link2 className="h-3.5 w-3.5 text-[#5BB98C]" /> Task Dependencies
+                  </h4>
+
+                  <div className="space-y-2 max-h-[140px] overflow-y-auto pr-1">
+                    {dependenciesList.map((dep) => {
+                      const isOutgoing = dep.task_id === editTargetTask.id
+                      const otherTask = isOutgoing
+                        ? tasks.find(t => t.id === dep.depends_on_id)
+                        : tasks.find(t => t.id === dep.task_id)
+                      if (!otherTask) return null
+                      return (
+                        <div key={dep.id} className="flex items-center justify-between p-2.5 bg-[#1D2024]/80 border border-white/[0.04] rounded-xl hover:border-white/10 transition-all">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-xs font-semibold text-white truncate max-w-[200px]" title={otherTask.title}>
+                              {otherTask.title}
+                            </span>
+                            <span className="text-[9px] text-[#A7ADB5] flex items-center gap-1">
+                              {isOutgoing ? (
+                                <>
+                                  <Lock className="h-2.5 w-2.5 text-[#EB5757]" /> Blocked By ({otherTask.status})
+                                </>
+                              ) : (
+                                <>
+                                  <AlertOctagon className="h-2.5 w-2.5 text-[#F2C94C]" /> Blocks ({otherTask.status})
+                                </>
+                              )}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveDependency(dep.id)}
+                            className="text-[#EB5757] hover:text-red-400 p-1 rounded hover:bg-white/5"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      )
+                    })}
+                    {dependenciesList.length === 0 && (
+                      <p className="text-[10px] text-[#7E848C] italic">No dependency links established yet.</p>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <select
+                      value={newDepTargetId}
+                      onChange={(e) => setNewDepTargetId(e.target.value)}
+                      className="flex-1 px-2.5 py-1.5 border border-white/[0.06] bg-[#1D2024] text-xs text-white rounded-lg outline-none cursor-pointer"
+                    >
+                      <option value="">Select task to link...</option>
+                      {tasks.filter(t => t.id !== editTargetTask.id).map(t => (
+                        <option key={t.id} value={t.id}>{t.title}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={newDepType}
+                      onChange={(e) => setNewDepType(e.target.value)}
+                      className="px-2 py-1.5 border border-white/[0.06] bg-[#1D2024] text-xs text-white rounded-lg outline-none cursor-pointer"
+                    >
+                      <option value="blocked_by">Blocked By</option>
+                      <option value="relates">Relates To</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={handleAddDependency}
+                      className="px-3 py-1.5 bg-[#5BB98C] text-[#111315] font-bold rounded-lg text-xs hover:bg-[#5BB98C]/90"
+                    >
+                      Link
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3. Visual Dependency Graph Flow */}
+                {dependenciesList.length > 0 && (
+                  <div className="border-t border-white/[0.06] pt-4 space-y-3">
+                    <h4 className="text-xs font-bold text-[#A7ADB5] uppercase tracking-wider flex items-center gap-1.5">
+                      <Network className="h-3.5 w-3.5 text-[#5BB98C]" /> Dependency Visualizer Flow
+                    </h4>
+                    <div className="bg-[#111315]/40 border border-white/[0.06] rounded-xl p-3.5 flex flex-col gap-4.5 overflow-x-auto min-h-[140px] justify-center items-center">
+                      <div className="flex flex-wrap items-center justify-center gap-4 text-center">
+                        
+                        {/* Blocking tasks nodes */}
+                        <div className="flex flex-col gap-2">
+                          {dependenciesList.filter(d => d.task_id === editTargetTask.id).map((dep) => {
+                            const other = tasks.find(t => t.id === dep.depends_on_id)
+                            if (!other) return null
+                            return (
+                              <div key={dep.id} className={`px-2.5 py-1.5 rounded-lg border text-[10px] font-semibold max-w-[120px] truncate ${
+                                other.completed ? 'bg-[#5BB98C]/10 border-[#5BB98C]/20 text-[#5BB98C]' : 'bg-[#EB5757]/10 border-[#EB5757]/20 text-[#EB5757]'
+                              }`} title={other.title}>
+                                {other.title}
+                              </div>
+                            )
+                          })}
+                          {dependenciesList.filter(d => d.task_id === editTargetTask.id).length === 0 && (
+                            <span className="text-[9px] text-[#7E848C] italic">No Blockers</span>
+                          )}
+                        </div>
+
+                        {/* Arrow Right connector */}
+                        <div className="text-white/20 font-bold">➔</div>
+
+                        {/* Center Current Task node */}
+                        <div className="px-3.5 py-2.5 rounded-xl border border-[#5BB98C] bg-[#5BB98C]/10 text-[#5BB98C] text-[11px] font-bold max-w-[140px] text-center shadow-md">
+                          {editTargetTask.title}
+                          <span className="block text-[8px] text-[#A7ADB5] mt-1 font-semibold uppercase">{editTargetTask.status}</span>
+                        </div>
+
+                        {/* Arrow Right connector */}
+                        <div className="text-white/20 font-bold">➔</div>
+
+                        {/* Blocked tasks nodes */}
+                        <div className="flex flex-col gap-2">
+                          {dependenciesList.filter(d => d.depends_on_id === editTargetTask.id).map((dep) => {
+                            const other = tasks.find(t => t.id === dep.task_id)
+                            if (!other) return null
+                            return (
+                              <div key={dep.id} className={`px-2.5 py-1.5 rounded-lg border text-[10px] font-semibold max-w-[120px] truncate ${
+                                other.completed ? 'bg-[#5BB98C]/10 border-[#5BB98C]/20 text-[#5BB98C]' : 'bg-white/5 border-white/10 text-white'
+                              }`} title={other.title}>
+                                {other.title}
+                              </div>
+                            )
+                          })}
+                          {dependenciesList.filter(d => d.depends_on_id === editTargetTask.id).length === 0 && (
+                            <span className="text-[9px] text-[#7E848C] italic">Blocks None</span>
+                          )}
+                        </div>
+
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. Time Tracking & Comments */}
+                <div className="border-t border-white/[0.06] pt-4">
                   <TimeLogsManager projectId={id} taskId={editTargetTask.id} />
                 </div>
                 <div className="border-t border-white/[0.06] pt-4">
@@ -1848,6 +2139,7 @@ interface SortableColumnProps {
   handleDeleteTask: (taskId: string) => void
   handleToggleTask: (taskId: string, currentCompleted: boolean) => void
   setIsTaskCreateOpen: (open: boolean) => void
+  projectDependencies: any[]
 }
 
 function SortableColumn({
@@ -1865,7 +2157,8 @@ function SortableColumn({
   setEditTargetTask,
   handleDeleteTask,
   handleToggleTask,
-  setIsTaskCreateOpen
+  setIsTaskCreateOpen,
+  projectDependencies
 }: SortableColumnProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: col.id,
@@ -1964,6 +2257,8 @@ function SortableColumn({
               setEditTargetTask={setEditTargetTask}
               handleDeleteTask={handleDeleteTask}
               handleToggleTask={handleToggleTask}
+              tasks={tasks}
+              projectDependencies={projectDependencies}
             />
           ))}
 
@@ -1993,6 +2288,8 @@ interface SortableTaskProps {
   setEditTargetTask: (task: TaskResponse) => void
   handleDeleteTask: (taskId: string) => void
   handleToggleTask: (taskId: string, currentCompleted: boolean) => void
+  tasks: TaskResponse[]
+  projectDependencies: any[]
 }
 
 function SortableTask({
@@ -2001,7 +2298,9 @@ function SortableTask({
   onSelectToggle,
   setEditTargetTask,
   handleDeleteTask,
-  handleToggleTask
+  handleToggleTask,
+  tasks,
+  projectDependencies
 }: SortableTaskProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
@@ -2013,6 +2312,15 @@ function SortableTask({
     transition,
     opacity: isDragging ? 0.3 : 1
   }
+
+  // Calculate dependency badges
+  const subtasks = tasks.filter(t => t.parent_id === task.id)
+  const completedSubCount = subtasks.filter(t => t.completed).length
+  const isBlocked = projectDependencies.some(d => 
+    d.task_id === task.id && 
+    d.dependency_type === 'blocked_by' && 
+    !(tasks.find(t => t.id === d.depends_on_id)?.completed)
+  )
 
   return (
     <div
@@ -2043,6 +2351,25 @@ function SortableTask({
               ))}
             </div>
           )}
+
+          {/* Dependency badges */}
+          <div className="flex flex-wrap gap-1 mt-1.5">
+            {isBlocked && (
+              <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-[#EB5757]/10 text-[#EB5757] text-[8px] font-bold border border-[#EB5757]/20">
+                <Lock className="h-2.5 w-2.5" /> Blocked
+              </span>
+            )}
+            {task.parent_id && (
+              <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-white/5 text-[#A7ADB5] text-[8px] font-bold border border-white/10">
+                Subtask
+              </span>
+            )}
+            {subtasks.length > 0 && (
+              <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-[#5BB98C]/10 text-[#5BB98C] text-[8px] font-bold border border-[#5BB98C]/20">
+                <Layers className="h-2.5 w-2.5" /> Subtasks {completedSubCount}/{subtasks.length}
+              </span>
+            )}
+          </div>
         </div>
         
         <button
