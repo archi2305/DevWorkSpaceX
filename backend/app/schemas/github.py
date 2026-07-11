@@ -84,3 +84,25 @@ class OAuthCallbackRequest(BaseModel):
 
 class LinkTaskRequest(BaseModel):
     task_id: uuid.UUID
+
+class GithubWorkflowRunResponse(BaseModel):
+    id: uuid.UUID
+    repository_id: uuid.UUID
+    run_number: int
+    event: str
+    status: str
+    conclusion: Optional[str] = None
+    html_url: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class GithubWorkflowRunCreate(BaseModel):
+    repository_id: uuid.UUID
+    run_number: int
+    event: str
+    status: str
+    conclusion: Optional[str] = None
+    html_url: str
+

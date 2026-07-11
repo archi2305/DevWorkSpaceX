@@ -249,10 +249,43 @@ def list_deployments(
         deployments = [deployment]
     return deployments
 
+@router.get("/workflow-runs", response_model=List[GithubWorkflowRunResponse])
+def list_workflow_runs(
+    repository_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    runs = db.query(GithubWorkflowRun).filter(GithubWorkflowRun.repository_id == repository_id).all()
+    if not runs:
+        # Seed mock workflow run
+        run1 = GithubWorkflowRun(
+            repository_id=repository_id,
+            run_number=204,
+            event="push",
+            status="completed",
+            conclusion="success",
+            html_url="https://github.com/acme/core-service/actions/runs/204"
+        )
+        run2 = GithubWorkflowRun(
+            repository_id=repository_id,
+            run_number=205,
+            event="push",
+            status="completed",
+            conclusion="failure",
+            html_url="https://github.com/acme/core-service/actions/runs/205"
+        )
+        db.add(run1)
+        db.add(run2)
+        db.commit()
+        db.refresh(run1)
+        db.refresh(run2)
+        runs = [run1, run2]
+    return runs
+
 @router.post("/webhook", summary="Receive GitHub Webhook Events")
 async def github_webhook(request: Request, db: Session = Depends(get_db)):
     """
-    Webhook dispatcher to capture GitHub push and pull request activities.
+    Webhook dispatcher to capture GitHub push, pull request, and actions activities.
     """
     payload = await request.json()
     event_type = request.headers.get("X-GitHub-Event", "ping")
@@ -287,6 +320,31 @@ async def github_webhook(request: Request, db: Session = Depends(get_db)):
             else:
                 pr.title = pr_data.get("title")
                 pr.state = state
+            db.commit()
+
+    elif event_type == "workflow_run":
+        run_data = payload.get("workflow_run", {})
+        repo_data = payload.get("repository", {})
+        repo = db.query(GithubRepository).filter(GithubRepository.full_name == repo_data.get("full_name")).first()
+        if repo:
+            run = db.query(GithubWorkflowRun).filter(
+                GithubWorkflowRun.repository_id == repo.id,
+                GithubWorkflowRun.run_number == run_data.get("run_number")
+            ).first()
+
+            if not run:
+                run = GithubWorkflowRun(
+                    repository_id=repo.id,
+                    run_number=run_data.get("run_number"),
+                    event=run_data.get("event"),
+                    status=run_data.get("status"),
+                    conclusion=run_data.get("conclusion"),
+                    html_url=run_data.get("html_url")
+                )
+                db.add(run)
+            else:
+                run.status = run_data.get("status")
+                run.conclusion = run_data.get("conclusion")
             db.commit()
 
     return {"status": "processed"}
