@@ -54,6 +54,12 @@ class Task(Base):
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     attachments: Mapped[list | None] = mapped_column(JSON, default=list, nullable=True)
     
+    # Scopes
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("tasks.id", ondelete="CASCADE"),
+        nullable=True
+    )
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -72,3 +78,29 @@ class Task(Base):
     assignee = relationship("User", backref="tasks")
     sprint = relationship("Sprint", backref="tasks")
     labels = relationship("Label", secondary="task_labels", back_populates="tasks")
+    parent = relationship("Task", remote_side=[id], backref="subtasks")
+
+class TaskDependency(Base):
+    """
+    Tracks task dependency relations: Blocked By / Blocks and Related Tasks.
+    """
+    __tablename__ = "task_dependencies"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    task_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tasks.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    depends_on_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tasks.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    dependency_type: Mapped[str] = mapped_column(
+        String(50),
+        default="blocked_by",
+        nullable=False
+    ) # 'blocked_by', 'relates'
+
+    # Relationships
+    task = relationship("Task", foreign_keys=[task_id], backref="dependencies")
+    depends_on = relationship("Task", foreign_keys=[depends_on_id], backref="dependents")
