@@ -25,30 +25,15 @@ export function CommandPalette() {
   const [results, setResults] = useState<GlobalSearchResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [recentSearches, setRecentSearches] = useState<string[]>([])
+  const [activeIndex, setActiveIndex] = useState(0)
   
   const paletteRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-
-  // 1. Listen for ⌘K / Ctrl+K and Escape
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault()
-        setIsOpen((prev) => !prev)
-      }
-      if (e.key === 'Escape') {
-        setIsOpen(false)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
 
   // Focus input on open
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 80)
-      // Load recent searches from LocalStorage
       const saved = localStorage.getItem('recent_workspace_searches')
       if (saved) {
         try {
@@ -63,7 +48,7 @@ export function CommandPalette() {
     }
   }, [isOpen])
 
-  // 2. Debounce query state
+  // Debounce query state
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQuery(query)
@@ -71,7 +56,7 @@ export function CommandPalette() {
     return () => clearTimeout(timer)
   }, [query])
 
-  // 3. Execute Search
+  // Execute Search
   useEffect(() => {
     if (!debouncedQuery.trim()) {
       setResults(null)
@@ -113,6 +98,76 @@ export function CommandPalette() {
     }
     return () => document.removeEventListener('mousedown', clickOutside)
   }, [isOpen])
+
+  // Flatten visible items for keyboard navigation index mappings
+  const getFlattenedItems = (): { id: string; type: string; title: string; url: string }[] => {
+    const items: { id: string; type: string; title: string; url: string }[] = []
+
+    if (!query.trim()) {
+      recentSearches.forEach((s, idx) => {
+        items.push({ id: `recent-${idx}`, type: 'recent', title: s, url: '' })
+      })
+    } else if (results) {
+      results.projects.forEach((p) => {
+        items.push({ id: p.id, type: 'project', title: p.name, url: `/projects/${p.id}` })
+      })
+      results.tasks.forEach((t) => {
+        items.push({ id: t.id, type: 'task', title: t.title, url: `/calendar` })
+      })
+      results.members.forEach((m) => {
+        items.push({ id: m.id, type: 'member', title: m.full_name, url: `/team` })
+      })
+      results.documents.forEach((d) => {
+        items.push({ id: d.id, type: 'document', title: d.title, url: `/documentation` })
+      })
+      results.comments.forEach((c) => {
+        items.push({ id: c.id, type: 'comment', title: c.content, url: c.project_id ? `/projects/${c.project_id}` : '/projects' })
+      })
+      results.files.forEach((f) => {
+        items.push({ id: f.id, type: 'file', title: f.name, url: `/files` })
+      })
+    }
+    return items
+  }
+
+  const flattenedItems = getFlattenedItems()
+
+  useEffect(() => {
+    setActiveIndex(0)
+  }, [query, results])
+
+  // Global Keydown Listeners (Cmd+K / Ctrl+K and arrow keys)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setIsOpen((prev) => !prev)
+      }
+      if (!isOpen) return
+
+      if (e.key === 'Escape') {
+        setIsOpen(false)
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setActiveIndex((prev) => (flattenedItems.length > 0 ? (prev + 1) % flattenedItems.length : 0))
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setActiveIndex((prev) => (flattenedItems.length > 0 ? (prev - 1 + flattenedItems.length) % flattenedItems.length : 0))
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        if (flattenedItems[activeIndex]) {
+          const item = flattenedItems[activeIndex]
+          if (item.type === 'recent') {
+            setQuery(item.title)
+          } else {
+            navigateToResult(item.url)
+          }
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, flattenedItems, activeIndex])
 
   // Highlight matches text helper
   const highlightMatch = (text: string | null, searchStr: string) => {
@@ -156,6 +211,8 @@ export function CommandPalette() {
     results.files.length > 0
   )
 
+  let absoluteCounter = 0
+
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-start justify-center pt-[12vh] p-4 text-left">
       <div
@@ -195,16 +252,24 @@ export function CommandPalette() {
                 )}
               </div>
               <div className="space-y-1">
-                {recentSearches.map((s, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setQuery(s)}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs text-[#A7ADB5] hover:bg-white/5 hover:text-white transition-all cursor-pointer text-left"
-                  >
-                    <History className="h-3.5 w-3.5 text-[#7E848C]" />
-                    <span>{s}</span>
-                  </button>
-                ))}
+                {recentSearches.map((s, idx) => {
+                  const isCurrentActive = activeIndex === absoluteCounter++
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => setQuery(s)}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all cursor-pointer text-left ${
+                        isCurrentActive ? 'bg-[#5BB98C]/10 text-white' : 'text-[#A7ADB5] hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <History className="h-3.5 w-3.5 text-[#7E848C]" />
+                        <span>{s}</span>
+                      </div>
+                      <CornerDownLeft className={`h-3.5 w-3.5 text-[#5BB98C] transition-opacity ${isCurrentActive ? 'opacity-100' : 'opacity-0'}`} />
+                    </button>
+                  )
+                })}
                 {recentSearches.length === 0 && (
                   <p className="text-[11px] text-[#7E848C] italic px-2 py-1">No recent searches recorded.</p>
                 )}
@@ -220,19 +285,24 @@ export function CommandPalette() {
               {results.projects.length > 0 && (
                 <div className="space-y-1">
                   <div className="text-[10px] font-bold text-[#7E848C] uppercase tracking-wider px-2">Projects</div>
-                  {results.projects.map((p) => (
-                    <button
-                      key={p.id}
-                      onClick={() => navigateToResult(`/projects/${p.id}`)}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-[#A7ADB5] hover:bg-[#5BB98C]/10 hover:text-white border border-transparent hover:border-[#5BB98C]/20 transition-all cursor-pointer text-left"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Folder className="h-3.5 w-3.5 text-blue-400" />
-                        <span>{highlightMatch(p.name, query)}</span>
-                      </div>
-                      <CornerDownLeft className="h-3 w-3 opacity-0 group-hover:opacity-100" />
-                    </button>
-                  ))}
+                  {results.projects.map((p) => {
+                    const isCurrentActive = activeIndex === absoluteCounter++
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => navigateToResult(`/projects/${p.id}`)}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs border border-transparent transition-all cursor-pointer text-left ${
+                          isCurrentActive ? 'bg-[#5BB98C]/15 text-white border-[#5BB98C]/20' : 'text-[#A7ADB5] hover:bg-[#5BB98C]/10 hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Folder className="h-3.5 w-3.5 text-blue-400" />
+                          <span>{highlightMatch(p.name, query)}</span>
+                        </div>
+                        <CornerDownLeft className={`h-3.5 w-3.5 text-[#5BB98C] transition-opacity ${isCurrentActive ? 'opacity-100' : 'opacity-0'}`} />
+                      </button>
+                    )
+                  })}
                 </div>
               )}
 
@@ -240,22 +310,30 @@ export function CommandPalette() {
               {results.tasks.length > 0 && (
                 <div className="space-y-1">
                   <div className="text-[10px] font-bold text-[#7E848C] uppercase tracking-wider px-2">Tasks</div>
-                  {results.tasks.map((t) => (
-                    <button
-                      key={t.id}
-                      onClick={() => navigateToResult(`/calendar`)}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-[#A7ADB5] hover:bg-[#5BB98C]/10 hover:text-white border border-transparent hover:border-[#5BB98C]/20 transition-all cursor-pointer text-left"
-                    >
-                      <div className="flex items-center gap-3">
-                        <CheckSquare className="h-3.5 w-3.5 text-[#5BB98C]" />
-                        <div>
-                          <div className="font-medium text-white">{highlightMatch(t.title, query)}</div>
-                          {t.description && <div className="text-[10px] text-[#7E848C] truncate max-w-lg">{t.description}</div>}
+                  {results.tasks.map((t) => {
+                    const isCurrentActive = activeIndex === absoluteCounter++
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => navigateToResult(`/calendar`)}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs border border-transparent transition-all cursor-pointer text-left ${
+                          isCurrentActive ? 'bg-[#5BB98C]/15 text-white border-[#5BB98C]/20' : 'text-[#A7ADB5] hover:bg-[#5BB98C]/10 hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <CheckSquare className="h-3.5 w-3.5 text-[#5BB98C]" />
+                          <div>
+                            <div className="font-medium text-white">{highlightMatch(t.title, query)}</div>
+                            {t.description && <div className="text-[10px] text-[#7E848C] truncate max-w-lg">{t.description}</div>}
+                          </div>
                         </div>
-                      </div>
-                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[#7E848C]">{t.status}</span>
-                    </button>
-                  ))}
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[#7E848C]">{t.status}</span>
+                          <CornerDownLeft className={`h-3.5 w-3.5 text-[#5BB98C] transition-opacity ${isCurrentActive ? 'opacity-100' : 'opacity-0'}`} />
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
               )}
 
@@ -263,23 +341,29 @@ export function CommandPalette() {
               {results.members.length > 0 && (
                 <div className="space-y-1">
                   <div className="text-[10px] font-bold text-[#7E848C] uppercase tracking-wider px-2">Workspace Members</div>
-                  {results.members.map((m) => (
-                    <button
-                      key={m.id}
-                      onClick={() => navigateToResult(`/team`)}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-[#A7ADB5] hover:bg-[#5BB98C]/10 hover:text-white border border-transparent hover:border-[#5BB98C]/20 transition-all cursor-pointer text-left"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="h-5 w-5 rounded-full bg-[#5BB98C]/15 border border-[#5BB98C]/25 text-[#5BB98C] flex items-center justify-center text-[9px] font-bold">
-                          {m.full_name[0].toUpperCase()}
+                  {results.members.map((m) => {
+                    const isCurrentActive = activeIndex === absoluteCounter++
+                    return (
+                      <button
+                        key={m.id}
+                        onClick={() => navigateToResult(`/team`)}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs border border-transparent transition-all cursor-pointer text-left ${
+                          isCurrentActive ? 'bg-[#5BB98C]/15 text-white border-[#5BB98C]/20' : 'text-[#A7ADB5] hover:bg-[#5BB98C]/10 hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="h-5 w-5 rounded-full bg-[#5BB98C]/15 border border-[#5BB98C]/25 text-[#5BB98C] flex items-center justify-center text-[9px] font-bold">
+                            {m.full_name[0].toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="font-medium text-white">{highlightMatch(m.full_name, query)}</div>
+                            <div className="text-[9px] text-[#7E848C]">{highlightMatch(m.email, query)}</div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="font-medium text-white">{highlightMatch(m.full_name, query)}</div>
-                          <div className="text-[9px] text-[#7E848C]">{highlightMatch(m.email, query)}</div>
-                        </div>
-                      </div>
-                    </button>
-                  ))}
+                        <CornerDownLeft className={`h-3.5 w-3.5 text-[#5BB98C] transition-opacity ${isCurrentActive ? 'opacity-100' : 'opacity-0'}`} />
+                      </button>
+                    )
+                  })}
                 </div>
               )}
 
@@ -287,21 +371,27 @@ export function CommandPalette() {
               {results.documents.length > 0 && (
                 <div className="space-y-1">
                   <div className="text-[10px] font-bold text-[#7E848C] uppercase tracking-wider px-2">Documentation</div>
-                  {results.documents.map((d) => (
-                    <button
-                      key={d.id}
-                      onClick={() => navigateToResult(`/documentation`)}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-[#A7ADB5] hover:bg-[#5BB98C]/10 hover:text-white border border-transparent hover:border-[#5BB98C]/20 transition-all cursor-pointer text-left"
-                    >
-                      <div className="flex items-center gap-3">
-                        <FileText className="h-3.5 w-3.5 text-yellow-500" />
-                        <div>
-                          <div className="font-medium text-white">{highlightMatch(d.title, query)}</div>
-                          {d.content && <div className="text-[10px] text-[#7E848C] truncate max-w-lg">{d.content}</div>}
+                  {results.documents.map((d) => {
+                    const isCurrentActive = activeIndex === absoluteCounter++
+                    return (
+                      <button
+                        key={d.id}
+                        onClick={() => navigateToResult(`/documentation`)}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs border border-transparent transition-all cursor-pointer text-left ${
+                          isCurrentActive ? 'bg-[#5BB98C]/15 text-white border-[#5BB98C]/20' : 'text-[#A7ADB5] hover:bg-[#5BB98C]/10 hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-3.5 w-3.5 text-yellow-500" />
+                          <div>
+                            <div className="font-medium text-white">{highlightMatch(d.title, query)}</div>
+                            {d.content && <div className="text-[10px] text-[#7E848C] truncate max-w-lg">{d.content}</div>}
+                          </div>
                         </div>
-                      </div>
-                    </button>
-                  ))}
+                        <CornerDownLeft className={`h-3.5 w-3.5 text-[#5BB98C] transition-opacity ${isCurrentActive ? 'opacity-100' : 'opacity-0'}`} />
+                      </button>
+                    )
+                  })}
                 </div>
               )}
 
@@ -309,21 +399,27 @@ export function CommandPalette() {
               {results.comments.length > 0 && (
                 <div className="space-y-1">
                   <div className="text-[10px] font-bold text-[#7E848C] uppercase tracking-wider px-2">Comments</div>
-                  {results.comments.map((c) => (
-                    <button
-                      key={c.id}
-                      onClick={() => {
-                        if (c.project_id) navigateToResult(`/projects/${c.project_id}`)
-                        else navigateToResult(`/projects`)
-                      }}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-[#A7ADB5] hover:bg-[#5BB98C]/10 hover:text-white border border-transparent hover:border-[#5BB98C]/20 transition-all cursor-pointer text-left"
-                    >
-                      <div className="flex items-center gap-3">
-                        <MessageSquare className="h-3.5 w-3.5 text-purple-400" />
-                        <span className="truncate max-w-lg">{highlightMatch(c.content, query)}</span>
-                      </div>
-                    </button>
-                  ))}
+                  {results.comments.map((c) => {
+                    const isCurrentActive = activeIndex === absoluteCounter++
+                    return (
+                      <button
+                        key={c.id}
+                        onClick={() => {
+                          if (c.project_id) navigateToResult(`/projects/${c.project_id}`)
+                          else navigateToResult(`/projects`)
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs border border-transparent transition-all cursor-pointer text-left ${
+                          isCurrentActive ? 'bg-[#5BB98C]/15 text-white border-[#5BB98C]/20' : 'text-[#A7ADB5] hover:bg-[#5BB98C]/10 hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <MessageSquare className="h-3.5 w-3.5 text-purple-400" />
+                          <span className="truncate max-w-lg">{highlightMatch(c.content, query)}</span>
+                        </div>
+                        <CornerDownLeft className={`h-3.5 w-3.5 text-[#5BB98C] transition-opacity ${isCurrentActive ? 'opacity-100' : 'opacity-0'}`} />
+                      </button>
+                    )
+                  })}
                 </div>
               )}
 
@@ -331,19 +427,27 @@ export function CommandPalette() {
               {results.files.length > 0 && (
                 <div className="space-y-1">
                   <div className="text-[10px] font-bold text-[#7E848C] uppercase tracking-wider px-2">Files</div>
-                  {results.files.map((f) => (
-                    <button
-                      key={f.id}
-                      onClick={() => navigateToResult(`/files`)}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-[#A7ADB5] hover:bg-[#5BB98C]/10 hover:text-white border border-transparent hover:border-[#5BB98C]/20 transition-all cursor-pointer text-left"
-                    >
-                      <div className="flex items-center gap-3">
-                        <File className="h-3.5 w-3.5 text-yellow-500" />
-                        <span>{highlightMatch(f.name, query)}</span>
-                      </div>
-                      <span className="text-[9px] text-[#7E848C] font-mono">{(f.size / 1024).toFixed(1)} KB</span>
-                    </button>
-                  ))}
+                  {results.files.map((f) => {
+                    const isCurrentActive = activeIndex === absoluteCounter++
+                    return (
+                      <button
+                        key={f.id}
+                        onClick={() => navigateToResult(`/files`)}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs border border-transparent transition-all cursor-pointer text-left ${
+                          isCurrentActive ? 'bg-[#5BB98C]/15 text-white border-[#5BB98C]/20' : 'text-[#A7ADB5] hover:bg-[#5BB98C]/10 hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <File className="h-3.5 w-3.5 text-yellow-500" />
+                          <span>{highlightMatch(f.name, query)}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] text-[#7E848C] font-mono">{(f.size / 1024).toFixed(1)} KB</span>
+                          <CornerDownLeft className={`h-3.5 w-3.5 text-[#5BB98C] transition-opacity ${isCurrentActive ? 'opacity-100' : 'opacity-0'}`} />
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
               )}
 
@@ -362,6 +466,7 @@ export function CommandPalette() {
         <div className="px-4 py-2 border-t border-white/[0.04] bg-[#141618] text-[9px] text-[#7E848C] flex items-center justify-between">
           <span>Search projects, tasks, team, docs, comments, files...</span>
           <div className="flex gap-2">
+            <span>↑↓ to navigate</span>
             <span>ESC to close</span>
             <span>↵ to select</span>
           </div>
