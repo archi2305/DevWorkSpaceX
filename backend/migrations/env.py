@@ -31,6 +31,8 @@ from app.models.milestone import Milestone
 from app.models.release import Release
 from app.models.automation_rule import AutomationRule
 from app.models.github import GithubRepository, GithubPullRequest, GithubCommit, GithubIssue, GithubBranch, GithubDeployment
+from app.models.saved_filter import SavedFilter
+from app.models.time_log import TimeLog
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
