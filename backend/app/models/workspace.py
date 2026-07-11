@@ -74,3 +74,13 @@ class WorkspaceInvitation(Base):
     status: Mapped[str] = mapped_column(String(50), default="pending", nullable=False) # pending, accepted, rejected, cancelled
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+class RolePermission(Base):
+    """
+    Model representing customizable database-driven role based access control policies.
+    """
+    __tablename__ = "role_permissions"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    role: Mapped[str] = mapped_column(String(50), nullable=False) # Owner, Admin, Manager, Developer, Viewer
+    permission: Mapped[str] = mapped_column(String(100), nullable=False) # e.g. create_project, delete_project
