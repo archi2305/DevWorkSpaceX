@@ -30,6 +30,7 @@ export interface TaskResponse {
   attachments?: { name: string; url: string }[] | null
   sprint_id?: string | null
   milestone_id?: string | null
+  release_id?: string | null
   assignee?: {
     id: string
     full_name: string
