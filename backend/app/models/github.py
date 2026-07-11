@@ -62,3 +62,15 @@ class GithubDeployment(Base):
     environment: Mapped[str] = mapped_column(String(100), nullable=False)
     status: Mapped[str] = mapped_column(String(50), default="pending", nullable=False) # success, failure, pending
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+class GithubWorkflowRun(Base):
+    __tablename__ = "github_workflow_runs"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    repository_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("github_repositories.id", ondelete="CASCADE"), nullable=False)
+    run_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    event: Mapped[str] = mapped_column(String(50), nullable=False) # push, pull_request
+    status: Mapped[str] = mapped_column(String(50), nullable=False) # completed, in_progress, queued
+    conclusion: Mapped[str | None] = mapped_column(String(50), nullable=True) # success, failure, cancelled
+    html_url: Mapped[str] = mapped_column(String(500), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
