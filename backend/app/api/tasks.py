@@ -541,4 +541,17 @@ def remove_dependency(
     db.commit()
     return None
 
+@router.get(
+    "/project/{project_id}/dependencies",
+    response_model=List[TaskDependencyResponse],
+    summary="Get all dependencies for all tasks in a project"
+)
+def get_project_dependencies(
+    project_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    from app.models.task import TaskDependency, Task
+    return db.query(TaskDependency).join(Task, Task.id == TaskDependency.task_id).filter(Task.project_id == project_id).all()
+
 
