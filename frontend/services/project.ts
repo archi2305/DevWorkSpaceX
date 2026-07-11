@@ -28,6 +28,7 @@ export interface ProjectResponse {
   is_favorite: boolean
   is_pinned: boolean
   is_archived: boolean
+  is_template: boolean
   owner_id: string
   workspace_id: string | null
   visibility: string
@@ -158,4 +159,32 @@ export const projectService = {
   async deleteProject(id: string): Promise<void> {
     await api.delete(`/projects/${id}`)
   },
+
+  /**
+   * Get all projects marked as templates.
+   */
+  async getTemplates(): Promise<ProjectResponse[]> {
+    const response = await api.get<ProjectResponse[]>('/projects/templates/list')
+    return response.data
+  },
+
+  /**
+   * Save/mark a project as template.
+   */
+  async saveAsTemplate(id: string, isTemplate: boolean = true): Promise<any> {
+    const response = await api.patch<any>(`/projects/${id}/template`, null, {
+      params: { is_template: isTemplate }
+    })
+    return response.data
+  },
+
+  /**
+   * Duplicate a project recursively (sprints, tasks, milestones, etc.).
+   */
+  async duplicateProject(id: string, newName?: string): Promise<any> {
+    const response = await api.post<any>(`/projects/${id}/duplicate`, null, {
+      params: newName ? { new_name: newName } : {}
+    })
+    return response.data
+  }
 }
