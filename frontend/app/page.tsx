@@ -7,6 +7,7 @@ import { AISuggestions } from '@/components/dashboard/ai-suggestions'
 import { RecentActivity } from '@/components/dashboard/recent-activity'
 import { UpcomingTasks } from '@/components/dashboard/upcoming-tasks'
 import { SprintProgress } from '@/components/dashboard/sprint-progress'
+import { MilestonesProgress } from '@/components/dashboard/milestones-progress'
 import { TeamActivity } from '@/components/dashboard/team-activity'
 import { QuickActions } from '@/components/dashboard/quick-actions'
 import { WorkspaceHealth } from '@/components/dashboard/workspace-health'
@@ -130,6 +131,7 @@ export default function Page() {
             >
               <UpcomingTasks />
               <SprintProgress />
+              <MilestonesProgress />
             </motion.div>
           </div>
 
