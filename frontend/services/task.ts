@@ -23,6 +23,7 @@ export interface TaskResponse {
   completed: boolean
   assignee_id: string | null
   project_id: string | null
+  parent_id?: string | null
   story_points?: number | null
   estimated_time?: number | null
   is_archived?: boolean
@@ -112,4 +113,38 @@ export const taskService = {
     const response = await api.post<TaskResponse>(`/tasks/${taskId}/restore`)
     return response.data
   },
+
+  /**
+   * Fetch subtasks of a task.
+   */
+  async getSubtasks(taskId: string): Promise<TaskResponse[]> {
+    const response = await api.get<TaskResponse[]>(`/tasks/${taskId}/subtasks`)
+    return response.data
+  },
+
+  /**
+   * Fetch all dependency links.
+   */
+  async getDependencies(taskId: string): Promise<any[]> {
+    const response = await api.get<any[]>(`/tasks/${taskId}/dependencies`)
+    return response.data
+  },
+
+  /**
+   * Link a dependency.
+   */
+  async addDependency(taskId: string, dependsOnId: string, type: string): Promise<any> {
+    const response = await api.post<any>(`/tasks/${taskId}/dependencies`, {
+      depends_on_id: dependsOnId,
+      dependency_type: type
+    })
+    return response.data
+  },
+
+  /**
+   * Unlink a dependency.
+   */
+  async removeDependency(taskId: string, depId: string): Promise<void> {
+    await api.delete(`/tasks/${taskId}/dependencies/${depId}`)
+  }
 }
