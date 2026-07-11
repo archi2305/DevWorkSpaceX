@@ -26,7 +26,7 @@ def run_test():
     print("Login successful.")
 
     print("\n=== Querying Workspace Members (Users tab) ===")
-    members_resp = requests.get(f"{BASE_URL}/team", headers=headers)
+    members_resp = requests.get(f"{BASE_URL}/workspace/members", headers=headers)
     print(f"Users Count: {len(members_resp.json())}")
     assert members_resp.status_code == 200
 
