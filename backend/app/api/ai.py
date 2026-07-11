@@ -275,3 +275,31 @@ def delete_prompt_template(
     db.commit()
     return None
 
+@router.get(
+    "/insights",
+    summary="Generate workspace insights and risk reports"
+)
+def generate_workspace_insights(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Assembles workspace metrics and asks LLM/fallback to output key engineering indicators.
+    """
+    prompt = (
+        "Analyze the active workspace context to compile Workspace Insights. Include:\n"
+        "1. Risk Analysis: projects/tasks facing blockers or delays.\n"
+        "2. Slow Projects: list projects with progress < 50%.\n"
+        "3. Blocked Tasks: active blocked dependencies count.\n"
+        "4. Idle Members: team members with zero assigned tasks.\n"
+        "5. Sprint Prediction: forecast velocity based on assigned estimation points.\n"
+        "6. Productivity Trends: summarize recent completed task metrics.\n"
+    )
+
+    messages = [
+        {"role": "system", "content": AIService._get_workspace_context(db)},
+        {"role": "user", "content": prompt}
+    ]
+    reply = AIService.call_llm(messages)
+    return {"insights": reply}
+
