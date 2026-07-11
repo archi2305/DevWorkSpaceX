@@ -27,6 +27,7 @@ export interface TaskResponse {
   estimated_time?: number | null
   is_archived?: boolean
   attachments?: { name: string; url: string }[] | null
+  sprint_id?: string | null
   assignee?: {
     id: string
     full_name: string

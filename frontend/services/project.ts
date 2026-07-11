@@ -32,6 +32,7 @@ export interface ProjectResponse {
   workspace_id: string | null
   visibility: string
   kanban_columns: Array<{ id: string; title: string; taskIds: string[] }> | null
+  due_date: string | null
   created_at: string
   updated_at: string
   members: Array<{
