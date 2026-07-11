@@ -17,7 +17,7 @@ export const reportService = {
     })
     
     const blob = new Blob([response.data], { 
-      type: response.headers['content-type'] || 'application/octet-stream' 
+      type: (response.headers['content-type'] as string) || 'application/octet-stream' 
     })
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
