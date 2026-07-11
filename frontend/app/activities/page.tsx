@@ -18,11 +18,15 @@ import {
 } from 'lucide-react'
 import { activityService, ActivityResponse } from '@/services/activity'
 import { teamService } from '@/services/team'
+import { auditService } from '@/services/audit'
 
 export default function ActivitiesPage() {
   // Query Filters
   const [selectedUserId, setSelectedUserId] = useState<string>('')
   const [selectedTargetType, setSelectedTargetType] = useState<string>('')
+  const [actionQuery, setActionQuery] = useState<string>('')
+  const [startDate, setStartDate] = useState<string>('')
+  const [endDate, setEndDate] = useState<string>('')
   
   // Pagination
   const [activitiesList, setActivitiesList] = useState<ActivityResponse[]>([])
@@ -38,13 +42,25 @@ export default function ActivitiesPage() {
 
   // Load activities list based on filters + offset
   const { data: fetchedActivities = [], isLoading, isRefetching } = useQuery({
-    queryKey: ['activities-timeline', selectedUserId, selectedTargetType, offset],
-    queryFn: () => activityService.getActivities({
-      limit,
-      offset,
-      user_id: selectedUserId || undefined,
-      target_type: selectedTargetType || undefined
-    })
+    queryKey: ['activities-timeline', selectedUserId, selectedTargetType, actionQuery, startDate, endDate, offset],
+    queryFn: () => {
+      // If we have custom action or date filters, query the secure /activities/audit endpoint
+      if (actionQuery || startDate || endDate) {
+        return auditService.getAuditLogs({
+          user_id: selectedUserId || undefined,
+          action: actionQuery || undefined,
+          target_type: selectedTargetType || undefined,
+          start_date: startDate || undefined,
+          end_date: endDate || undefined
+        }) as any
+      }
+      return activityService.getActivities({
+        limit,
+        offset,
+        user_id: selectedUserId || undefined,
+        target_type: selectedTargetType || undefined
+      })
+    }
   })
 
   // Reset list on filter updates
@@ -52,7 +68,7 @@ export default function ActivitiesPage() {
     setActivitiesList([])
     setOffset(0)
     setHasMore(true)
-  }, [selectedUserId, selectedTargetType])
+  }, [selectedUserId, selectedTargetType, actionQuery, startDate, endDate])
 
   // Append new fetched logs
   useEffect(() => {
@@ -60,24 +76,38 @@ export default function ActivitiesPage() {
       setActivitiesList((prev) => {
         // Prevent duplicate logs
         const merged = [...prev]
-        fetchedActivities.forEach(item => {
+        fetchedActivities.forEach((item: any) => {
           if (!merged.some(m => m.id === item.id)) {
             merged.push(item)
           }
         })
         return merged
       })
-      if (fetchedActivities.length < limit) {
+      if (fetchedActivities.length < limit || actionQuery || startDate || endDate) {
         setHasMore(false)
       }
     } else {
       setHasMore(false)
     }
-  }, [fetchedActivities])
+  }, [fetchedActivities, actionQuery, startDate, endDate])
 
   const handleLoadMore = () => {
     if (!isRefetching && hasMore) {
       setOffset((prev) => prev + limit)
+    }
+  }
+
+  const handleExport = async () => {
+    try {
+      await auditService.exportAuditLogs({
+        user_id: selectedUserId || undefined,
+        action: actionQuery || undefined,
+        target_type: selectedTargetType || undefined,
+        start_date: startDate || undefined,
+        end_date: endDate || undefined
+      })
+    } catch (err) {
+      alert('Failed to export audit logs.')
     }
   }
 
@@ -135,46 +165,84 @@ export default function ActivitiesPage() {
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.06] pb-5 text-left">
           <div>
             <h1 className="text-2xl font-bold text-[#F5F5F5] flex items-center gap-2">
-              <Activity className="h-6 w-6 text-[#5BB98C]" /> Activity Timeline
+              <Activity className="h-6 w-6 text-[#5BB98C]" /> Secure Audit Logs
             </h1>
-            <p className="text-xs text-[#A7ADB5] mt-1">Real-time audit trails mapping workspace edits, updates, and deliverables.</p>
+            <p className="text-xs text-[#A7ADB5] mt-1">Immutable record of workspace actions, role modifications, and logins.</p>
           </div>
 
-          {/* Filtering panels */}
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Teammate filter */}
-            <div className="flex items-center gap-1.5 bg-[#171A1D] border border-white/[0.06] rounded-xl px-2.5 py-1.5">
-              <Users className="h-3.5 w-3.5 text-[#7E848C]" />
-              <select
-                value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
-                className="bg-transparent border-none text-xs text-[#A7ADB5] outline-none cursor-pointer focus:text-white"
-              >
-                <option value="">All Members</option>
-                {team.map((m) => (
-                  <option key={m.user.id} value={m.user.id}>
-                    {m.user.full_name}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <button
+            onClick={handleExport}
+            className="px-4 py-2 bg-[#5BB98C] hover:bg-[#5BB98C]/90 text-[#111315] font-bold rounded-xl text-xs cursor-pointer shadow-md"
+          >
+            Export Audit Logs (CSV)
+          </button>
+        </div>
 
-            {/* Action Type filter */}
-            <div className="flex items-center gap-1.5 bg-[#171A1D] border border-white/[0.06] rounded-xl px-2.5 py-1.5">
-              <Layers className="h-3.5 w-3.5 text-[#7E848C]" />
-              <select
-                value={selectedTargetType}
-                onChange={(e) => setSelectedTargetType(e.target.value)}
-                className="bg-transparent border-none text-xs text-[#A7ADB5] outline-none cursor-pointer focus:text-white"
-              >
-                <option value="">All Actions</option>
-                <option value="Project">Projects</option>
-                <option value="Task">Tasks</option>
-                <option value="Comment">Comments</option>
-                <option value="Document">Documents</option>
-              </select>
-            </div>
+        {/* Filtering panels */}
+        <div className="bg-[#171A1D] border border-white/[0.06] rounded-2xl p-4.5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 items-center">
+          
+          <div className="flex items-center gap-1.5 bg-[#1D2024] border border-white/[0.06] rounded-xl px-2.5 py-1.5">
+            <Search className="h-3.5 w-3.5 text-[#7E848C]" />
+            <input
+              type="text"
+              placeholder="Search action..."
+              value={actionQuery}
+              onChange={(e) => setActionQuery(e.target.value)}
+              className="bg-transparent border-none text-xs text-white placeholder-[#7E848C] outline-none w-full"
+            />
           </div>
+
+          <div className="flex items-center gap-1.5 bg-[#1D2024] border border-white/[0.06] rounded-xl px-2.5 py-1.5">
+            <Users className="h-3.5 w-3.5 text-[#7E848C]" />
+            <select
+              value={selectedUserId}
+              onChange={(e) => setSelectedUserId(e.target.value)}
+              className="bg-transparent border-none text-xs text-[#A7ADB5] outline-none cursor-pointer focus:text-white w-full"
+            >
+              <option value="">All Members</option>
+              {team.map((m) => (
+                <option key={m.user.id} value={m.user.id}>
+                  {m.user.full_name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-[#1D2024] border border-white/[0.06] rounded-xl px-2.5 py-1.5">
+            <Layers className="h-3.5 w-3.5 text-[#7E848C]" />
+            <select
+              value={selectedTargetType}
+              onChange={(e) => setSelectedTargetType(e.target.value)}
+              className="bg-transparent border-none text-xs text-[#A7ADB5] outline-none cursor-pointer focus:text-white w-full"
+            >
+              <option value="">All Types</option>
+              <option value="Project">Projects</option>
+              <option value="Task">Tasks</option>
+              <option value="Comment">Comments</option>
+              <option value="Document">Documents</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-[#1D2024] border border-white/[0.06] rounded-xl px-2.5 py-1.5">
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="bg-transparent border-none text-xs text-[#A7ADB5] outline-none cursor-pointer focus:text-white w-full"
+              title="Start Date"
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-[#1D2024] border border-white/[0.06] rounded-xl px-2.5 py-1.5">
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="bg-transparent border-none text-xs text-[#A7ADB5] outline-none cursor-pointer focus:text-white w-full"
+              title="End Date"
+            />
+          </div>
+
         </div>
 
         {/* Timeline body feed */}
