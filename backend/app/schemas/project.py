@@ -22,6 +22,7 @@ class ProjectBase(BaseModel):
     workspace_id: Optional[uuid.UUID] = None
     visibility: str = Field("Workspace", max_length=50)
     due_date: Optional[datetime] = None
+    kanban_columns: Optional[List[dict]] = None
 
 class ProjectCreate(BaseModel):
     """
@@ -38,6 +39,7 @@ class ProjectCreate(BaseModel):
     workspace_id: Optional[uuid.UUID] = None
     visibility: Optional[str] = Field("Workspace", max_length=50)
     due_date: Optional[datetime] = None
+    kanban_columns: Optional[List[dict]] = None
 
 class ProjectUpdate(BaseModel):
     """
@@ -58,6 +60,7 @@ class ProjectUpdate(BaseModel):
     workspace_id: Optional[uuid.UUID] = None
     visibility: Optional[str] = Field(None, max_length=50)
     due_date: Optional[datetime] = None
+    kanban_columns: Optional[List[dict]] = None
 
 class ProjectMember(BaseModel):
     """

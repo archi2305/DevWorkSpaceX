@@ -209,6 +209,14 @@ def create_project(
         
     slug = project_data.slug or generate_slug(project_data.name)
     
+    default_columns = [
+        {"id": "Todo", "title": "To Do", "taskIds": []},
+        {"id": "In Progress", "title": "In Progress", "taskIds": []},
+        {"id": "Review", "title": "Review", "taskIds": []},
+        {"id": "Done", "title": "Done", "taskIds": []}
+    ]
+    kanban_cols = project_data.kanban_columns or default_columns
+
     db_project = Project(
         name=project_data.name,
         slug=slug,
@@ -222,7 +230,8 @@ def create_project(
         owner_id=current_user.id,
         visibility=project_data.visibility or "Workspace",
         workspace_id=project_data.workspace_id,
-        due_date=project_data.due_date
+        due_date=project_data.due_date,
+        kanban_columns=kanban_cols
     )
     db_project.members.append(current_user)
     

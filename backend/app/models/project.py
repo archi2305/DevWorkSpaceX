@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Integer, DateTime, Table, ForeignKey, Column, Boolean
+from sqlalchemy import String, Integer, DateTime, Table, ForeignKey, Column, Boolean, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database.db import Base
 
@@ -70,6 +70,9 @@ class Project(Base):
     
     # Project deadline due date
     due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    
+    # Custom Kanban Board Columns & Order
+    kanban_columns: Mapped[list | None] = mapped_column(JSON, nullable=True)
     
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
