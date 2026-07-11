@@ -16,6 +16,7 @@ class TaskBase(BaseModel):
     completed: bool = False
     project_id: Optional[uuid.UUID] = None
     sprint_id: Optional[uuid.UUID] = None
+    parent_id: Optional[uuid.UUID] = None
     story_points: Optional[int] = None
     estimated_time: Optional[int] = None
     is_archived: bool = False
@@ -33,6 +34,7 @@ class TaskCreate(BaseModel):
     assignee_id: Optional[uuid.UUID] = None
     project_id: Optional[uuid.UUID] = None
     sprint_id: Optional[uuid.UUID] = None
+    parent_id: Optional[uuid.UUID] = None
     completed: bool = False
     story_points: Optional[int] = None
     estimated_time: Optional[int] = None
@@ -52,6 +54,7 @@ class TaskUpdate(BaseModel):
     assignee_id: Optional[uuid.UUID] = None
     project_id: Optional[uuid.UUID] = None
     sprint_id: Optional[uuid.UUID] = None
+    parent_id: Optional[uuid.UUID] = None
     story_points: Optional[int] = None
     estimated_time: Optional[int] = None
     is_archived: Optional[bool] = None
@@ -76,6 +79,20 @@ class TaskResponse(TaskBase):
     labels: List[LabelResponse] = []
     created_at: datetime
     updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class TaskDependencyCreate(BaseModel):
+    depends_on_id: uuid.UUID
+    dependency_type: str = "blocked_by" # 'blocked_by', 'relates'
+
+class TaskDependencyResponse(BaseModel):
+    id: uuid.UUID
+    task_id: uuid.UUID
+    depends_on_id: uuid.UUID
+    dependency_type: str
+    depends_on: Optional[TaskResponse] = None
 
     class Config:
         from_attributes = True

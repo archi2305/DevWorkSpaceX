@@ -59,6 +59,10 @@ class Task(Base):
         ForeignKey("tasks.id", ondelete="CASCADE"),
         nullable=True
     )
+    milestone_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("milestones.id", ondelete="SET NULL"),
+        nullable=True
+    )
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
@@ -79,6 +83,7 @@ class Task(Base):
     sprint = relationship("Sprint", backref="tasks")
     labels = relationship("Label", secondary="task_labels", back_populates="tasks")
     parent = relationship("Task", remote_side=[id], backref="subtasks")
+    milestone = relationship("Milestone", backref="tasks")
 
 class TaskDependency(Base):
     """
