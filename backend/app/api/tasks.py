@@ -161,6 +161,7 @@ def create_task(
         assignee_id=assignee_id,
         project_id=task_data.project_id,
         sprint_id=task_data.sprint_id,
+        parent_id=task_data.parent_id,
         story_points=task_data.story_points,
         estimated_time=task_data.estimated_time,
         is_archived=task_data.is_archived,
@@ -224,6 +225,29 @@ def update_task(
     old_project_id = db_task.project_id
     
     update_data = task_update.model_dump(exclude_unset=True)
+    
+    # Pre-calculate completion status if changing
+    new_completed = was_completed
+    if "completed" in update_data:
+        new_completed = update_data["completed"]
+    if "status" in update_data:
+        new_completed = (update_data["status"] == "Done")
+
+    # Enforce Dependency Lock: Cannot complete task if blocked by uncompleted tasks
+    if new_completed and not was_completed:
+        from app.models.task import TaskDependency
+        blocked_by_relations = db.query(TaskDependency).filter(
+            TaskDependency.task_id == db_task.id,
+            TaskDependency.dependency_type == "blocked_by"
+        ).all()
+        for dep in blocked_by_relations:
+            blocking_task = db.query(Task).filter(Task.id == dep.depends_on_id).first()
+            if blocking_task and not blocking_task.completed:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Cannot complete task '{db_task.title}' because it is blocked by uncompleted task '{blocking_task.title}'."
+                )
+
     for key, value in update_data.items():
         setattr(db_task, key, value)
         
@@ -432,5 +456,89 @@ def restore_task(
         db.commit()
 
     return db_task
+
+@router.get(
+    "/{task_id}/subtasks",
+    response_model=List[TaskResponse],
+    summary="Get all subtasks of a task"
+)
+def get_subtasks(
+    task_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return db.query(Task).filter(Task.parent_id == task_id).all()
+
+@router.get(
+    "/{task_id}/dependencies",
+    response_model=List[TaskDependencyResponse],
+    summary="Get all dependencies of a task"
+)
+def get_dependencies(
+    task_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    from app.models.task import TaskDependency
+    return db.query(TaskDependency).filter(
+        (TaskDependency.task_id == task_id) | (TaskDependency.depends_on_id == task_id)
+    ).all()
+
+@router.post(
+    "/{task_id}/dependencies",
+    response_model=TaskDependencyResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Add a dependency link to a task"
+)
+def add_dependency(
+    task_id: uuid.UUID,
+    req: TaskDependencyCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    from app.models.task import TaskDependency
+    # Check that dependency doesn't already exist
+    existing = db.query(TaskDependency).filter(
+        TaskDependency.task_id == task_id,
+        TaskDependency.depends_on_id == req.depends_on_id,
+        TaskDependency.dependency_type == req.dependency_type
+    ).first()
+    if existing:
+        return existing
+        
+    dep = TaskDependency(
+        task_id=task_id,
+        depends_on_id=req.depends_on_id,
+        dependency_type=req.dependency_type
+    )
+    db.add(dep)
+    db.commit()
+    db.refresh(dep)
+    return dep
+
+@router.delete(
+    "/{task_id}/dependencies/{dep_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Remove a dependency link from a task"
+)
+def remove_dependency(
+    task_id: uuid.UUID,
+    dep_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    from app.models.task import TaskDependency
+    dep = db.query(TaskDependency).filter(
+        TaskDependency.id == dep_id,
+        (TaskDependency.task_id == task_id) | (TaskDependency.depends_on_id == task_id)
+    ).first()
+    if not dep:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dependency not found"
+        )
+    db.delete(dep)
+    db.commit()
+    return None
 
 
