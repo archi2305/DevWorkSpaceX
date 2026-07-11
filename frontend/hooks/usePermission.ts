@@ -38,7 +38,7 @@ export function usePermission() {
 
   const hasPermission = (permission: string): boolean => {
     if (role === 'Owner') return true
-    const permissions = DEFAULT_ROLE_PERMISSIONS[role as keyof typeof DEFAULT_ROLE_PERMISSIONS] || []
+    const permissions = (DEFAULT_ROLE_PERMISSIONS[role as keyof typeof DEFAULT_ROLE_PERMISSIONS] || []) as string[]
     return permissions.includes(permission)
   }
 

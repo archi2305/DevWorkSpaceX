@@ -22,6 +22,7 @@ import {
 import { teamService, WorkspaceMember } from '@/services/team'
 import { invitationService } from '@/services/invitation'
 import { useCollaboration } from '@/hooks/use-collaboration'
+import { usePermission } from '@/hooks/usePermission'
 
 const rolesList = ['Owner', 'Admin', 'Developer', 'Designer', 'Viewer']
 
@@ -29,6 +30,7 @@ export default function TeamPage() {
   const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState('All')
+  const { hasPermission } = usePermission()
   
   // Modals state
   const [isInviteOpen, setIsInviteOpen] = useState(false)
@@ -134,12 +136,14 @@ export default function TeamPage() {
               Manage invitations, security credentials, and department roles.
             </p>
           </div>
-          <button
-            onClick={() => setIsInviteOpen(true)}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#5BB98C] hover:bg-[#5BB98C]/90 text-[#111315] font-bold px-4 py-2.5 text-xs transition-all cursor-pointer shadow-md self-start"
-          >
-            <UserPlus className="h-4 w-4" /> Invite Member
-          </button>
+          {hasPermission('invite_members') && (
+            <button
+              onClick={() => setIsInviteOpen(true)}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#5BB98C] hover:bg-[#5BB98C]/90 text-[#111315] font-bold px-4 py-2.5 text-xs transition-all cursor-pointer shadow-md self-start"
+            >
+              <UserPlus className="h-4 w-4" /> Invite Member
+            </button>
+          )}
         </div>
 
         {/* Filter controls */}
