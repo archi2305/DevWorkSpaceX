@@ -34,6 +34,7 @@ from app.models.github import GithubRepository, GithubPullRequest, GithubCommit,
 from app.models.saved_filter import SavedFilter
 from app.models.time_log import TimeLog
 from app.models.custom_field import CustomFieldDefinition, CustomFieldValue
+from app.models.recurring_task import RecurringTask, RecurringTaskHistory
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
