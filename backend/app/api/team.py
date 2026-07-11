@@ -337,6 +337,10 @@ def get_member_profile(
         "assigned_projects": [
             {"id": str(p.id), "name": p.name}
             for p in projects
+        ],
+        "assigned_tasks": [
+            {"id": str(t.id), "title": t.title, "status": t.status, "priority": t.priority}
+            for t in tasks if not t.completed
         ]
     }
 
