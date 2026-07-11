@@ -18,14 +18,28 @@ import {
 import { calendarService, CalendarEventResponse } from '@/services/calendar'
 import { taskService } from '@/services/task'
 import { projectService } from '@/services/project'
+import { sprintService } from '@/services/sprint'
 
 export default function CalendarPage() {
   const queryClient = useQueryClient()
 
   // Selected date & calendar configuration
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [viewMode, setViewMode] = useState<'month' | 'week' | 'agenda'>('month')
+  const [viewMode, setViewMode] = useState<'month' | 'week' | 'agenda' | 'timeline'>('month')
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+
+  // Timeline Configurations
+  const [timelineType, setTimelineType] = useState<'project' | 'sprint'>('project')
+  const [timelineProjectId, setTimelineProjectId] = useState('')
+
+  // Drag and drop task update mutation
+  const updateTaskMutation = useMutation({
+    mutationFn: ({ id, due_date }: { id: string; due_date: string }) =>
+      taskService.updateTask(id, { due_date }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['calendar-events'] })
+    }
+  })
 
   // Create Task dialog pre-fill properties
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -45,6 +59,13 @@ export default function CalendarPage() {
   const { data: projects = [] } = useQuery({
     queryKey: ['projects'],
     queryFn: () => projectService.getProjects()
+  })
+
+  // Load sprints list for Gantt timeline
+  const { data: sprints = [] } = useQuery({
+    queryKey: ['sprints', timelineProjectId],
+    queryFn: () => sprintService.getSprints(timelineProjectId),
+    enabled: timelineType === 'sprint' && !!timelineProjectId
   })
 
   // Create task mutation
@@ -230,7 +251,7 @@ export default function CalendarPage() {
 
               {/* View Modes togglers */}
               <div className="flex rounded-xl bg-[#171A1D] p-1 border border-white/[0.06]">
-                {(['month', 'week', 'agenda'] as const).map((mode) => (
+                {(['month', 'week', 'agenda', 'timeline'] as const).map((mode) => (
                   <button
                     key={mode}
                     onClick={() => setViewMode(mode)}
@@ -271,6 +292,21 @@ export default function CalendarPage() {
                         <div
                           key={idx}
                           onClick={() => cell && handleDateClick(cell)}
+                          onDragOver={(e) => {
+                            if (cell) e.preventDefault()
+                          }}
+                          onDrop={(e) => {
+                            if (cell) {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              const taskId = e.dataTransfer.getData('text/plain')
+                              if (taskId) {
+                                const offsetDate = new Date(cell.getTime() - cell.getTimezoneOffset() * 60000)
+                                const dateStr = offsetDate.toISOString().split('T')[0]
+                                updateTaskMutation.mutate({ id: taskId, due_date: dateStr })
+                              }
+                            }
+                          }}
                           className={`p-1.5 border-r border-b border-white/[0.04] text-left hover:bg-[#1D2024]/40 transition-colors flex flex-col justify-between cursor-pointer ${
                             isToday ? 'bg-[#5BB98C]/5' : ''
                           }`}
@@ -298,7 +334,14 @@ export default function CalendarPage() {
                                 {dayEvents.slice(0, 3).map((event) => (
                                   <div
                                     key={event.id}
-                                    className={`px-1.5 py-0.5 rounded text-[8px] truncate font-medium border ${
+                                    draggable={event.type === 'task'}
+                                    onDragStart={(e) => {
+                                      if (event.type === 'task') {
+                                        e.dataTransfer.setData('text/plain', event.id)
+                                        e.dataTransfer.effectAllowed = 'move'
+                                      }
+                                    }}
+                                    className={`px-1.5 py-0.5 rounded text-[8px] truncate font-medium border cursor-grab active:cursor-grabbing ${
                                       event.completed
                                         ? 'bg-[#5BB98C]/5 border-[#5BB98C]/20 text-[#5BB98C]/70 line-through'
                                         : event.type === 'project'
@@ -337,6 +380,19 @@ export default function CalendarPage() {
                     return (
                       <div
                         key={day.toISOString()}
+                        onDragOver={(e) => {
+                          e.preventDefault()
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          const taskId = e.dataTransfer.getData('text/plain')
+                          if (taskId) {
+                            const offsetDate = new Date(day.getTime() - day.getTimezoneOffset() * 60000)
+                            const dateStr = offsetDate.toISOString().split('T')[0]
+                            updateTaskMutation.mutate({ id: taskId, due_date: dateStr })
+                          }
+                        }}
                         className={`flex flex-col border rounded-2xl bg-[#171A1D]/40 min-h-[400px] overflow-hidden ${
                           isToday ? 'border-[#5BB98C]/30 bg-[#5BB98C]/5' : 'border-white/[0.06]'
                         }`}
@@ -359,7 +415,14 @@ export default function CalendarPage() {
                           {dayEvents.map((event) => (
                             <div
                               key={event.id}
-                              className={`p-2.5 rounded-xl border flex flex-col justify-between text-left space-y-1.5 ${
+                              draggable={event.type === 'task'}
+                              onDragStart={(e) => {
+                                if (event.type === 'task') {
+                                  e.dataTransfer.setData('text/plain', event.id)
+                                  e.dataTransfer.effectAllowed = 'move'
+                                }
+                              }}
+                              className={`p-2.5 rounded-xl border flex flex-col justify-between text-left space-y-1.5 cursor-grab active:cursor-grabbing ${
                                 event.completed
                                   ? 'bg-[#5BB98C]/5 border-[#5BB98C]/20 text-[#5BB98C]/70 line-through'
                                   : event.type === 'project'
@@ -437,6 +500,130 @@ export default function CalendarPage() {
                         >
                           <Plus className="h-3.5 w-3.5" /> Add Task
                         </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Timeline (Gantt-chart view) */}
+              {viewMode === 'timeline' && (
+                <div className="border border-white/[0.06] rounded-2xl bg-[#171A1D] p-5 space-y-6 text-left shadow-xl">
+                  <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.06] pb-4">
+                    <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+                      <FolderOpen className="h-4.5 w-4.5 text-[#5BB98C]" /> Gantt Timeline Tracker
+                    </h3>
+                    <div className="flex items-center gap-3">
+                      <select
+                        value={timelineType}
+                        onChange={(e) => setTimelineType(e.target.value as 'project' | 'sprint')}
+                        className="px-3 py-1.5 border border-white/[0.06] bg-[#1D2024] text-xs text-white rounded-lg outline-none cursor-pointer focus:border-[#5BB98C]"
+                      >
+                        <option value="project">Project Timeline</option>
+                        <option value="sprint">Sprint Timeline</option>
+                      </select>
+
+                      {timelineType === 'sprint' && (
+                        <select
+                          value={timelineProjectId}
+                          onChange={(e) => setTimelineProjectId(e.target.value)}
+                          className="px-3 py-1.5 border border-white/[0.06] bg-[#1D2024] text-xs text-white rounded-lg outline-none cursor-pointer focus:border-[#5BB98C]"
+                        >
+                          <option value="">Choose Project...</option>
+                          {projects.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Timelines Bars Grid */}
+                  <div className="space-y-6">
+                    {/* Project timeline type */}
+                    {timelineType === 'project' && (
+                      <div className="space-y-4">
+                        {projects.map((proj) => {
+                          const start = new Date(proj.created_at || Date.now())
+                          const end = proj.due_date ? new Date(proj.due_date) : new Date(start.getTime() + 30 * 24 * 60 * 60 * 1000)
+                          const days = Math.max(1, Math.round((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)))
+
+                          return (
+                            <div key={proj.id} className="space-y-2">
+                              <div className="flex justify-between text-xs font-semibold text-white">
+                                <span>{proj.name}</span>
+                                <span className="text-[10px] text-[#A7ADB5]">{days} Days duration</span>
+                              </div>
+                              <div className="h-6 w-full rounded-xl bg-white/[0.04] overflow-hidden flex relative border border-white/[0.02]">
+                                <div
+                                  style={{
+                                    marginLeft: '10%',
+                                    width: `${Math.min(80, Math.max(15, days * 2))}%`
+                                  }}
+                                  className="h-full bg-blue-500/25 border-l-4 border-blue-500 rounded-r-lg flex items-center px-3 shadow-md"
+                                >
+                                  <span className="text-[10px] font-bold text-blue-400 truncate">
+                                    Start: {start.toLocaleDateString()} - End: {proj.due_date ? new Date(proj.due_date).toLocaleDateString() : 'Continuous'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                        {projects.length === 0 && (
+                          <p className="text-xs text-[#7E848C] italic text-center py-6">No workspace projects found.</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Sprint timeline type */}
+                    {timelineType === 'sprint' && (
+                      <div className="space-y-4">
+                        {!timelineProjectId ? (
+                          <p className="text-xs text-[#7E848C] italic text-center py-10">Select a project to review its sprint deliverables timelines.</p>
+                        ) : (
+                          <>
+                            {sprints.map((sp) => {
+                              const start = new Date(sp.start_date || Date.now())
+                              const end = new Date(sp.end_date || Date.now())
+                              const days = Math.max(1, Math.round((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)))
+
+                              return (
+                                <div key={sp.id} className="space-y-2">
+                                  <div className="flex justify-between text-xs font-semibold text-white">
+                                    <span className="flex items-center gap-1.5">
+                                      <span className={`h-1.5 w-1.5 rounded-full ${sp.status === 'Active' ? 'bg-[#5BB98C]' : 'bg-[#7E848C]'}`} />
+                                      {sp.name}
+                                    </span>
+                                    <span className="text-[10px] text-[#A7ADB5]">{days} Days ({sp.status})</span>
+                                  </div>
+                                  <div className="h-6 w-full rounded-xl bg-white/[0.04] overflow-hidden flex relative border border-white/[0.02]">
+                                    <div
+                                      style={{
+                                        marginLeft: '15%',
+                                        width: `${Math.min(70, Math.max(20, days * 3.5))}%`
+                                      }}
+                                      className={`h-full border-l-4 rounded-r-lg flex items-center px-3 shadow-md ${
+                                        sp.status === 'Active'
+                                          ? 'bg-[#5BB98C]/20 border-[#5BB98C]'
+                                          : 'bg-[#7E848C]/20 border-[#7E848C]'
+                                      }`}
+                                    >
+                                      <span className={`text-[10px] font-bold truncate ${sp.status === 'Active' ? 'text-[#5BB98C]' : 'text-[#A7ADB5]'}`}>
+                                        Start: {start.toLocaleDateString()} - End: {end.toLocaleDateString()}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                            {sprints.length === 0 && (
+                              <p className="text-xs text-[#7E848C] italic text-center py-6">No sprints scheduled under this project.</p>
+                            )}
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
