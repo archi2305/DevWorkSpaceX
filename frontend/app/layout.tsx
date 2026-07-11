@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { ThemeProvider } from 'next-themes'
 import { AuthProvider } from '@/context/AuthContext'
 import { QueryProvider } from '@/providers/QueryProvider'
+import { ShortcutProvider } from '@/contexts/shortcut-context'
 import './globals.css'
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
@@ -36,7 +37,9 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <QueryProvider>
             <AuthProvider>
-              {children}
+              <ShortcutProvider>
+                {children}
+              </ShortcutProvider>
             </AuthProvider>
           </QueryProvider>
         </ThemeProvider>
