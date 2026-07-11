@@ -16,6 +16,9 @@ export interface APIKey {
   id: string
   name: string
   key_prefix: string
+  expires_at?: string
+  scopes?: string[]
+  last_used_at?: string
   created_at: string
 }
 
@@ -23,7 +26,18 @@ export interface APIKeyCreated {
   id: string
   name: string
   token: string
+  expires_at?: string
+  scopes?: string[]
   created_at: string
+}
+
+export interface APIKeyUsage {
+  id: string
+  api_key_id: string
+  endpoint: string
+  method: string
+  status_code: number
+  used_at: string
 }
 
 export interface UserSession {
@@ -75,8 +89,24 @@ export const workspaceService = {
   /**
    * Generate a developer key.
    */
-  async createAPIKey(name: string): Promise<APIKeyCreated> {
-    const response = await api.post<APIKeyCreated>('/workspace/api-keys', { name })
+  async createAPIKey(name: string, expires_in_days?: number, scopes?: string[]): Promise<APIKeyCreated> {
+    const response = await api.post<APIKeyCreated>('/workspace/api-keys', { name, expires_in_days, scopes })
+    return response.data
+  },
+
+  /**
+   * Rotate a developer key.
+   */
+  async rotateAPIKey(keyId: string): Promise<APIKeyCreated> {
+    const response = await api.post<APIKeyCreated>(`/workspace/api-keys/${keyId}/rotate`)
+    return response.data
+  },
+
+  /**
+   * Retrieve usage logs of a key.
+   */
+  async getAPIKeyHistory(keyId: string): Promise<APIKeyUsage[]> {
+    const response = await api.get<APIKeyUsage[]>(`/workspace/api-keys/${keyId}/history`)
     return response.data
   },
 
