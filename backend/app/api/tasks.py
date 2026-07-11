@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.dependencies.db import get_db
 from app.dependencies.auth import get_current_user
-from datetime import datetime
+from datetime import datetime, timedelta
 from app.models.user import User
 from app.models.task import Task
 from app.models.project import Project
@@ -63,7 +63,7 @@ def get_tasks(
     """
     List tasks with advanced filtering parameters.
     """
-    query = db.query(Task)
+    query = db.query(Task).filter(Task.is_deleted == False)
     
     if project_id:
         query = query.filter(Task.project_id == project_id)
@@ -553,5 +553,91 @@ def get_project_dependencies(
 ):
     from app.models.task import TaskDependency, Task
     return db.query(TaskDependency).join(Task, Task.id == TaskDependency.task_id).filter(Task.project_id == project_id).all()
+
+@router.get("/trash", response_model=List[TaskResponse], summary="Get all trashed tasks")
+def get_trashed_tasks(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Perform automatic cleanup of trash older than 30 days
+    limit_date = datetime.utcnow() - timedelta(days=30)
+    old_trashed = db.query(Task).filter(
+        Task.is_deleted == True,
+        Task.deleted_at < limit_date
+    ).all()
+    for task in old_trashed:
+        db.delete(task)
+    db.commit()
+
+    return db.query(Task).filter(
+        Task.is_deleted == True
+    ).all()
+
+@router.patch("/{task_id}/trash", response_model=TaskResponse, summary="Send task to trash")
+def trash_task(
+    task_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    task.is_deleted = True
+    task.deleted_at = datetime.utcnow()
+
+    log = ActivityLog(
+        user_id=current_user.id,
+        action="Task Trashed",
+        details=f"Task '{task.title}' moved to trash."
+    )
+    db.add(log)
+    db.commit()
+    db.refresh(task)
+    return task
+
+@router.patch("/{task_id}/restore-trash", response_model=TaskResponse, summary="Restore task from trash")
+def restore_task_trash(
+    task_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    task.is_deleted = False
+    task.deleted_at = None
+
+    log = ActivityLog(
+        user_id=current_user.id,
+        action="Task Restored",
+        details=f"Task '{task.title}' restored from trash."
+    )
+    db.add(log)
+    db.commit()
+    db.refresh(task)
+    return task
+
+@router.delete("/{task_id}/permanent", summary="Permanently delete a task")
+def permanent_delete_task(
+    task_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    db.delete(task)
+
+    log = ActivityLog(
+        user_id=current_user.id,
+        action="Task Perm Deleted",
+        details=f"Task '{task.title}' permanently deleted."
+    )
+    db.add(log)
+    db.commit()
+    return {"status": "success", "detail": f"Task permanently deleted."}
 
 
