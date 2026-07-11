@@ -20,6 +20,7 @@ import {
   Loader
 } from 'lucide-react'
 import { teamService, WorkspaceMember } from '@/services/team'
+import { useCollaboration } from '@/hooks/use-collaboration'
 
 const rolesList = ['Owner', 'Admin', 'Manager', 'Developer', 'Designer', 'Viewer']
 
@@ -37,6 +38,8 @@ export default function TeamPage() {
   const [inviteName, setInviteName] = useState('')
   const [inviteRole, setInviteRole] = useState('Developer')
   const [inviteError, setInviteError] = useState<string | null>(null)
+
+  const { onlineUsers } = useCollaboration()
 
   // Query workspace members
   const { data: members = [], isLoading, error } = useQuery({
@@ -202,6 +205,8 @@ export default function TeamPage() {
                 .toUpperCase()
                 .slice(0, 2);
 
+              const isOnline = onlineUsers.some(u => u.id === member.user.id)
+
               return (
                 <motion.div
                   key={member.id}
@@ -210,16 +215,21 @@ export default function TeamPage() {
                 >
                   <div className="flex items-start gap-3.5 text-left">
                     {/* Avatar initials badge */}
-                    <div className="h-10 w-10 rounded-full bg-[#1D2024] border border-white/[0.06] flex items-center justify-center font-bold text-xs text-[#5BB98C] flex-shrink-0">
-                      {member.user.profile_image ? (
-                        <img
-                          src={member.user.profile_image}
-                          alt={member.user.full_name}
-                          className="h-full w-full rounded-full object-cover"
-                        />
-                      ) : (
-                        initials || '?'
-                      )}
+                    <div className="relative flex-shrink-0">
+                      <div className="h-10 w-10 rounded-full bg-[#1D2024] border border-white/[0.06] flex items-center justify-center font-bold text-xs text-[#5BB98C]">
+                        {member.user.profile_image ? (
+                          <img
+                            src={member.user.profile_image}
+                            alt={member.user.full_name}
+                            className="h-full w-full rounded-full object-cover"
+                          />
+                        ) : (
+                          initials || '?'
+                        )}
+                      </div>
+                      <span className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[#171A1D] ${
+                        isOnline ? 'bg-[#5BB98C]' : 'bg-[#7E848C]'
+                      }`} />
                     </div>
 
                     <div className="min-w-0 flex-1">
@@ -234,6 +244,11 @@ export default function TeamPage() {
                       <p className="text-[10px] text-[#A7ADB5] truncate mt-0.5">
                         {member.user.email}
                       </p>
+                      <div className="flex items-center gap-1 mt-1">
+                        <span className="text-[8px] text-[#7E848C] uppercase font-bold tracking-wide">
+                          {isOnline ? 'Active Now' : 'Away'}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
