@@ -9,6 +9,7 @@ from app.dependencies.auth import get_current_user
 from app.models.user import User
 from app.models.sprint import Sprint
 from app.models.task import Task
+from app.api.notification import dispatch_notification
 from app.schemas.sprint import (
     SprintCreate,
     SprintUpdate,
@@ -112,8 +113,10 @@ def update_sprint(
             # Set dates
             sprint.start_date = datetime.utcnow()
             sprint.end_date = sprint.start_date + timedelta(weeks=sprint.duration_weeks)
+            dispatch_notification(db, current_user.id, "Sprint Started", f"Sprint '{sprint.name}' has been started.", "Info")
         elif new_status == "Completed" and sprint.status == "Active":
             sprint.end_date = datetime.utcnow()
+            dispatch_notification(db, current_user.id, "Sprint Completed", f"Sprint '{sprint.name}' has been completed.", "Info")
 
     for key, value in update_data.items():
         setattr(sprint, key, value)
