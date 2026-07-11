@@ -28,7 +28,9 @@ def create_saved_filter(
         user_id=current_user.id,
         name=request.name,
         target_type=request.target_type,
-        criteria=request.criteria
+        criteria=request.criteria,
+        layout=request.layout,
+        is_favorite=request.is_favorite or False
     )
     db.add(saved_filter)
     db.commit()
@@ -48,7 +50,64 @@ def list_saved_filters(
     query = db.query(SavedFilter).filter(SavedFilter.user_id == current_user.id)
     if target_type:
         query = query.filter(SavedFilter.target_type == target_type)
-    return query.order_by(SavedFilter.name.asc()).all()
+    return query.order_by(SavedFilter.is_favorite.desc(), SavedFilter.name.asc()).all()
+
+@router.get(
+    "/recent",
+    response_model=List[SavedFilterResponse],
+    summary="List recently used filter presets"
+)
+def list_recent_saved_filters(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return db.query(SavedFilter).filter(
+        SavedFilter.user_id == current_user.id,
+        SavedFilter.last_used_at.isnot(None)
+    ).order_by(SavedFilter.last_used_at.desc()).limit(5).all()
+
+@router.patch(
+    "/{id}/favorite",
+    response_model=SavedFilterResponse,
+    summary="Toggle favorite status for saved filter"
+)
+def toggle_favorite_saved_filter(
+    id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    saved_filter = db.query(SavedFilter).filter(
+        SavedFilter.id == id,
+        SavedFilter.user_id == current_user.id
+    ).first()
+    if not saved_filter:
+        raise HTTPException(status_code=404, detail="Saved view not found")
+    saved_filter.is_favorite = not saved_filter.is_favorite
+    db.commit()
+    db.refresh(saved_filter)
+    return saved_filter
+
+@router.patch(
+    "/{id}/use",
+    response_model=SavedFilterResponse,
+    summary="Record saved filter usage timestamp"
+)
+def use_saved_filter(
+    id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    from datetime import datetime
+    saved_filter = db.query(SavedFilter).filter(
+        SavedFilter.id == id,
+        SavedFilter.user_id == current_user.id
+    ).first()
+    if not saved_filter:
+        raise HTTPException(status_code=404, detail="Saved view not found")
+    saved_filter.last_used_at = datetime.utcnow()
+    db.commit()
+    db.refresh(saved_filter)
+    return saved_filter
 
 @router.delete(
     "/{id}",
