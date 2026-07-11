@@ -10,6 +10,7 @@ from app.models.project import Project
 from app.models.activity import ActivityLog
 from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate
 from app.api.notification import dispatch_notification
+from app.dependencies.rbac import PermissionChecker
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
@@ -194,7 +195,8 @@ def get_projects_statistics(
 def create_project(
     project_data: ProjectCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    has_perm: bool = Depends(PermissionChecker("create_project"))
 ):
     existing = db.query(Project).filter(
         (Project.owner_id == current_user.id) &
@@ -300,7 +302,8 @@ def update_project(
     project_id: uuid.UUID,
     project_update: ProjectUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    has_perm: bool = Depends(PermissionChecker("edit_project"))
 ):
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
@@ -510,7 +513,8 @@ def update_project_progress(
 def delete_project(
     project_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    has_perm: bool = Depends(PermissionChecker("delete_project"))
 ):
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
