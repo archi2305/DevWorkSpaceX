@@ -29,6 +29,7 @@ export interface TaskResponse {
   is_archived?: boolean
   attachments?: { name: string; url: string }[] | null
   sprint_id?: string | null
+  milestone_id?: string | null
   assignee?: {
     id: string
     full_name: string
