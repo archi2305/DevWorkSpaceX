@@ -5,6 +5,7 @@ import { ThemeProvider } from 'next-themes'
 import { AuthProvider } from '@/context/AuthContext'
 import { QueryProvider } from '@/providers/QueryProvider'
 import { ShortcutProvider } from '@/contexts/shortcut-context'
+import { AccentStyleInjector } from '@/components/theme/accent-style-injector'
 import './globals.css'
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
@@ -38,6 +39,7 @@ export default function RootLayout({
           <QueryProvider>
             <AuthProvider>
               <ShortcutProvider>
+                <AccentStyleInjector />
                 {children}
               </ShortcutProvider>
             </AuthProvider>

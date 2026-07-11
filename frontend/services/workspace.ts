@@ -5,6 +5,7 @@ export interface WorkspaceSettings {
   name: string
   logo_url: string | null
   theme: string
+  accent_color: string
   timezone: string
   allow_member_invites: boolean
   enable_email_notifications: boolean

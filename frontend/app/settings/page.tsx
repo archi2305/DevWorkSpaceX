@@ -255,7 +255,23 @@ export default function SettingsPage() {
                             <option value="dark">Charcoal Dark Theme</option>
                             <option value="light">Vercel White Theme</option>
                             <option value="system">Follow System Defaults</option>
+                            <option value="linear">Linear Slate Theme</option>
+                            <option value="green">Forest Green Theme</option>
                           </select>
+                        </div>
+
+                        {/* Accent Color picker */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-[#A7ADB5] uppercase tracking-wider block">Accent Branding Color</label>
+                          <div className="flex items-center gap-2 mt-1">
+                            <input
+                              type="color"
+                              value={settings.accent_color || '#5BB98C'}
+                              onChange={(e) => updateSettingsMutation.mutate({ accent_color: e.target.value })}
+                              className="w-10 h-8 rounded border border-white/[0.06] bg-[#1D2024] cursor-pointer"
+                            />
+                            <span className="text-xs font-mono text-[#A7ADB5] uppercase">{settings.accent_color || '#5BB98C'}</span>
+                          </div>
                         </div>
 
                         {/* Timezone selection */}
