@@ -25,12 +25,49 @@ import {
 } from 'lucide-react'
 import { workspaceService, WorkspaceSettings, APIKey, UserSession, ConnectedAccount } from '@/services/workspace'
 import { userPreferenceService } from '@/services/user-preference'
+import { integrationService } from '@/services/integration'
 
-type SettingsTab = 'general' | 'preferences' | 'api-keys' | 'security' | 'integrations' | 'billing' | 'danger'
+type SettingsTab = 'general' | 'preferences' | 'api-keys' | 'security' | 'integrations' | 'integrations-modular' | 'billing' | 'danger'
 
 export default function SettingsPage() {
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<SettingsTab>('general')
+
+  // Modular Integrations states
+  const [webhookUrl, setWebhookUrl] = useState('')
+  const [webhookName, setWebhookName] = useState('')
+  const [githubRepo, setGithubRepo] = useState('')
+  const [slackWebhook, setSlackWebhook] = useState('')
+  const [discordWebhook, setDiscordWebhook] = useState('')
+  const [gcalId, setGcalId] = useState('')
+
+  // Query Integrations
+  const { data: integrations = [], isLoading: loadingIntegrations } = useQuery({
+    queryKey: ['workspace-integrations-modular'],
+    queryFn: () => integrationService.getIntegrations(),
+    enabled: activeTab === 'integrations-modular'
+  })
+
+  // Mutations
+  const createIntegrationMutation = useMutation({
+    mutationFn: (data: { provider: string; config: any }) => integrationService.createIntegration(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workspace-integrations-modular'] })
+      setWebhookUrl('')
+      setWebhookName('')
+      setGithubRepo('')
+      setSlackWebhook('')
+      setDiscordWebhook('')
+      setGcalId('')
+    }
+  })
+
+  const deleteIntegrationMutation = useMutation({
+    mutationFn: (id: string) => integrationService.deleteIntegration(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workspace-integrations-modular'] })
+    }
+  })
   const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null)
   
   // New Key Form
@@ -225,6 +262,15 @@ export default function SettingsPage() {
             }`}
           >
             <LinkIcon className="h-4 w-4" /> Connected Accounts
+          </button>
+
+          <button
+            onClick={() => setActiveTab('integrations-modular')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-left transition-colors cursor-pointer ${
+              activeTab === 'integrations-modular' ? 'bg-[#5BB98C]/10 text-[#5BB98C]' : 'text-[#A7ADB5] hover:bg-white/5 hover:text-white'
+            }`}
+          >
+            <Globe className="h-4 w-4" /> Integrations (Workspace)
           </button>
 
           <button
@@ -786,6 +832,151 @@ export default function SettingsPage() {
                           </div>
                         )
                       })()}
+                    </div>
+                  </div>
+                )}
+
+                {/* Modular Integrations Tab */}
+                {activeTab === 'integrations-modular' && (
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-sm font-bold text-white">Modular Workspace Integrations</h3>
+                      <p className="text-[11px] text-[#A7ADB5] mt-1">Connect project changes, alerts, calendar syncing, and webhook notifications dynamically.</p>
+                    </div>
+
+                    {/* Active integrations listing */}
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-bold text-white">Active Connections</h4>
+                      {loadingIntegrations ? (
+                        <div className="flex justify-center"><Loader className="h-4 w-4 animate-spin text-[#5BB98C]" /></div>
+                      ) : (
+                        integrations.map((int) => (
+                          <div key={int.id} className="p-3 border border-white/[0.04] bg-[#1D2024] rounded-xl flex items-center justify-between">
+                            <div>
+                              <p className="text-xs font-bold text-white">{int.provider}</p>
+                              <span className="text-[9px] text-[#7E848C] font-mono">
+                                Config: {JSON.stringify(int.config)}
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => deleteIntegrationMutation.mutate(int.id)}
+                              className="text-[10px] text-red-400 font-semibold hover:underline"
+                            >
+                              Disconnect
+                            </button>
+                          </div>
+                        ))
+                      )}
+                      {integrations.length === 0 && !loadingIntegrations && (
+                        <p className="text-xs text-[#7E848C] italic text-center py-4">No workspace integrations configured yet.</p>
+                      )}
+                    </div>
+
+                    {/* Add Integrations Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-white/[0.06]">
+                      {/* GitHub config card */}
+                      <div className="p-4 border border-white/[0.04] bg-[#1D2024] rounded-2xl space-y-3">
+                        <h4 className="text-xs font-bold text-white">🐙 GitHub Integration</h4>
+                        <input
+                          type="text"
+                          placeholder="e.g. owner/repo"
+                          value={githubRepo}
+                          onChange={(e) => setGithubRepo(e.target.value)}
+                          className="w-full px-3 py-1.5 border border-white/5 bg-[#171A1D] rounded-lg text-[10px] text-white outline-none focus:border-[#5BB98C]"
+                        />
+                        <button
+                          onClick={() => createIntegrationMutation.mutate({ provider: 'GitHub', config: { repository: githubRepo } })}
+                          disabled={!githubRepo.trim() || createIntegrationMutation.isPending}
+                          className="w-full py-1.5 bg-[#5BB98C]/10 border border-[#5BB98C]/20 text-[#5BB98C] font-semibold rounded-lg text-[10px] transition-colors hover:bg-[#5BB98C] hover:text-[#111315]"
+                        >
+                          Configure GitHub Sync
+                        </button>
+                      </div>
+
+                      {/* Slack config card */}
+                      <div className="p-4 border border-white/[0.04] bg-[#1D2024] rounded-2xl space-y-3">
+                        <h4 className="text-xs font-bold text-white">💬 Slack Alert Webhook</h4>
+                        <input
+                          type="text"
+                          placeholder="Slack Incoming Webhook URL"
+                          value={slackWebhook}
+                          onChange={(e) => setSlackWebhook(e.target.value)}
+                          className="w-full px-3 py-1.5 border border-white/5 bg-[#171A1D] rounded-lg text-[10px] text-white outline-none focus:border-[#5BB98C]"
+                        />
+                        <button
+                          onClick={() => createIntegrationMutation.mutate({ provider: 'Slack', config: { webhook_url: slackWebhook } })}
+                          disabled={!slackWebhook.trim() || createIntegrationMutation.isPending}
+                          className="w-full py-1.5 bg-[#5BB98C]/10 border border-[#5BB98C]/20 text-[#5BB98C] font-semibold rounded-lg text-[10px] transition-colors hover:bg-[#5BB98C] hover:text-[#111315]"
+                        >
+                          Configure Slack Sync
+                        </button>
+                      </div>
+
+                      {/* Discord config card */}
+                      <div className="p-4 border border-white/[0.04] bg-[#1D2024] rounded-2xl space-y-3">
+                        <h4 className="text-xs font-bold text-white">👾 Discord Alert Webhook</h4>
+                        <input
+                          type="text"
+                          placeholder="Discord Webhook URL"
+                          value={discordWebhook}
+                          onChange={(e) => setDiscordWebhook(e.target.value)}
+                          className="w-full px-3 py-1.5 border border-white/5 bg-[#171A1D] rounded-lg text-[10px] text-white outline-none focus:border-[#5BB98C]"
+                        />
+                        <button
+                          onClick={() => createIntegrationMutation.mutate({ provider: 'Discord', config: { webhook_url: discordWebhook } })}
+                          disabled={!discordWebhook.trim() || createIntegrationMutation.isPending}
+                          className="w-full py-1.5 bg-[#5BB98C]/10 border border-[#5BB98C]/20 text-[#5BB98C] font-semibold rounded-lg text-[10px] transition-colors hover:bg-[#5BB98C] hover:text-[#111315]"
+                        >
+                          Configure Discord Sync
+                        </button>
+                      </div>
+
+                      {/* Google Calendar config card */}
+                      <div className="p-4 border border-white/[0.04] bg-[#1D2024] rounded-2xl space-y-3">
+                        <h4 className="text-xs font-bold text-white">📅 Google Calendar Sync</h4>
+                        <input
+                          type="text"
+                          placeholder="Primary Calendar ID"
+                          value={gcalId}
+                          onChange={(e) => setGcalId(e.target.value)}
+                          className="w-full px-3 py-1.5 border border-white/5 bg-[#171A1D] rounded-lg text-[10px] text-white outline-none focus:border-[#5BB98C]"
+                        />
+                        <button
+                          onClick={() => createIntegrationMutation.mutate({ provider: 'Google Calendar', config: { calendar_id: gcalId } })}
+                          disabled={!gcalId.trim() || createIntegrationMutation.isPending}
+                          className="w-full py-1.5 bg-[#5BB98C]/10 border border-[#5BB98C]/20 text-[#5BB98C] font-semibold rounded-lg text-[10px] transition-colors hover:bg-[#5BB98C] hover:text-[#111315]"
+                        >
+                          Configure Calendar Sync
+                        </button>
+                      </div>
+
+                      {/* Custom Webhook config card */}
+                      <div className="p-4 border border-white/[0.04] bg-[#1D2024] rounded-2xl space-y-3 sm:col-span-2">
+                        <h4 className="text-xs font-bold text-white">🔗 Custom Webhook Endpoint</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <input
+                            type="text"
+                            placeholder="Webhook friendly name"
+                            value={webhookName}
+                            onChange={(e) => setWebhookName(e.target.value)}
+                            className="w-full px-3 py-1.5 border border-white/5 bg-[#171A1D] rounded-lg text-[10px] text-white outline-none focus:border-[#5BB98C]"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Target URL endpoint"
+                            value={webhookUrl}
+                            onChange={(e) => setWebhookUrl(e.target.value)}
+                            className="w-full px-3 py-1.5 border border-white/5 bg-[#171A1D] rounded-lg text-[10px] text-white outline-none focus:border-[#5BB98C]"
+                          />
+                        </div>
+                        <button
+                          onClick={() => createIntegrationMutation.mutate({ provider: 'Webhook', config: { name: webhookName, target_url: webhookUrl } })}
+                          disabled={!webhookUrl.trim() || createIntegrationMutation.isPending}
+                          className="w-full py-1.5 bg-[#5BB98C]/10 border border-[#5BB98C]/20 text-[#5BB98C] font-semibold rounded-lg text-[10px] transition-colors hover:bg-[#5BB98C] hover:text-[#111315]"
+                        >
+                          Register Webhook Endpoint
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
