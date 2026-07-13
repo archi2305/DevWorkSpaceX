@@ -1,87 +1,61 @@
 import { api } from './api'
 
-export interface WorkspaceIntegration {
+export interface Integration {
   id: string
   workspace_id: string
-  provider: 'github' | 'slack' | 'discord' | 'google-calendar'
-  is_enabled: boolean
-  credentials?: Record<string, any>
-  created_at: string
-  updated_at: string
-}
-
-export interface SystemWebhook {
-  id: string
-  workspace_id: string
-  name: string
-  target_url: string
-  secret?: string
-  events?: string[]
-  is_active: boolean
+  provider: 'GitHub' | 'Slack' | 'Discord' | 'Google Calendar' | 'Webhook'
+  status: 'Active' | 'Disabled'
+  config: Record<string, any> | null
   created_at: string
   updated_at: string
 }
 
 export const integrationService = {
   /**
-   * Fetch connected workspace integrations.
+   * Configure a new third-party integration.
    */
-  async getConnectedIntegrations(): Promise<WorkspaceIntegration[]> {
-    const response = await api.get<WorkspaceIntegration[]>('/integrations')
+  async createIntegration(data: {
+    provider: string
+    config: Record<string, any>
+  }): Promise<Integration> {
+    const response = await api.post<Integration>('/integrations', data)
     return response.data
   },
 
   /**
-   * Connect or update a workspace-wide integration.
+   * Retrieve active integration configurations.
    */
-  async connectIntegration(
-    provider: 'github' | 'slack' | 'discord' | 'google-calendar',
-    credentials?: Record<string, any>
-  ): Promise<WorkspaceIntegration> {
-    const response = await api.post<WorkspaceIntegration>('/integrations', { provider, credentials })
+  async getIntegrations(): Promise<Integration[]> {
+    const response = await api.get<Integration[]>('/integrations')
     return response.data
   },
 
   /**
-   * Toggle enabled/disabled status.
+   * Modify settings or status of an integration.
    */
-  async toggleIntegration(id: string): Promise<WorkspaceIntegration> {
-    const response = await api.post<WorkspaceIntegration>(`/integrations/${id}/toggle`)
+  async updateIntegration(
+    id: string,
+    data: {
+      status?: 'Active' | 'Disabled'
+      config?: Record<string, any>
+    }
+  ): Promise<Integration> {
+    const response = await api.put<Integration>(`/integrations/${id}`, data)
     return response.data
   },
 
   /**
-   * Disconnect integration.
+   * Remove third-party integration configuration.
    */
-  async disconnectIntegration(id: string): Promise<void> {
+  async deleteIntegration(id: string): Promise<void> {
     await api.delete(`/integrations/${id}`)
   },
 
   /**
-   * Fetch registered outbound webhooks.
+   * Secure OAuth callback callback simulator.
    */
-  async getWebhooks(): Promise<SystemWebhook[]> {
-    const response = await api.get<SystemWebhook[]>('/integrations/webhooks/all')
+  async oauthCallback(provider: string, code: string): Promise<any> {
+    const response = await api.post('/integrations/oauth-callback', { provider, code })
     return response.data
-  },
-
-  /**
-   * Register a custom outbound webhook.
-   */
-  async createWebhook(data: {
-    name: string
-    target_url: string
-    secret?: string
-    events?: string[]
-  }): Promise<SystemWebhook> {
-    const response = await api.post<SystemWebhook>('/integrations/webhooks', data)
-    return response.data
-  },
-
-  /**
-   * Remove custom webhook.
-   */
-  async deleteWebhook(id: string): Promise<void> {
-    await api.delete(`/integrations/webhooks/${id}`)
   }
 }
