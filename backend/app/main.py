@@ -40,6 +40,8 @@ from app.api.recurring_task import router as recurring_task_router
 from app.api.user_profile import router as user_profile_router
 from app.api.user_preference import router as user_preference_router
 from app.api.integration import router as integration_router
+from app.api.export import router as export_router
+from app.api.webhooks import router as webhooks_router
 from app.core.config import settings
 
 # Initialize the FastAPI app
@@ -94,6 +96,8 @@ app.include_router(recurring_task_router)
 app.include_router(user_profile_router)
 app.include_router(user_preference_router)
 app.include_router(integration_router)
+app.include_router(export_router)
+app.include_router(webhooks_router)
 app.add_api_websocket_route("/notifications/ws", websocket_endpoint)
 
 # --- Global Exception Handlers ---
