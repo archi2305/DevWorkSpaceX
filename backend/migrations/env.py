@@ -36,6 +36,8 @@ from app.models.time_log import TimeLog
 from app.models.custom_field import CustomFieldDefinition, CustomFieldValue
 from app.models.recurring_task import RecurringTask, RecurringTaskHistory
 from app.models.user_preference import UserPreference
+from app.models.integration import Integration
+from app.models.system_webhook import SystemWebhook
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
