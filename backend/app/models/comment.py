@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import String, ForeignKey, DateTime, Text
+from sqlalchemy import String, ForeignKey, DateTime, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database.db import Base
 
@@ -12,6 +12,7 @@ class Comment(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    content_markdown: Mapped[str | None] = mapped_column(Text, nullable=True)  # Store markdown version
     
     # Task association (nullable to support project discussions)
     task_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -28,9 +29,22 @@ class Comment(Base):
         nullable=False
     )
 
+    # Mentions and reactions
+    mentions: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)  # List of mentioned user IDs
+    reactions: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # Emoji reactions {emoji: [user_ids]}
+    
+    # Attachments
+    attachments: Mapped[list[dict] | None] = mapped_column(JSON, nullable=True)  # List of attachment metadata
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=datetime.utcnow,
+        nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
         nullable=False
     )
 
@@ -56,9 +70,24 @@ class CommentReply(Base):
         nullable=False
     )
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    content_markdown: Mapped[str | None] = mapped_column(Text, nullable=True)  # Store markdown version
+    
+    # Mentions and reactions
+    mentions: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)  # List of mentioned user IDs
+    reactions: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # Emoji reactions {emoji: [user_ids]}
+    
+    # Attachments
+    attachments: Mapped[list[dict] | None] = mapped_column(JSON, nullable=True)  # List of attachment metadata
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=datetime.utcnow,
+        nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
         nullable=False
     )
 

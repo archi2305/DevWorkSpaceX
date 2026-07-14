@@ -11,6 +11,7 @@ import { MilestonesProgress } from '@/components/dashboard/milestones-progress'
 import { TeamActivity } from '@/components/dashboard/team-activity'
 import { QuickActions } from '@/components/dashboard/quick-actions'
 import { WorkspaceHealth } from '@/components/dashboard/workspace-health'
+import { TimeTrackingWidget } from '@/components/dashboard/time-tracking-widget'
 import { useAuth } from '@/hooks/useAuth'
 import { useDashboardData } from '@/hooks/useDashboardData'
 
@@ -110,13 +111,13 @@ export default function Page() {
           </motion.div>
 
           {/* Two Column Layout */}
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
             {/* Left Column */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
-              className="space-y-8"
+              className="space-y-8 lg:col-span-2"
             >
               <AISuggestions />
               <RecentActivity />
@@ -129,6 +130,7 @@ export default function Page() {
               transition={{ delay: 0.5 }}
               className="space-y-8"
             >
+              <TimeTrackingWidget />
               <UpcomingTasks />
               <SprintProgress />
               <MilestonesProgress />

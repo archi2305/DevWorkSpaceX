@@ -120,5 +120,21 @@ export const timeLogService = {
   async getProductivityReport(): Promise<ProductivityReport> {
     const response = await api.get<ProductivityReport>('/time-logs/report')
     return response.data
+  },
+
+  /**
+   * Get weekly time logs.
+   */
+  async getWeeklyLogs(): Promise<ProductivityReportItem[]> {
+    const response = await api.get<ProductivityReportItem[]>('/time-logs/weekly')
+    return response.data
+  },
+
+  /**
+   * Get today's total time.
+   */
+  async getTodayTime(): Promise<number> {
+    const response = await api.get<{ total_seconds: number }>('/time-logs/today')
+    return response.data.total_seconds
   }
 }

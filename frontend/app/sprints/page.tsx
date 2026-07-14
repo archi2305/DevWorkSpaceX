@@ -13,11 +13,13 @@ import {
   Plus,
   Trash2,
   X,
+  Clock,
 } from 'lucide-react'
 import { MainLayout } from '@/components/layout/main-layout'
 import { projectService } from '@/services/project'
 import { sprintService, Sprint, SprintStats } from '@/services/sprint'
 import { taskService, TaskResponse } from '@/services/task'
+import { timeLogService } from '@/services/time-log'
 
 type SprintFormState = {
   name: string
@@ -268,6 +270,18 @@ export default function SprintsPage() {
     const completedPoints = taskPoints(sprintTasks.filter((task) => task.completed || ['Done', 'Completed'].includes(task.status)))
     const progress = totalPoints > 0 ? Math.round((completedPoints / totalPoints) * 100) : 0
 
+    // Query time totals for this sprint
+    const { data: timeTotals } = useQuery({
+      queryKey: ['time-totals', { sprint_id: sprint.id }],
+      queryFn: () => timeLogService.getTimeTotals({ sprint_id: sprint.id }),
+      enabled: !!sprint.id
+    })
+
+    const formatHours = (seconds: number) => {
+      const hours = seconds / 3600
+      return `${hours.toFixed(2)}h`
+    }
+
     return (
       <section key={sprint.id} className="rounded-xl border border-white/[0.06] bg-[#171A1D] p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -313,7 +327,7 @@ export default function SprintsPage() {
           </div>
         </div>
 
-        <div className="mt-5 grid grid-cols-3 gap-3">
+        <div className="mt-5 grid grid-cols-4 gap-3">
           <div className="rounded-lg border border-white/[0.04] bg-[#1D2024] p-3">
             <p className="text-[10px] uppercase text-[#7E848C]">Progress</p>
             <p className="mt-1 text-lg font-bold text-white">{progress}%</p>
@@ -325,6 +339,14 @@ export default function SprintsPage() {
           <div className="rounded-lg border border-white/[0.04] bg-[#1D2024] p-3">
             <p className="text-[10px] uppercase text-[#7E848C]">Tasks</p>
             <p className="mt-1 text-lg font-bold text-white">{sprintTasks.length}</p>
+          </div>
+          <div className="rounded-lg border border-white/[0.04] bg-[#1D2024] p-3">
+            <p className="text-[10px] uppercase text-[#7E848C] flex items-center gap-1">
+              <Clock className="h-3 w-3" /> Time
+            </p>
+            <p className="mt-1 text-lg font-bold text-white">
+              {timeTotals ? formatHours(timeTotals.total_sprint_seconds) : '0h'}
+            </p>
           </div>
         </div>
 

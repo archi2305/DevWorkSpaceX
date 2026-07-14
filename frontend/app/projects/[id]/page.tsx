@@ -95,7 +95,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
     updatedEnd: ''
   })
   const [isAdvancedFiltersOpen, setIsAdvancedFiltersOpen] = useState(false)
-  const [activeProjectTab, setActiveProjectTab] = useState<'kanban' | 'sprints' | 'milestones'>('kanban')
+  const [activeProjectTab, setActiveProjectTab] = useState<'kanban' | 'sprints' | 'milestones' | 'discussions'>('kanban')
 
   // Map state to query string criteria params
   const apiFilters = {
@@ -1033,11 +1033,27 @@ export default function ProjectDetailsPage({ params }: PageProps) {
         >
           Milestones
         </button>
+        <button
+          onClick={() => setActiveProjectTab('discussions')}
+          className={`px-4 py-3 text-xs font-bold transition-colors ${
+            activeProjectTab === 'discussions'
+              ? 'border-b-2 border-[#5BB98C] text-[#5BB98C]'
+              : 'text-[#A7ADB5] hover:text-white'
+          }`}
+        >
+          Discussions
+        </button>
       </div>
 
       {activeProjectTab === 'milestones' && (
         <div className="p-6">
           <MilestoneList projectId={id} />
+        </div>
+      )}
+
+      {activeProjectTab === 'discussions' && (
+        <div className="p-6">
+          <CommentsList projectId={id} />
         </div>
       )}
 
@@ -1316,6 +1332,14 @@ export default function ProjectDetailsPage({ params }: PageProps) {
         <div className="space-y-6">
           {/* Active Timer Widget */}
           <TimerWidget />
+
+          {/* Project Time Tracking */}
+          <div className="rounded-2xl border border-white/[0.06] bg-[#171A1D] p-5 space-y-4 shadow-lg">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[#7E848C] text-left flex items-center gap-1.5">
+              <Clock className="h-3.5 w-3.5 text-[#5BB98C]" /> Project Time
+            </h2>
+            <TimeLogsManager projectId={id} />
+          </div>
 
           {/* Metadata Card */}
           <div className="rounded-2xl border border-white/[0.06] bg-[#171A1D] p-6 space-y-4 shadow-lg">

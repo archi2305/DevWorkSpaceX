@@ -204,6 +204,60 @@ def get_time_totals(
     }
 
 @router.get(
+    "/today",
+    response_model=dict,
+    summary="Get today's total time"
+)
+def get_today_time(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    today = datetime.utcnow()
+    day_start = datetime(today.year, today.month, today.day, 0, 0, 0)
+    day_end = datetime(today.year, today.month, today.day, 23, 59, 59)
+
+    logged = db.query(func.sum(TimeLog.duration_seconds)).filter(
+        TimeLog.user_id == current_user.id,
+        TimeLog.start_time >= day_start,
+        TimeLog.start_time <= day_end
+    ).scalar() or 0
+
+    return {"total_seconds": logged}
+
+@router.get(
+    "/weekly",
+    response_model=List[ProductivityReportItem],
+    summary="Get weekly time logs"
+)
+def get_weekly_logs(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    today = datetime.utcnow()
+    weekly_items = []
+    
+    # Track daily logged seconds for the last 7 days (current week)
+    for i in range(6, -1, -1):
+        day = today - timedelta(days=i)
+        day_start = datetime(day.year, day.month, day.day, 0, 0, 0)
+        day_end = datetime(day.year, day.month, day.day, 23, 59, 59)
+
+        logged = db.query(func.sum(TimeLog.duration_seconds)).filter(
+            TimeLog.user_id == current_user.id,
+            TimeLog.start_time >= day_start,
+            TimeLog.start_time <= day_end
+        ).scalar() or 0
+        
+        weekly_items.append(
+            ProductivityReportItem(
+                date=day.strftime("%Y-%m-%d"),
+                logged_seconds=logged
+            )
+        )
+
+    return weekly_items
+
+@router.get(
     "/report",
     response_model=ProductivityReportResponse,
     summary="Get productivity report data"
