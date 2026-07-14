@@ -11,6 +11,7 @@ from app.models.project import Project
 from app.models.task import Task
 from app.models.document import Document
 from app.models.workspace import Workspace, APIKey, UserSession, ConnectedAccount
+from app.models.activity import ActivityLog
 from app.schemas.workspace import (
     WorkspaceSettingsResponse,
     WorkspaceSettingsUpdate,
@@ -137,6 +138,20 @@ def create_api_key(
         scopes=request.scopes or ["read"]
     )
     db.add(new_key)
+    
+    # Log API key creation activity
+    db_log = ActivityLog(
+        user_id=current_user.id,
+        category="permission",
+        event_type="create",
+        action="API Key Created",
+        details=f"API key '{request.name}' was created with scopes: {', '.join(request.scopes or ['read'])}",
+        target_type="APIKey",
+        target_name=request.name,
+        target_id=new_key.id
+    )
+    db.add(db_log)
+    
     db.commit()
     db.refresh(new_key)
     

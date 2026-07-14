@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Plus, Bell, Moon, Sun, Folder, CheckSquare, FileText, User as UserIcon, Check, Trash2 } from 'lucide-react'
+import { Search, Plus, Bell, Moon, Sun, Folder, CheckSquare, FileText, User as UserIcon } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useAuth } from '@/hooks/useAuth'
 import { useQueryClient } from '@tanstack/react-query'
@@ -12,7 +12,11 @@ import { dashboardUnifiedService } from '@/services/dashboardUnified'
 import { useProjectStore } from '@/store/useProjectStore'
 import { api } from '@/services/api'
 
-export function TopNav() {
+interface TopNavProps {
+  onNotificationClick?: () => void
+}
+
+export function TopNav({ onNotificationClick }: TopNavProps) {
   const { theme, setTheme } = useTheme()
   const [isMounted, setIsMounted] = useState(false)
   const { user } = useAuth()
@@ -31,10 +35,6 @@ export function TopNav() {
   const [showDropdown, setShowDropdown] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // Notification dropdown states
-  const [showNotifs, setShowNotifs] = useState(false)
-  const notifRef = useRef<HTMLDivElement>(null)
-
   useEffect(() => {
     setIsMounted(true)
     
@@ -42,9 +42,6 @@ export function TopNav() {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowDropdown(false)
-      }
-      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
-        setShowNotifs(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -105,35 +102,6 @@ export function TopNav() {
 
     return () => clearTimeout(delayDebounceFn)
   }, [searchQuery, setGlobalSearchQuery])
-
-  const handleMarkRead = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    try {
-      await dashboardUnifiedService.markNotificationRead(id)
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-    } catch (err) {
-      console.error('Failed to mark read', err)
-    }
-  }
-
-  const handleMarkAllRead = async () => {
-    try {
-      await dashboardUnifiedService.markAllNotificationsRead()
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-    } catch (err) {
-      console.error('Failed to mark all read', err)
-    }
-  }
-
-  const handleDeleteNotification = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    try {
-      await dashboardUnifiedService.deleteNotification(id)
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-    } catch (err) {
-      console.error('Failed to delete notification', err)
-    }
-  }
 
   const getInitials = (name: string) => {
     return name
@@ -297,93 +265,19 @@ export function TopNav() {
             <span className="hidden sm:inline">New</span>
           </motion.button>
 
-          {/* Notifications Dropdown Container */}
-          <div ref={notifRef} className="relative">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              onClick={() => setShowNotifs(!showNotifs)}
-              className="relative rounded-lg p-2.5 hover:bg-muted transition-colors cursor-pointer"
-            >
-              <Bell className="h-5 w-5 text-muted-foreground" />
-              {unreadCount > 0 && (
-                <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-primary flex items-center justify-center text-[7px] text-white font-bold">
-                  {unreadCount}
-                </span>
-              )}
-            </motion.button>
-
-            <AnimatePresence>
-              {showNotifs && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  className="absolute right-0 mt-2 w-80 rounded-xl border border-white/[0.06] bg-[#171A1D] p-4 shadow-2xl z-50 space-y-3"
-                >
-                  <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-white">Notifications</span>
-                      {unreadCount > 0 && (
-                        <span className="rounded bg-[#5BB98C]/15 border border-[#5BB98C]/20 px-1.5 py-0.5 text-[8px] font-bold text-[#5BB98C]">
-                          {unreadCount} New
-                        </span>
-                      )}
-                    </div>
-                    {unreadCount > 0 && (
-                      <button
-                        onClick={handleMarkAllRead}
-                        className="text-[10px] text-[#5BB98C] hover:underline cursor-pointer font-semibold"
-                      >
-                        Mark all read
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="space-y-2 max-h-[240px] overflow-y-auto pr-1">
-                    {notifications.length === 0 ? (
-                      <p className="text-xs text-muted-foreground text-center py-4">No notifications yet</p>
-                    ) : (
-                      notifications.map((notif) => (
-                        <div
-                          key={notif.id}
-                          className={`rounded-lg p-2.5 border transition-colors ${
-                            notif.is_read
-                              ? 'bg-transparent border-transparent'
-                              : 'bg-[#5BB98C]/5 border-[#5BB98C]/10'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <h4 className="text-xs font-semibold text-white text-left">{notif.title}</h4>
-                              <p className="text-[11px] text-muted-foreground text-left mt-0.5 leading-snug">{notif.message}</p>
-                            </div>
-                            <div className="flex items-center gap-1 flex-shrink-0">
-                              {!notif.is_read && (
-                                <button
-                                  onClick={(e) => handleMarkRead(notif.id, e)}
-                                  className="rounded p-1 text-muted-foreground hover:bg-[#5BB98C]/15 hover:text-[#5BB98C] transition-colors cursor-pointer"
-                                  title="Mark read"
-                                >
-                                  <Check className="h-3 w-3" />
-                                </button>
-                              )}
-                              <button
-                                onClick={(e) => handleDeleteNotification(notif.id, e)}
-                                className="rounded p-1 text-muted-foreground hover:bg-red-500/10 hover:text-red-400 transition-colors cursor-pointer"
-                                title="Delete notification"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+          {/* Notifications Button */}
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            onClick={() => onNotificationClick?.()}
+            className="relative rounded-lg p-2.5 hover:bg-muted transition-colors cursor-pointer"
+          >
+            <Bell className="h-5 w-5 text-muted-foreground" />
+            {unreadCount > 0 && (
+              <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-primary flex items-center justify-center text-[7px] text-white font-bold">
+                {unreadCount}
+              </span>
+            )}
+          </motion.button>
 
           {isMounted && (
             <motion.button

@@ -532,10 +532,13 @@ def delete_project(
         
     db_log = ActivityLog(
         user_id=current_user.id,
+        category="project",
+        event_type="delete",
         action="Project Deleted",
         details=f"Project '{project.name}' was deleted",
         target_type="Project",
-        target_name=project.name
+        target_name=project.name,
+        target_id=project.id
     )
     db.add(db_log)
     

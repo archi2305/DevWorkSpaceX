@@ -174,10 +174,13 @@ def create_task(
     # Log task creation activity
     db_log = ActivityLog(
         user_id=current_user.id,
+        category="task",
+        event_type="create",
         action="Task Created",
-        details=f"Task '{db_task.title}' was created under project status: {db_task.status}",
+        details=f"Task '{db_task.title}' was created with status: {db_task.status}",
         target_type="Task",
-        target_name=db_task.title
+        target_name=db_task.title,
+        target_id=db_task.id
     )
     db.add(db_log)
     db.commit()
@@ -258,21 +261,27 @@ def update_task(
         
     log_action = "Task Updated"
     log_details = f"Task '{db_task.title}' details were updated"
+    log_event_type = "update"
     if db_task.completed and not was_completed:
         log_action = "Task Completed"
         log_details = f"Task '{db_task.title}' was completed"
+        log_event_type = "update"
     elif "assignee_id" in update_data and update_data["assignee_id"]:
         log_action = "Task Assigned"
+        log_event_type = "update"
         assignee_user = db.query(User).filter(User.id == db_task.assignee_id).first()
         assignee_name = assignee_user.full_name if assignee_user else "someone"
         log_details = f"Task '{db_task.title}' was assigned to {assignee_name}"
         
     db_log = ActivityLog(
         user_id=current_user.id,
+        category="task",
+        event_type=log_event_type,
         action=log_action,
         details=log_details,
         target_type="Task",
-        target_name=db_task.title
+        target_name=db_task.title,
+        target_id=db_task.id
     )
     db.add(db_log)
     db.commit()

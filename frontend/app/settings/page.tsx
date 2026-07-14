@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { MainLayout } from '@/components/layout/main-layout'
+import { AuditLogsViewer } from '@/components/audit/audit-logs-viewer'
 import {
   Settings,
   Key,
@@ -28,7 +29,7 @@ import { userPreferenceService } from '@/services/user-preference'
 import { integrationService } from '@/services/integration'
 import { exportService } from '@/services/export'
 
-type SettingsTab = 'general' | 'preferences' | 'api-keys' | 'security' | 'integrations' | 'integrations-modular' | 'billing' | 'danger'
+type SettingsTab = 'general' | 'preferences' | 'api-keys' | 'security' | 'integrations' | 'integrations-modular' | 'billing' | 'danger' | 'audit-logs'
 
 export default function SettingsPage() {
   const queryClient = useQueryClient()
@@ -254,6 +255,15 @@ export default function SettingsPage() {
             }`}
           >
             <Shield className="h-4 w-4" /> Sessions & Security
+          </button>
+
+          <button
+            onClick={() => setActiveTab('audit-logs')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-left transition-colors cursor-pointer ${
+              activeTab === 'audit-logs' ? 'bg-[#5BB98C]/10 text-[#5BB98C]' : 'text-[#A7ADB5] hover:bg-white/5 hover:text-white'
+            }`}
+          >
+            <Clock className="h-4 w-4" /> Audit Logs
           </button>
           
           <button
@@ -1032,7 +1042,12 @@ export default function SettingsPage() {
                   </div>
                 )}
 
-                {/* 6. Danger Zone Tab */}
+                {/* 6. Audit Logs Tab */}
+                {activeTab === 'audit-logs' && (
+                  <AuditLogsViewer />
+                )}
+
+                {/* 7. Danger Zone Tab */}
                 {activeTab === 'danger' && (
                   <div className="space-y-6">
                     <div className="p-4 border border-[#EB5757]/20 bg-[#EB5757]/5 rounded-2xl space-y-3">

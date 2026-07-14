@@ -14,8 +14,10 @@ import {
   Trash2,
   X,
   Clock,
+  Brain,
 } from 'lucide-react'
 import { MainLayout } from '@/components/layout/main-layout'
+import { AISprintPlanner } from '@/components/ai/ai-sprint-planner'
 import { projectService } from '@/services/project'
 import { sprintService, Sprint, SprintStats } from '@/services/sprint'
 import { taskService, TaskResponse } from '@/services/task'
@@ -56,6 +58,7 @@ export default function SprintsPage() {
   const [includeArchived, setIncludeArchived] = useState(false)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingSprint, setEditingSprint] = useState<Sprint | null>(null)
+  const [showAIPlanner, setShowAIPlanner] = useState(false)
   const [form, setForm] = useState<SprintFormState>(emptyForm)
 
   const { data: projects = [] } = useQuery({
@@ -392,6 +395,13 @@ export default function SprintsPage() {
             <label className="flex items-center gap-2 text-xs text-[#A7ADB5]">
               <input type="checkbox" checked={includeArchived} onChange={(event) => setIncludeArchived(event.target.checked)} />
               Archived
+            <button
+              onClick={() => setShowAIPlanner(!showAIPlanner)}
+              className="px-3 py-2 border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 text-xs font-bold rounded-lg flex items-center gap-2 cursor-pointer transition-colors"
+            >
+              <Brain className="h-4 w-4" />
+              {showAIPlanner ? "Hide AI" : "AI Planner"}
+            </button>
             </label>
             <button
               onClick={openCreateForm}
@@ -403,6 +413,12 @@ export default function SprintsPage() {
           </div>
         </header>
 
+
+        {showAIPlanner && selectedProjectId && (
+          <div className="mb-6">
+            <AISprintPlanner projectId={selectedProjectId} />
+          </div>
+        )}
         {!selectedProjectId ? (
           <div className="rounded-xl border border-dashed border-white/[0.08] p-10 text-center">
             <ListChecks className="mx-auto h-9 w-9 text-[#7E848C]" />

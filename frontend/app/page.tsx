@@ -12,6 +12,7 @@ import { TeamActivity } from '@/components/dashboard/team-activity'
 import { QuickActions } from '@/components/dashboard/quick-actions'
 import { WorkspaceHealth } from '@/components/dashboard/workspace-health'
 import { TimeTrackingWidget } from '@/components/dashboard/time-tracking-widget'
+import { WorkspaceInsights } from '@/components/workspace/workspace-insights'
 import { useAuth } from '@/hooks/useAuth'
 import { useDashboardData } from '@/hooks/useDashboardData'
 
@@ -155,6 +156,15 @@ export default function Page() {
               <WorkspaceHealth />
             </motion.div>
           </div>
+
+          {/* Workspace Insights */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.65 }}
+          >
+            <WorkspaceInsights />
+          </motion.div>
 
           {/* Quick Actions */}
           <motion.div

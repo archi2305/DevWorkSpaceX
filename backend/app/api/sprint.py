@@ -12,6 +12,7 @@ from app.dependencies.db import get_db
 from app.models.sprint import Sprint
 from app.models.task import Task
 from app.models.user import User
+from app.models.activity import ActivityLog
 from app.schemas.sprint import (
     SprintCreate,
     SprintResponse,
@@ -189,6 +190,21 @@ def create_sprint(
     db.add(sprint)
     db.commit()
     db.refresh(sprint)
+    
+    # Log sprint creation activity
+    db_log = ActivityLog(
+        user_id=current_user.id,
+        category="project",
+        event_type="create",
+        action="Sprint Created",
+        details=f"Sprint '{sprint.name}' was created with status: {sprint.status}",
+        target_type="Sprint",
+        target_name=sprint.name,
+        target_id=sprint.id
+    )
+    db.add(db_log)
+    db.commit()
+    
     return sprint
 
 
@@ -281,6 +297,20 @@ def start_sprint(
     sprint.status = "Active"
     sprint.start_date = sprint.start_date or datetime.utcnow()
     sprint.end_date = sprint.end_date or (sprint.start_date + timedelta(weeks=sprint.duration_weeks))
+    
+    # Log sprint start activity
+    db_log = ActivityLog(
+        user_id=current_user.id,
+        category="project",
+        event_type="create",
+        action="Sprint Started",
+        details=f"Sprint '{sprint.name}' was started",
+        target_type="Sprint",
+        target_name=sprint.name,
+        target_id=sprint.id
+    )
+    db.add(db_log)
+    db.commit()
     dispatch_notification(db, current_user.id, "Sprint Started", f"Sprint '{sprint.name}' has been started.", "Info")
     db.commit()
     db.refresh(sprint)

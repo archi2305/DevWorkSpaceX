@@ -25,10 +25,13 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
     # Log registration activity
     db_log = ActivityLog(
         user_id=user.id,
-        action="Registration",
+        category="login",
+        event_type="create",
+        action="User Registration",
         details=f"User {user.full_name} registered successfully",
         target_type="User",
-        target_name=user.full_name
+        target_name=user.full_name,
+        target_id=user.id
     )
     db.add(db_log)
     db.commit()
@@ -51,10 +54,13 @@ def login(login_data: UserLogin, db: Session = Depends(get_db)):
     # Log login activity
     db_log = ActivityLog(
         user_id=user.id,
-        action="Login",
+        category="login",
+        event_type="login",
+        action="User Login",
         details=f"User {user.full_name} logged in",
         target_type="User",
-        target_name=user.full_name
+        target_name=user.full_name,
+        target_id=user.id
     )
     db.add(db_log)
     db.commit()
@@ -80,10 +86,13 @@ def logout(
     # Log logout activity
     db_log = ActivityLog(
         user_id=current_user.id,
-        action="Logout",
+        category="login",
+        event_type="logout",
+        action="User Logout",
         details=f"User {current_user.full_name} logged out",
         target_type="User",
-        target_name=current_user.full_name
+        target_name=current_user.full_name,
+        target_id=current_user.id
     )
     db.add(db_log)
     db.commit()
