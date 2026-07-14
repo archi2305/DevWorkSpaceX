@@ -31,12 +31,19 @@ class NotificationResponse(BaseModel):
 
 class SprintResponse(BaseModel):
     id: uuid.UUID
+    project_id: uuid.UUID
     name: str
-    start_date: datetime
-    end_date: datetime
+    goal: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    status: str
     completed_tasks: int
     total_tasks: int
+    completed_story_points: int
+    total_story_points: int
+    remaining_story_points: int
     velocity: int
+    progress_percentage: int
     created_at: datetime
 
     class Config:
@@ -88,6 +95,6 @@ class DashboardUnifiedResponse(BaseModel):
     recentActivities: List[ActivityLogResponse]
     workspaceHealth: DashboardMetrics
     notifications: List[NotificationResponse]
-    sprint: SprintResponse
+    sprint: Optional[SprintResponse]
     aiSuggestions: List[AISuggestionResponse]
     teamMembers: List[WorkspaceMemberResponse]

@@ -8,6 +8,9 @@ export interface Milestone {
   due_date: string | null
   status: string // 'Planned', 'Active', 'Completed'
   is_archived: boolean
+  progress_percentage: number
+  total_tasks: number
+  completed_tasks: number
   created_at: string
   updated_at: string
 }
@@ -18,9 +21,12 @@ export interface MilestoneStats {
   status: string
   total_tasks: number
   completed_tasks: number
+  remaining_tasks: number
   completion_percentage: number
   due_date: string | null
   is_archived: boolean
+  timeline: { label: string; date: string; status: string }[]
+  tasks: any[]
 }
 
 export const milestoneService = {
@@ -51,17 +57,32 @@ export const milestoneService = {
     return response.data
   },
 
+  async archiveMilestone(id: string): Promise<Milestone> {
+    const response = await api.post<Milestone>(`/milestones/${id}/archive`)
+    return response.data
+  },
+
   async deleteMilestone(id: string): Promise<void> {
     await api.delete(`/milestones/${id}`)
   },
 
   async assignTasksToMilestone(id: string, taskIds: string[]): Promise<any> {
-    const response = await api.post<any>(`/milestones/${id}/tasks`, taskIds)
+    const response = await api.post<any>(`/milestones/${id}/tasks`, { task_ids: taskIds })
     return response.data
   },
 
-  async getMilestoneStats(id: string): Promise<any> {
-    const response = await api.get<any>(`/milestones/${id}/stats`)
+  async removeTaskFromMilestone(id: string, taskId: string): Promise<any> {
+    const response = await api.delete<any>(`/milestones/${id}/tasks/${taskId}`)
+    return response.data
+  },
+
+  async getMilestoneStats(id: string): Promise<MilestoneStats> {
+    const response = await api.get<MilestoneStats>(`/milestones/${id}/stats`)
+    return response.data
+  },
+
+  async getUpcomingMilestones(limit = 5): Promise<MilestoneStats[]> {
+    const response = await api.get<MilestoneStats[]>('/milestones/upcoming', { params: { limit } })
     return response.data
   }
 }

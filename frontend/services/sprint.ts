@@ -5,10 +5,15 @@ export interface Sprint {
   project_id: string
   name: string
   goal: string | null
+  description: string | null
   duration_weeks: number
   start_date: string | null
   end_date: string | null
   status: 'Planned' | 'Active' | 'Completed'
+  is_archived: boolean
+  archived_at: string | null
+  total_story_points: number
+  completed_story_points: number
   created_at: string
   updated_at: string
 }
@@ -16,12 +21,21 @@ export interface Sprint {
 export interface SprintStats {
   sprint_id: string
   name: string
+  goal: string | null
+  description: string | null
   status: string
+  start_date: string | null
+  end_date: string | null
   total_tasks: number
   completed_tasks: number
   remaining_tasks: number
+  total_story_points: number
+  completed_story_points: number
+  remaining_story_points: number
+  velocity: number
   completion_percentage: number
   burndown: { day: string; remaining: number }[]
+  tasks: any[]
 }
 
 export const sprintService = {
@@ -32,7 +46,10 @@ export const sprintService = {
     project_id: string
     name: string
     goal?: string
+    description?: string
     duration_weeks?: number
+    start_date?: string
+    end_date?: string
   }): Promise<Sprint> {
     const response = await api.post<Sprint>('/sprints', data)
     return response.data
@@ -41,9 +58,9 @@ export const sprintService = {
   /**
    * Load project sprints.
    */
-  async getSprints(projectId: string, status?: string): Promise<Sprint[]> {
+  async getSprints(projectId: string, status?: string, includeArchived = false): Promise<Sprint[]> {
     const response = await api.get<Sprint[]>('/sprints', {
-      params: { project_id: projectId, status }
+      params: { project_id: projectId, status, include_archived: includeArchived }
     })
     return response.data
   },
@@ -64,6 +81,21 @@ export const sprintService = {
     return response.data
   },
 
+  async startSprint(id: string): Promise<Sprint> {
+    const response = await api.post<Sprint>(`/sprints/${id}/start`)
+    return response.data
+  },
+
+  async completeSprint(id: string): Promise<Sprint> {
+    const response = await api.post<Sprint>(`/sprints/${id}/complete`)
+    return response.data
+  },
+
+  async archiveSprint(id: string): Promise<Sprint> {
+    const response = await api.post<Sprint>(`/sprints/${id}/archive`)
+    return response.data
+  },
+
   /**
    * Delete a sprint backlog.
    */
@@ -75,7 +107,7 @@ export const sprintService = {
    * Bulk assign tasks to a sprint.
    */
   async addTasksToSprint(sprintId: string, taskIds: string[]): Promise<{ message: string }> {
-    const response = await api.post<{ message: string }>(`/sprints/${sprintId}/tasks`, taskIds)
+    const response = await api.post<{ message: string }>(`/sprints/${sprintId}/tasks`, { task_ids: taskIds })
     return response.data
   },
 
@@ -84,6 +116,18 @@ export const sprintService = {
    */
   async removeTaskFromSprint(sprintId: string, taskId: string): Promise<{ message: string }> {
     const response = await api.delete<{ message: string }>(`/sprints/${sprintId}/tasks/${taskId}`)
+    return response.data
+  },
+
+  async moveTasksBetweenSprints(
+    sourceSprintId: string,
+    taskIds: string[],
+    targetSprintId?: string | null
+  ): Promise<{ message: string }> {
+    const response = await api.post<{ message: string }>(`/sprints/${sourceSprintId}/move-tasks`, {
+      task_ids: taskIds,
+      target_sprint_id: targetSprintId || null
+    })
     return response.data
   },
 

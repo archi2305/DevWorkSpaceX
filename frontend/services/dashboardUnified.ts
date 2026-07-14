@@ -23,12 +23,19 @@ export interface NotificationResponse {
 
 export interface SprintResponse {
   id: string
+  project_id: string
   name: string
-  start_date: string
-  end_date: string
+  goal: string | null
+  start_date: string | null
+  end_date: string | null
+  status: string
   completed_tasks: number
   total_tasks: number
+  completed_story_points: number
+  total_story_points: number
+  remaining_story_points: number
   velocity: number
+  progress_percentage: number
   created_at: string
 }
 
@@ -73,7 +80,7 @@ export interface DashboardUnifiedResponse {
   recentActivities: ActivityLogResponse[]
   workspaceHealth: DashboardMetrics
   notifications: NotificationResponse[]
-  sprint: SprintResponse
+  sprint: SprintResponse | null
   aiSuggestions: AISuggestionResponse[]
   teamMembers: WorkspaceMemberResponse[]
 }

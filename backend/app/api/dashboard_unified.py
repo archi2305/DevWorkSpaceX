@@ -1,7 +1,8 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List
 from app.dependencies.db import get_db
 from app.dependencies.auth import get_current_user
@@ -26,35 +27,9 @@ router = APIRouter(tags=["Unified Dashboard"])
 
 def seed_default_data_if_needed(db: Session, current_user: User):
     """
-    Auto-seeds default records if the database lacks initial dashboard statistics
-    for the logged-in user, avoiding blank visual widgets on first login.
+    Auto-seeds only user-scoped supporting records that are not project/task data.
     """
-    # 1. Seed Active Sprint if empty
-    sprint = db.query(Sprint).first()
-    if not sprint:
-        proj = db.query(Project).first()
-        if not proj:
-            proj = Project(
-                name="Default Project",
-                description="Auto-seeded for sprints board",
-                color="blue",
-                icon="🚀"
-            )
-            db.add(proj)
-            db.commit()
-            db.refresh(proj)
-        sprint = Sprint(
-            project_id=proj.id,
-            name="Sprint 24",
-            start_date=datetime.utcnow() - timedelta(days=5),
-            end_date=datetime.utcnow() + timedelta(days=9),
-            status="Active"
-        )
-        db.add(sprint)
-        db.commit()
-        db.refresh(sprint)
-
-    # 2. Seed Welcome Notifications if empty
+    # 1. Seed Welcome Notifications if empty
     notifs = db.query(Notification).filter(Notification.user_id == current_user.id).all()
     if not notifs:
         welcome_notifs = [
@@ -80,7 +55,7 @@ def seed_default_data_if_needed(db: Session, current_user: User):
         db.add_all(welcome_notifs)
         db.commit()
 
-    # 3. Seed initial Activity Logs if empty
+    # 2. Seed initial Activity Logs if empty
     activities = db.query(ActivityLog).filter(ActivityLog.user_id == current_user.id).all()
     if not activities:
         initial_logs = [
@@ -109,7 +84,7 @@ def seed_default_data_if_needed(db: Session, current_user: User):
         db.add_all(initial_logs)
         db.commit()
 
-    # 4. Seed AI Suggestions if empty
+    # 3. Seed AI Suggestions if empty
     suggestions = db.query(AISuggestion).filter(AISuggestion.user_id == current_user.id).all()
     if not suggestions:
         initial_suggestions = [
@@ -173,22 +148,68 @@ def get_unified_dashboard(
     ).order_by(AISuggestion.created_at.desc()).all()
 
     # 6. Sprint Info
-    sprint_obj = db.query(Sprint).filter(Sprint.status == "Active").first()
-    if not sprint_obj:
-        sprint_obj = db.query(Sprint).first()
+    project_ids = [project.id for project in projects]
+    sprint_obj = None
+    if project_ids:
+        sprint_obj = (
+            db.query(Sprint)
+            .filter(
+                Sprint.project_id.in_(project_ids),
+                Sprint.status == "Active",
+                Sprint.is_archived == False,
+            )
+            .order_by(Sprint.start_date.desc().nullslast(), Sprint.created_at.desc())
+            .first()
+        )
 
     sprint = None
     if sprint_obj:
-        done_cnt = db.query(func.count(Task.id)).filter(Task.sprint_id == sprint_obj.id, Task.completed == True).scalar() or 0
-        tot_cnt = db.query(func.count(Task.id)).filter(Task.sprint_id == sprint_obj.id).scalar() or 0
+        sprint_tasks = db.query(Task).filter(Task.sprint_id == sprint_obj.id, Task.is_deleted == False).all()
+        done_tasks = [task for task in sprint_tasks if task.completed or task.status.lower() in {"done", "completed", "closed"}]
+        total_story_points = sum(task.story_points or 0 for task in sprint_tasks)
+        completed_story_points = sum(task.story_points or 0 for task in done_tasks)
+        remaining_story_points = max(total_story_points - completed_story_points, 0)
+        completed_sprints = (
+            db.query(Sprint)
+            .filter(
+                Sprint.project_id == sprint_obj.project_id,
+                Sprint.status == "Completed",
+                Sprint.is_archived == False,
+            )
+            .order_by(Sprint.end_date.desc().nullslast(), Sprint.updated_at.desc())
+            .limit(5)
+            .all()
+        )
+        velocity_values = []
+        for completed_sprint in completed_sprints:
+            points = (
+                db.query(func.coalesce(func.sum(Task.story_points), 0))
+                .filter(
+                    Task.sprint_id == completed_sprint.id,
+                    Task.is_deleted == False,
+                    ((Task.completed == True) | (func.lower(Task.status).in_(["done", "completed", "closed"]))),
+                )
+                .scalar()
+                or 0
+            )
+            velocity_values.append(int(points))
+        velocity = round(sum(velocity_values) / len(velocity_values)) if velocity_values else 0
+        progress = int((completed_story_points / total_story_points) * 100) if total_story_points else 0
         sprint = {
             "id": sprint_obj.id,
+            "project_id": sprint_obj.project_id,
             "name": sprint_obj.name,
-            "start_date": sprint_obj.start_date or datetime.utcnow(),
-            "end_date": sprint_obj.end_date or (datetime.utcnow() + timedelta(days=14)),
-            "completed_tasks": done_cnt,
-            "total_tasks": tot_cnt,
-            "velocity": 42,
+            "goal": sprint_obj.goal,
+            "start_date": sprint_obj.start_date,
+            "end_date": sprint_obj.end_date,
+            "status": sprint_obj.status,
+            "completed_tasks": len(done_tasks),
+            "total_tasks": len(sprint_tasks),
+            "completed_story_points": completed_story_points,
+            "total_story_points": total_story_points,
+            "remaining_story_points": remaining_story_points,
+            "velocity": velocity,
+            "progress_percentage": progress,
             "created_at": sprint_obj.created_at
         }
 
@@ -265,22 +286,48 @@ def get_active_sprint(
     """
     Fetch active milestone stats.
     """
-    sprint_obj = db.query(Sprint).filter(Sprint.status == "Active").first()
-    if not sprint_obj:
-        sprint_obj = db.query(Sprint).first()
+    project_ids = [
+        project.id
+        for project in db.query(Project).filter(
+            ((Project.owner_id == current_user.id) | (Project.members.any(id=current_user.id))) &
+            (Project.is_archived == False)
+        ).all()
+    ]
+    sprint_obj = None
+    if project_ids:
+        sprint_obj = (
+            db.query(Sprint)
+            .filter(
+                Sprint.project_id.in_(project_ids),
+                Sprint.status == "Active",
+                Sprint.is_archived == False,
+            )
+            .order_by(Sprint.start_date.desc().nullslast(), Sprint.created_at.desc())
+            .first()
+        )
     if not sprint_obj:
         raise HTTPException(status_code=404, detail="Active sprint not found")
     
-    done_cnt = db.query(func.count(Task.id)).filter(Task.sprint_id == sprint_obj.id, Task.completed == True).scalar() or 0
-    tot_cnt = db.query(func.count(Task.id)).filter(Task.sprint_id == sprint_obj.id).scalar() or 0
+    sprint_tasks = db.query(Task).filter(Task.sprint_id == sprint_obj.id, Task.is_deleted == False).all()
+    done_tasks = [task for task in sprint_tasks if task.completed or task.status.lower() in {"done", "completed", "closed"}]
+    total_story_points = sum(task.story_points or 0 for task in sprint_tasks)
+    completed_story_points = sum(task.story_points or 0 for task in done_tasks)
+    remaining_story_points = max(total_story_points - completed_story_points, 0)
+    progress = int((completed_story_points / total_story_points) * 100) if total_story_points else 0
     return {
         "id": sprint_obj.id,
+        "project_id": sprint_obj.project_id,
         "name": sprint_obj.name,
-        "start_date": sprint_obj.start_date or datetime.utcnow(),
-        "end_date": sprint_obj.end_date or (datetime.utcnow() + timedelta(days=14)),
-        "completed_tasks": done_cnt,
-        "total_tasks": tot_cnt,
-        "velocity": 42,
+        "goal": sprint_obj.goal,
+        "start_date": sprint_obj.start_date,
+        "end_date": sprint_obj.end_date,
+        "status": sprint_obj.status,
+        "completed_tasks": len(done_tasks),
+        "total_tasks": len(sprint_tasks),
+        "completed_story_points": completed_story_points,
+        "total_story_points": total_story_points,
+        "remaining_story_points": remaining_story_points,
+        "velocity": 0,
+        "progress_percentage": progress,
         "created_at": sprint_obj.created_at
     }
-

@@ -35,3 +35,17 @@ npm run build
 ```bash
 npm start
 ```
+
+## Deployment
+
+Production deployment assets are included for Docker, Docker Compose, NGINX, GitHub Actions, health checks, logging, and AWS ECS/Fargate.
+
+- Deployment guide: [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)
+- Architecture diagram: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+
+Quick local container run:
+
+```bash
+cp .env.example .env
+docker compose up --build
+```

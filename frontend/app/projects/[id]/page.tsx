@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { projectService } from '@/services/project'
 import { taskService, TaskResponse } from '@/services/task'
+import { sprintService, Sprint } from '@/services/sprint'
 import { teamService } from '@/services/team'
 import { labelService } from '@/services/label'
 import { LabelsManager } from '@/components/labels/labels-manager'
@@ -93,6 +94,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
     updatedEnd: ''
   })
   const [isAdvancedFiltersOpen, setIsAdvancedFiltersOpen] = useState(false)
+  const [activeProjectTab, setActiveProjectTab] = useState<'kanban' | 'sprints'>('kanban')
 
   // Map state to query string criteria params
   const apiFilters = {
@@ -112,6 +114,11 @@ export default function ProjectDetailsPage({ params }: PageProps) {
   const { data: tasks = [], isLoading: tasksLoading } = useQuery({
     queryKey: ['tasks', { project_id: id, ...apiFilters }],
     queryFn: () => taskService.getTasks(id, apiFilters),
+  })
+
+  const { data: projectSprints = [] } = useQuery({
+    queryKey: ['sprints', id],
+    queryFn: () => sprintService.getSprints(id),
   })
 
   // Editing modal fields
@@ -731,6 +738,135 @@ export default function ProjectDetailsPage({ params }: PageProps) {
     done: filteredTasks.filter(t => t.completed)
   }
 
+  const projectActiveSprint = projectSprints.find(sprint => sprint.status === 'Active')
+  const projectPlannedSprints = projectSprints.filter(sprint => sprint.status === 'Planned')
+  const projectCompletedSprints = projectSprints.filter(sprint => sprint.status === 'Completed')
+  const projectBacklogTasks = tasks.filter(task => !task.sprint_id)
+
+  const refreshProjectSprints = () => {
+    queryClient.invalidateQueries({ queryKey: ['sprints', id] })
+    queryClient.invalidateQueries({ queryKey: ['tasks', { project_id: id }] })
+    queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+  }
+
+  const handleCreateProjectSprint = async () => {
+    const nextSprintNumber = projectSprints.length + 1
+    await sprintService.createSprint({
+      project_id: id,
+      name: `${project.name} Sprint ${nextSprintNumber}`,
+      goal: 'Define the sprint goal',
+      duration_weeks: 2
+    })
+    refreshProjectSprints()
+  }
+
+  const handleStartProjectSprint = async (sprintId: string) => {
+    try {
+      await sprintService.startSprint(sprintId)
+      refreshProjectSprints()
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Failed to start sprint.')
+    }
+  }
+
+  const handleCompleteProjectSprint = async (sprintId: string) => {
+    try {
+      await sprintService.completeSprint(sprintId)
+      refreshProjectSprints()
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Failed to complete sprint.')
+    }
+  }
+
+  const handleArchiveProjectSprint = async (sprintId: string) => {
+    try {
+      await sprintService.archiveSprint(sprintId)
+      refreshProjectSprints()
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Failed to archive sprint.')
+    }
+  }
+
+  const handleAssignTaskToSprint = async (sprintId: string, taskId: string) => {
+    await sprintService.addTasksToSprint(sprintId, [taskId])
+    refreshProjectSprints()
+  }
+
+  const handleRemoveTaskFromProjectSprint = async (sprintId: string, taskId: string) => {
+    await sprintService.removeTaskFromSprint(sprintId, taskId)
+    refreshProjectSprints()
+  }
+
+  const renderProjectSprintCard = (sprint: Sprint) => {
+    const sprintTasks = tasks.filter(task => task.sprint_id === sprint.id)
+    const totalPoints = sprintTasks.reduce((sum, task) => sum + (task.story_points || 0), 0)
+    const completedPoints = sprintTasks.filter(task => task.completed).reduce((sum, task) => sum + (task.story_points || 0), 0)
+    const progress = totalPoints > 0 ? Math.round((completedPoints / totalPoints) * 100) : 0
+
+    return (
+      <div key={sprint.id} className="rounded-2xl border border-white/[0.06] bg-[#171A1D] p-5 space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <span className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] font-bold uppercase text-[#A7ADB5]">
+              {sprint.status}
+            </span>
+            <h3 className="mt-2 text-sm font-bold text-white">{sprint.name}</h3>
+            <p className="mt-1 text-xs text-[#A7ADB5]">{sprint.goal || 'No sprint goal set'}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {sprint.status === 'Planned' && (
+              <button onClick={() => handleStartProjectSprint(sprint.id)} className="rounded-lg border border-[#5BB98C]/20 bg-[#5BB98C]/10 px-3 py-1.5 text-[10px] font-bold text-[#5BB98C]">
+                Start
+              </button>
+            )}
+            {sprint.status === 'Active' && (
+              <button onClick={() => handleCompleteProjectSprint(sprint.id)} className="rounded-lg bg-[#5BB98C] px-3 py-1.5 text-[10px] font-bold text-[#111315]">
+                Complete
+              </button>
+            )}
+            {sprint.status !== 'Active' && (
+              <button onClick={() => handleArchiveProjectSprint(sprint.id)} className="rounded-lg border border-white/[0.06] px-3 py-1.5 text-[10px] font-bold text-[#A7ADB5] hover:text-[#F2C94C]">
+                Archive
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="rounded-xl bg-[#1D2024] p-3">
+            <p className="text-[9px] uppercase text-[#7E848C]">Progress</p>
+            <p className="text-lg font-bold text-white">{progress}%</p>
+          </div>
+          <div className="rounded-xl bg-[#1D2024] p-3">
+            <p className="text-[9px] uppercase text-[#7E848C]">Points</p>
+            <p className="text-lg font-bold text-white">{completedPoints}/{totalPoints}</p>
+          </div>
+          <div className="rounded-xl bg-[#1D2024] p-3">
+            <p className="text-[9px] uppercase text-[#7E848C]">Tasks</p>
+            <p className="text-lg font-bold text-white">{sprintTasks.length}</p>
+          </div>
+        </div>
+        <div className="h-1.5 overflow-hidden rounded-full bg-[#2E3339]">
+          <div className="h-full rounded-full bg-[#5BB98C]" style={{ width: `${progress}%` }} />
+        </div>
+        <div className="space-y-2">
+          {sprintTasks.map(task => (
+            <div key={task.id} className="flex items-center justify-between rounded-lg border border-white/[0.04] bg-[#1D2024] px-3 py-2">
+              <span className="text-xs font-semibold text-white">{task.title}</span>
+              <button onClick={() => handleRemoveTaskFromProjectSprint(sprint.id, task.id)} className="text-[10px] font-bold text-[#A7ADB5] hover:text-[#EB5757]">
+                Remove
+              </button>
+            </div>
+          ))}
+          {sprintTasks.length === 0 && (
+            <p className="rounded-lg border border-dashed border-white/[0.06] py-4 text-center text-xs text-[#7E848C]">
+              No tasks in this sprint.
+            </p>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-[#111315] text-[#F5F5F5] p-8 space-y-8 transition-colors duration-300">
       {/* Cover Image Banner */}
@@ -865,8 +1001,105 @@ export default function ProjectDetailsPage({ params }: PageProps) {
         </motion.div>
       )}
 
+      <div className="flex items-center gap-2 border-b border-white/[0.06]">
+        <button
+          onClick={() => setActiveProjectTab('kanban')}
+          className={`px-4 py-3 text-xs font-bold transition-colors ${
+            activeProjectTab === 'kanban'
+              ? 'border-b-2 border-[#5BB98C] text-[#5BB98C]'
+              : 'text-[#A7ADB5] hover:text-white'
+          }`}
+        >
+          Kanban
+        </button>
+        <button
+          onClick={() => setActiveProjectTab('sprints')}
+          className={`px-4 py-3 text-xs font-bold transition-colors ${
+            activeProjectTab === 'sprints'
+              ? 'border-b-2 border-[#5BB98C] text-[#5BB98C]'
+              : 'text-[#A7ADB5] hover:text-white'
+          }`}
+        >
+          Sprints
+        </button>
+      </div>
+
+      {activeProjectTab === 'sprints' && (
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xs font-bold uppercase tracking-wider text-[#7E848C]">Project Sprints</h2>
+                <p className="mt-1 text-xs text-[#A7ADB5]">Plan sprint goals, start cycles, complete work, and track story points.</p>
+              </div>
+              <button
+                onClick={handleCreateProjectSprint}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[#5BB98C] px-4 py-2 text-xs font-bold text-[#111315]"
+              >
+                <Plus className="h-4 w-4" /> Create Sprint
+              </button>
+            </div>
+
+            {projectActiveSprint && (
+              <div className="space-y-3">
+                <h3 className="text-[10px] font-bold uppercase tracking-wider text-[#5BB98C]">Active Sprint</h3>
+                {renderProjectSprintCard(projectActiveSprint)}
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <h3 className="text-[10px] font-bold uppercase tracking-wider text-[#7E848C]">Planned ({projectPlannedSprints.length})</h3>
+              {projectPlannedSprints.map(renderProjectSprintCard)}
+              {projectPlannedSprints.length === 0 && (
+                <p className="rounded-2xl border border-dashed border-white/[0.06] py-8 text-center text-xs text-[#7E848C]">No planned sprints.</p>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-[10px] font-bold uppercase tracking-wider text-[#7E848C]">Completed ({projectCompletedSprints.length})</h3>
+              {projectCompletedSprints.map(renderProjectSprintCard)}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/[0.06] bg-[#171A1D] p-5 space-y-4">
+            <div>
+              <h3 className="text-sm font-bold text-white">Backlog</h3>
+              <p className="mt-1 text-[10px] text-[#A7ADB5]">Unassigned tasks ready for sprint planning.</p>
+            </div>
+            <div className="space-y-2 max-h-[680px] overflow-y-auto pr-1">
+              {projectBacklogTasks.map(task => (
+                <div key={task.id} className="rounded-xl border border-white/[0.04] bg-[#1D2024] p-3 space-y-2">
+                  <div>
+                    <p className="text-xs font-bold text-white">{task.title}</p>
+                    <p className="mt-1 text-[10px] text-[#7E848C]">{task.story_points || 0} pts · {task.priority}</p>
+                  </div>
+                  <select
+                    defaultValue=""
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        handleAssignTaskToSprint(e.target.value, task.id)
+                        e.currentTarget.value = ''
+                      }
+                    }}
+                    className="w-full rounded-lg border border-white/[0.06] bg-[#171A1D] px-2 py-1.5 text-[10px] text-white outline-none"
+                  >
+                    <option value="">Add to sprint</option>
+                    {projectSprints.filter(sprint => sprint.status !== 'Completed').map(sprint => (
+                      <option key={sprint.id} value={sprint.id}>{sprint.name}</option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+              {projectBacklogTasks.length === 0 && (
+                <p className="rounded-xl border border-dashed border-white/[0.06] py-8 text-center text-xs text-[#7E848C]">No backlog tasks.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Details Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {activeProjectTab === 'kanban' && <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           {/* About Project Card */}
           <div className="rounded-2xl border border-white/[0.06] bg-gradient-to-br from-[#171A1D] to-[#111315] p-6 space-y-4 shadow-lg hover:shadow-xl transition-all duration-300">
@@ -1214,7 +1447,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
             </div>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Edit Project Modal Overlay */}
       <AnimatePresence>

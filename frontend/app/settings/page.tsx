@@ -26,6 +26,7 @@ import {
 import { workspaceService, WorkspaceSettings, APIKey, UserSession, ConnectedAccount } from '@/services/workspace'
 import { userPreferenceService } from '@/services/user-preference'
 import { integrationService } from '@/services/integration'
+import { exportService } from '@/services/export'
 
 type SettingsTab = 'general' | 'preferences' | 'api-keys' | 'security' | 'integrations' | 'integrations-modular' | 'billing' | 'danger'
 
@@ -519,17 +520,44 @@ export default function SettingsPage() {
                     </div>
 
                     {/* Export Workspace Backup */}
-                    <div className="pt-6 border-t border-white/[0.06] space-y-3">
+                    <div className="pt-6 border-t border-white/[0.06] space-y-4">
                       <div>
-                        <h4 className="text-xs font-bold text-white">Export Workspace Backup</h4>
-                        <p className="text-[10px] text-[#A7ADB5]">Download a complete JSON export file containing your projects, tasks, and documentation logs.</p>
+                        <h4 className="text-xs font-bold text-white">Export Workspace Data</h4>
+                        <p className="text-[10px] text-[#A7ADB5]">Download a complete dynamically generated export package containing all projects, tasks, documentations, and activities.</p>
                       </div>
-                      <button
-                        onClick={handleExportData}
-                        className="px-4 py-2 bg-[#5BB98C] hover:bg-[#5BB98C]/90 text-[#111315] font-semibold rounded-xl text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Download className="h-4 w-4" /> Export Backup File
-                      </button>
+                      
+                      <div className="flex flex-wrap gap-2.5">
+                        <button
+                          onClick={() => exportService.downloadExport('json')}
+                          className="px-4 py-2 bg-[#1D2024] hover:bg-[#1D2024]/80 border border-white/[0.08] text-white font-semibold rounded-xl text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                        >
+                          JSON Format
+                        </button>
+                        <button
+                          onClick={() => exportService.downloadExport('csv')}
+                          className="px-4 py-2 bg-[#1D2024] hover:bg-[#1D2024]/80 border border-white/[0.08] text-white font-semibold rounded-xl text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                        >
+                          CSV Format
+                        </button>
+                        <button
+                          onClick={() => exportService.downloadExport('excel')}
+                          className="px-4 py-2 bg-[#1D2024] hover:bg-[#1D2024]/80 border border-white/[0.08] text-white font-semibold rounded-xl text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                        >
+                          Excel (XLS)
+                        </button>
+                        <button
+                          onClick={() => exportService.downloadExport('markdown')}
+                          className="px-4 py-2 bg-[#1D2024] hover:bg-[#1D2024]/80 border border-white/[0.08] text-white font-semibold rounded-xl text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                        >
+                          Markdown Summaries
+                        </button>
+                        <button
+                          onClick={() => exportService.downloadExport('zip')}
+                          className="px-4 py-2 bg-[#5BB98C] hover:bg-[#5BB98C]/90 text-[#111315] font-semibold rounded-xl text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Download className="h-4 w-4" /> Download ZIP Archive
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}

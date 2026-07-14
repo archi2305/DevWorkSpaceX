@@ -26,3 +26,17 @@ class Milestone(Base):
 
     # Relationships
     project = relationship("Project", backref="milestones")
+
+    @property
+    def total_tasks(self) -> int:
+        return len([task for task in self.tasks if not task.is_deleted])
+
+    @property
+    def completed_tasks(self) -> int:
+        return len([task for task in self.tasks if task.completed and not task.is_deleted])
+
+    @property
+    def progress_percentage(self) -> float:
+        if self.total_tasks == 0:
+            return 0
+        return round((self.completed_tasks / self.total_tasks) * 100, 2)

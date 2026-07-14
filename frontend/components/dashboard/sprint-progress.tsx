@@ -12,22 +12,25 @@ export function SprintProgress() {
   const sprint = dashboardData?.sprint
 
   const getFormattedDate = (isoString: string) => {
+    if (!isoString) return 'Not scheduled'
     try {
       const d = new Date(isoString)
+      if (Number.isNaN(d.getTime())) return 'Not scheduled'
       return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     } catch (e) {
       return ''
     }
   }
 
-  const completed = sprint?.completed_tasks || 0
-  const total = sprint?.total_tasks || 0
+  const completed = sprint?.completed_story_points || 0
+  const total = sprint?.total_story_points || 0
+  const remaining = sprint?.remaining_story_points || 0
   const velocity = sprint?.velocity || 0
-  const progressPercentage = total > 0 ? Math.round((completed / total) * 100) : 0
+  const progressPercentage = sprint?.progress_percentage ?? (total > 0 ? Math.round((completed / total) * 100) : 0)
 
   const metrics = [
-    { label: 'Completed', value: completed, max: total, color: 'success' as const },
-    { label: 'Remaining', value: total - completed, max: total, color: 'warning' as const },
+    { label: 'Completed Points', value: completed, max: total, color: 'success' as const },
+    { label: 'Remaining Points', value: remaining, max: total, color: 'warning' as const },
   ]
 
   return (
@@ -44,7 +47,7 @@ export function SprintProgress() {
               <div className="h-4 bg-[#18181b]/30 rounded w-32 mt-2 animate-pulse" />
             ) : (
               <p className="text-sm text-muted-foreground mt-1 text-left">
-                {sprint ? `${getFormattedDate(sprint.start_date)} — ${getFormattedDate(sprint.end_date)}` : 'Sprints cycle dates'}
+                {sprint ? `${getFormattedDate(sprint.start_date || '')} - ${getFormattedDate(sprint.end_date || '')}` : 'No active sprint'}
               </p>
             )}
           </div>
@@ -116,7 +119,7 @@ export function SprintProgress() {
               ) : (
                 <p className="mt-2 text-3xl font-bold text-primary text-left">{velocity}</p>
               )}
-              <p className="text-xs text-muted-foreground mt-1 text-left">Story points/sprint</p>
+              <p className="text-xs text-muted-foreground mt-1 text-left">Completed story points/sprint</p>
             </div>
             <motion.div
               animate={{ scale: [1, 1.1, 1], rotate: [0, 5, 0] }}
