@@ -17,7 +17,8 @@ import {
   FolderOpen,
   Calendar,
   Activity,
-  FileText
+  FileText,
+  Shield
 } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
@@ -33,6 +34,7 @@ const navItems = [
   { icon: Zap, label: 'Quick Actions', href: '/quick-actions' },
   { icon: Users, label: 'Team', href: '/team' },
   { icon: Activity, label: 'Activity Timeline', href: '/activities' },
+  { icon: Shield, label: 'Audit Dashboard', href: '/audit' },
   { icon: BarChart3, label: 'Analytics', href: '/analytics' },
   { icon: FileText, label: 'Reports', href: '/reports' },
   { icon: BookOpen, label: 'Documentation', href: '/documentation' },
