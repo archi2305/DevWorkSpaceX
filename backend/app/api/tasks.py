@@ -10,7 +10,7 @@ from app.models.task import Task
 from app.models.project import Project
 from app.models.activity import ActivityLog
 from app.models.label import Label
-from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate, TaskDependencyResponse
+from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate, TaskDependencyCreate, TaskDependencyResponse
 from app.api.notification import dispatch_notification
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
@@ -155,6 +155,7 @@ def create_task(
         title=task_data.title,
         description=task_data.description,
         status=task_data.status,
+        start_date=task_data.start_date,
         due_date=task_data.due_date,
         priority=task_data.priority,
         completed=is_completed,
@@ -357,6 +358,7 @@ def duplicate_task(
         title=f"{source_task.title} Copy",
         description=source_task.description,
         status=source_task.status,
+        start_date=source_task.start_date,
         due_date=source_task.due_date,
         priority=source_task.priority,
         completed=source_task.completed,
@@ -639,5 +641,3 @@ def permanent_delete_task(
     db.add(log)
     db.commit()
     return {"status": "success", "detail": f"Task permanently deleted."}
-
-

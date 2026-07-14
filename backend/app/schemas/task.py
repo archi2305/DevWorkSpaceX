@@ -11,6 +11,7 @@ class TaskBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
     status: str = Field("Todo", max_length=50) # 'Todo', 'In Progress', 'Review', 'Done'
+    start_date: Optional[str] = Field(None, max_length=50)
     due_date: Optional[str] = Field(None, max_length=50)
     priority: str = Field("medium", max_length=50) # 'low', 'medium', 'high'
     completed: bool = False
@@ -29,6 +30,7 @@ class TaskCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
     status: str = Field("Todo", max_length=50)
+    start_date: Optional[str] = Field(None, max_length=50)
     due_date: Optional[str] = Field(None, max_length=50)
     priority: str = Field("medium", max_length=50)
     assignee_id: Optional[uuid.UUID] = None
@@ -48,6 +50,7 @@ class TaskUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
     status: Optional[str] = Field(None, max_length=50)
+    start_date: Optional[str] = Field(None, max_length=50)
     due_date: Optional[str] = Field(None, max_length=50)
     priority: Optional[str] = Field(None, max_length=50)
     completed: Optional[bool] = None

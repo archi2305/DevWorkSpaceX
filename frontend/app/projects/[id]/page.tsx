@@ -23,6 +23,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { CommentsList } from '@/components/comments/comments-list'
 import { useCollaboration } from '@/hooks/use-collaboration'
 import { CustomFieldsSection } from '@/components/custom-fields/CustomFieldsSection'
+import { MilestoneList } from '@/components/milestones/milestone-list'
 
 import {
   DndContext,
@@ -94,7 +95,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
     updatedEnd: ''
   })
   const [isAdvancedFiltersOpen, setIsAdvancedFiltersOpen] = useState(false)
-  const [activeProjectTab, setActiveProjectTab] = useState<'kanban' | 'sprints'>('kanban')
+  const [activeProjectTab, setActiveProjectTab] = useState<'kanban' | 'sprints' | 'milestones'>('kanban')
 
   // Map state to query string criteria params
   const apiFilters = {
@@ -1022,7 +1023,23 @@ export default function ProjectDetailsPage({ params }: PageProps) {
         >
           Sprints
         </button>
+        <button
+          onClick={() => setActiveProjectTab('milestones')}
+          className={`px-4 py-3 text-xs font-bold transition-colors ${
+            activeProjectTab === 'milestones'
+              ? 'border-b-2 border-[#5BB98C] text-[#5BB98C]'
+              : 'text-[#A7ADB5] hover:text-white'
+          }`}
+        >
+          Milestones
+        </button>
       </div>
+
+      {activeProjectTab === 'milestones' && (
+        <div className="p-6">
+          <MilestoneList projectId={id} />
+        </div>
+      )}
 
       {activeProjectTab === 'sprints' && (
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">

@@ -5,6 +5,7 @@ export interface TaskCreateInput {
   description?: string
   status?: string // 'Todo', 'In Progress', 'Review', 'Done'
   labels?: string
+  start_date?: string
   due_date?: string
   priority?: string
   assignee_id?: string
@@ -18,6 +19,7 @@ export interface TaskResponse {
   description: string | null
   status: string
   labels: any[]
+  start_date: string | null
   due_date: string | null
   priority: string
   completed: boolean

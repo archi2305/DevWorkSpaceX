@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
+@import 'frappe-gantt/dist/frappe-gantt.css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -217,6 +218,67 @@
   --popover: oklch(0.16 0.02 270);
   --border: rgba(255, 255, 255, 0.08);
   --sidebar: oklch(0.13 0.02 270);
+}
+
+.gantt-container {
+  background: #171a1d;
+}
+
+.gantt-container .grid-background {
+  fill: #171a1d;
+}
+
+.gantt-container .grid-header {
+  fill: #111315;
+  stroke: rgba(255, 255, 255, 0.08);
+}
+
+.gantt-container .grid-row {
+  fill: #171a1d;
+}
+
+.gantt-container .grid-row:nth-child(even) {
+  fill: #14171a;
+}
+
+.gantt-container .row-line,
+.gantt-container .tick,
+.gantt-container .today-highlight {
+  stroke: rgba(255, 255, 255, 0.08);
+}
+
+.gantt-container .lower-text,
+.gantt-container .upper-text {
+  fill: #a7adb5;
+}
+
+.gantt-container .bar {
+  fill: #5bb98c;
+}
+
+.gantt-container .bar-progress {
+  fill: #3f8f6b;
+}
+
+.gantt-container .bar-label {
+  fill: #f5f5f5;
+  font-weight: 700;
+}
+
+.gantt-container .project-row .bar {
+  fill: #7e848c;
+}
+
+.gantt-container .milestone-row .bar {
+  fill: #f2c94c;
+}
+
+.gantt-container .task-row.blocked .bar {
+  fill: #eb5757;
+}
+
+.gantt-container .arrow {
+  stroke: #a7adb5;
 }
 
 .green {

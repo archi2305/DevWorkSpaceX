@@ -22,6 +22,7 @@ class Task(Base):
     status: Mapped[str] = mapped_column(String(50), default="Todo", nullable=False)
     
     # Task due date (text based for flexibility like 'Today', 'Tomorrow', 'Mar 15')
+    start_date: Mapped[str | None] = mapped_column(String(50), nullable=True)
     due_date: Mapped[str | None] = mapped_column(String(50), nullable=True)
     
     # Task priority level ('low', 'medium', 'high')

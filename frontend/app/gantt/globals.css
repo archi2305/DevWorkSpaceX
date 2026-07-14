@@ -1,0 +1,193 @@
+/* Gantt Chart Custom Styles */
+.gantt-container {
+  background: #171A1D;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.gantt-container .gantt {
+  background: #171A1D;
+}
+
+.gantt-container .gantt .grid-row {
+  fill: #1D2024;
+  stroke: #ffffff08;
+}
+
+.gantt-container .gantt .grid-header {
+  fill: #111315;
+  stroke: #ffffff08;
+}
+
+.gantt-container .gantt .bar {
+  fill: #5BB98C;
+  stroke: #5BB98C;
+  stroke-width: 0;
+  border-radius: 4px;
+  cursor: move;
+}
+
+.gantt-container .gantt .bar:hover {
+  fill: #7ED8A8;
+  filter: drop-shadow(0 0 8px rgba(91, 185, 140, 0.4));
+}
+
+.gantt-container .gantt .bar.project-row {
+  fill: #5BB98C;
+  stroke: #5BB98C;
+  stroke-width: 2;
+}
+
+.gantt-container .gantt .bar.milestone-row {
+  fill: #F2C94C;
+  stroke: #F2C94C;
+  stroke-width: 2;
+}
+
+.gantt-container .gantt .bar.task-row {
+  fill: #5BB98C;
+  stroke: #5BB98C;
+  stroke-width: 0;
+}
+
+.gantt-container .gantt .bar.task-row.blocked {
+  fill: #EB5757;
+  stroke: #EB5757;
+}
+
+.gantt-container .gantt .bar-progress {
+  fill: rgba(91, 185, 140, 0.3);
+}
+
+.gantt-container .gantt .bar-label {
+  fill: #F5F5F5;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.gantt-container .gantt .bar-wrapper {
+  cursor: move;
+}
+
+.gantt-container .gantt .bar-wrapper:hover .bar {
+  filter: brightness(1.1);
+}
+
+.gantt-container .gantt .handle {
+  fill: #5BB98C;
+  cursor: ew-resize;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.gantt-container .gantt .bar-wrapper:hover .handle {
+  opacity: 1;
+}
+
+.gantt-container .gantt .handle.left {
+  cursor: w-resize;
+}
+
+.gantt-container .gantt .handle.right {
+  cursor: e-resize;
+}
+
+.gantt-container .gantt .details-container {
+  background: #1D2024;
+  border: 1px solid #ffffff10;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  min-width: 200px;
+}
+
+.gantt-container .gantt .details-container h5 {
+  color: #5BB98C;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  text-transform: uppercase;
+}
+
+.gantt-container .gantt .details-container p {
+  color: #F5F5F5;
+  font-size: 11px;
+  margin: 4px 0;
+}
+
+.gantt-container .gantt .arrow-line {
+  stroke: #5BB98C;
+  stroke-width: 2;
+  fill: none;
+  opacity: 0.6;
+}
+
+.gantt-container .gantt .arrow-head {
+  fill: #5BB98C;
+  opacity: 0.6;
+}
+
+.gantt-container .gantt .today-line {
+  stroke: #EB5757;
+  stroke-width: 2;
+  stroke-dasharray: 4;
+  opacity: 0.8;
+}
+
+.gantt-container .gantt .sidebar {
+  background: #111315;
+  border-right: 1px solid #ffffff08;
+}
+
+.gantt-container .gantt .sidebar-title {
+  fill: #A7ADB5;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.gantt-container .gantt .sidebar-item {
+  fill: #F5F5F5;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.gantt-container .gantt .sidebar-item:hover {
+  fill: #5BB98C;
+}
+
+.gantt-container .gantt .date-text {
+  fill: #A7ADB5;
+  font-size: 10px;
+}
+
+.gantt-container .gantt .upper-text {
+  fill: #7E848C;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.gantt-container .gantt .lower-text {
+  fill: #A7ADB5;
+  font-size: 10px;
+}
+
+/* Custom scrollbar for Gantt container */
+.gantt-container::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.gantt-container::-webkit-scrollbar-track {
+  background: #111315;
+  border-radius: 4px;
+}
+
+.gantt-container::-webkit-scrollbar-thumb {
+  background: #ffffff10;
+  border-radius: 4px;
+}
+
+.gantt-container::-webkit-scrollbar-thumb:hover {
+  background: #ffffff20;
+}
