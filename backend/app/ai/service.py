@@ -39,7 +39,7 @@ class GeminiService:
                 # Since model call is synchronous block, run in default thread executor to avoid blocking event loop.
                 response = await anyio.to_thread.run_sync(
                     lambda: self.client.models.generate_content(
-                        model='gemini-1.5-flash',
+                        model='gemini-2.0-flash',
                         contents=prompt,
                         config={"system_instruction": SYSTEM_INSTRUCTION}
                     )
