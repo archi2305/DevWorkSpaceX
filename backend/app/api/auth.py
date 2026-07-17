@@ -37,6 +37,42 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
     db.commit()
     return user
 
+from fastapi.security import OAuth2PasswordRequestForm
+
+@router.post(
+    "/token",
+    response_model=Token,
+    status_code=status.HTTP_200_OK,
+    summary="OAuth2 compatible token login",
+    description="Authenticates credentials from standard OAuth2 form-data and returns a JWT access token."
+)
+def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
+    login_data = UserLogin(email=form_data.username, password=form_data.password)
+    user = AuthService.authenticate_user(db, login_data)
+    access_token = create_access_token(subject=str(user.id))
+    
+    # Log login activity
+    db_log = ActivityLog(
+        user_id=user.id,
+        category="login",
+        event_type="login",
+        action="OAuth2 Login",
+        details=f"User {user.full_name} logged in via OAuth2 token endpoint",
+        target_type="User",
+        target_name=user.full_name,
+        target_id=user.id
+    )
+    db.add(db_log)
+    db.commit()
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
+
 @router.post(
     "/login",
     response_model=Token,
