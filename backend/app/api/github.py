@@ -284,12 +284,37 @@ def list_workflow_runs(
         runs = [run1, run2]
     return runs
 
+import hmac
+import hashlib
+import json
+import os
+from app.core.config import settings
+
 @router.post("/webhook", summary="Receive GitHub Webhook Events")
 async def github_webhook(request: Request, db: Session = Depends(get_db)):
     """
     Webhook dispatcher to capture GitHub push, pull request, and actions activities.
     """
-    payload = await request.json()
+    body = await request.body()
+    
+    # Verify GitHub Webhook Signature if secret is configured
+    secret = getattr(settings, "GITHUB_WEBHOOK_SECRET", None) or os.getenv("GITHUB_WEBHOOK_SECRET")
+    if secret:
+        signature = request.headers.get("X-Hub-Signature-256")
+        if not signature or not signature.startswith("sha256="):
+            raise HTTPException(status_code=401, detail="Invalid or missing webhook signature.")
+        
+        received_hash = signature.split("sha256=")[-1]
+        computed_hash = hmac.new(
+            secret.encode(),
+            body,
+            hashlib.sha256
+        ).hexdigest()
+        
+        if not hmac.compare_digest(computed_hash, received_hash):
+            raise HTTPException(status_code=401, detail="Webhook signature mismatch.")
+
+    payload = json.loads(body)
     event_type = request.headers.get("X-GitHub-Event", "ping")
 
     if event_type == "ping":

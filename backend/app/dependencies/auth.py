@@ -8,6 +8,8 @@ from app.dependencies.db import get_db
 from app.models.user import User
 from app.schemas.user import TokenData
 
+from app.models.token_blacklist import BlacklistedToken
+
 # OAuth2PasswordBearer defines where to look for the Bearer token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
@@ -25,6 +27,11 @@ def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
     
+    # Check if token is blacklisted
+    is_blacklisted = db.query(BlacklistedToken).filter(BlacklistedToken.token == token).first()
+    if is_blacklisted:
+         raise credentials_exception
+         
     try:
         # Decode JWT token
         payload = jwt.decode(

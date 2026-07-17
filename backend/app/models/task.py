@@ -34,19 +34,22 @@ class Task(Base):
     # Associated assignee ID pointing to users
     assignee_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"),
-        nullable=True
+        nullable=True,
+        index=True
     )
     
     # Associated project ID pointing to projects
     project_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("projects.id", ondelete="CASCADE"),
-        nullable=True
+        nullable=True,
+        index=True
     )
 
     # Associated sprint ID pointing to sprints
     sprint_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("sprints.id", ondelete="SET NULL"),
-        nullable=True
+        nullable=True,
+        index=True
     )
 
     # Production extensions
@@ -60,15 +63,18 @@ class Task(Base):
     # Scopes
     parent_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("tasks.id", ondelete="CASCADE"),
-        nullable=True
+        nullable=True,
+        index=True
     )
     milestone_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("milestones.id", ondelete="SET NULL"),
-        nullable=True
+        nullable=True,
+        index=True
     )
     release_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("releases.id", ondelete="SET NULL"),
-        nullable=True
+        nullable=True,
+        index=True
     )
 
     # Timestamps

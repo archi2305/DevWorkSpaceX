@@ -49,6 +49,7 @@ from app.api.help import router as help_router
 from app.api.quick_action import router as quick_actions_router
 from app.core.config import settings
 from app.core.logging import setup_logging
+from app.middleware.security import SecurityHeadersMiddleware, RateLimiterMiddleware
 
 setup_logging(settings.LOG_LEVEL, settings.LOG_FORMAT)
 logger = logging.getLogger(__name__)
@@ -59,6 +60,10 @@ app = FastAPI(
     description="Core backend services for DevWorkspace X SaaS workspace",
     version="1.0.0",
 )
+
+# Register Rate Limiter & Security Headers first (outermost middleware)
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RateLimiterMiddleware)
 
 # Set up CORS middleware to allow frontend communication
 if settings.ALLOWED_ORIGINS:

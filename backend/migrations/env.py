@@ -42,6 +42,7 @@ from app.models.chat_channel import ChatChannel, ChannelMessage
 from app.models.support_ticket import SupportTicket
 from app.models.faq import FAQ
 from app.models.label import Label, task_labels
+from app.models.token_blacklist import BlacklistedToken
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

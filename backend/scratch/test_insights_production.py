@@ -5,7 +5,7 @@ BASE_URL = "http://127.0.0.1:8001"
 
 def run_test():
     email = f"insights-tester-{uuid.uuid4().hex[:6]}@example.com"
-    password = "password123"
+    password = "SecurePassword123!"
 
     print("=== Registering User ===")
     reg_resp = requests.post(f"{BASE_URL}/auth/register", json={

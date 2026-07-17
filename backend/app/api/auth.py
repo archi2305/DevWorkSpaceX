@@ -70,6 +70,10 @@ def login(login_data: UserLogin, db: Session = Depends(get_db)):
         "token_type": "bearer"
     }
 
+from app.dependencies.auth import oauth2_scheme
+from app.models.token_blacklist import BlacklistedToken
+from datetime import datetime, timedelta
+
 @router.post(
     "/logout",
     status_code=status.HTTP_200_OK,
@@ -78,11 +82,20 @@ def login(login_data: UserLogin, db: Session = Depends(get_db)):
 )
 def logout(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    token: str = Depends(oauth2_scheme)
 ):
     """
     Client-side logout endpoint. Logs logout activity on the database.
     """
+    # Blacklist the current token
+    # Access tokens expire in 1 day by default
+    blacklist_entry = BlacklistedToken(
+        token=token,
+        expires_at=datetime.utcnow() + timedelta(days=1)
+    )
+    db.add(blacklist_entry)
+
     # Log logout activity
     db_log = ActivityLog(
         user_id=current_user.id,
