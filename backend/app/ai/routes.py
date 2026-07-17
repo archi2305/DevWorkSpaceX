@@ -26,3 +26,17 @@ async def test_gemini_integration(
     """
     reply = await service.generate_response(request.message)
     return GeminiTestResponse(reply=reply)
+
+@router.post(
+    "/test-dev",
+    response_model=GeminiTestResponse,
+    status_code=status.HTTP_200_OK,
+    summary="[FOR DEVELOPMENT ONLY] Unauthenticated Groq verification endpoint",
+    description="[FOR DEVELOPMENT ONLY] Bypasses JWT check to simplify local AI frontend integration. Will be deleted."
+)
+async def test_groq_dev(
+    request: GeminiTestRequest,
+    service: GeminiService = Depends(get_gemini_service)
+):
+    reply = await service.generate_response(request.message)
+    return GeminiTestResponse(reply=reply)
