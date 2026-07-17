@@ -119,8 +119,26 @@ export const aiService = {
   /**
    * Generate structured project plan.
    */
-  async generateProjectPlan(prompt: string): Promise<any> {
-    const response = await api.post('/api/ai/project-planner', { prompt })
+  async generateProjectPlan(params: {
+    prompt: string
+    project_type?: string
+    difficulty?: string
+    timeline?: string
+    team_size?: string
+    tech_stack?: string
+  }): Promise<any> {
+    const response = await api.post('/api/ai/project-planner', params)
+    return response.data
+  },
+
+  /**
+   * Refine project plan interactively via copilot chat.
+   */
+  async copilotChat(currentProject: any, message: string): Promise<any> {
+    const response = await api.post('/api/ai/copilot-chat', {
+      current_project: currentProject,
+      message
+    })
     return response.data
   }
 }
