@@ -4,6 +4,9 @@ import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { MainLayout } from '@/components/layout/main-layout'
 import { aiService } from '@/services/ai'
+import { projectService } from '@/services/project'
+import { milestoneService } from '@/services/milestone'
+import { taskService } from '@/services/task'
 import { 
   Sparkles, 
   ArrowLeft, 
@@ -13,7 +16,8 @@ import {
   Clock, 
   AlertCircle,
   FileText,
-  X
+  X,
+  CheckCircle2
 } from 'lucide-react'
 
 // Define interfaces for local state
@@ -52,6 +56,9 @@ export default function AIProjectPlannerPage() {
   
   // Validation state
   const [validationErrors, setValidationErrors] = useState<string[]>([])
+  const [creating, setCreating] = useState(false)
+  const [creationStatus, setCreationStatus] = useState('')
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
   
   // Handle Project Plan Generation
   const handleGenerate = async (e: React.FormEvent) => {
@@ -223,16 +230,88 @@ export default function AIProjectPlannerPage() {
       return
     }
     
-    // Reset errors and print the final JSON configuration
     setValidationErrors([])
-    console.log('=== Final AI Generated & Edited Project Configuration ===')
-    console.log(JSON.stringify(project, null, 2))
+    setCreating(true)
+    setCreationStatus('Creating project metadata...')
     
-    alert('Project created! Final plan configuration printed to the browser console logs.')
+    try {
+      // 1. Create the project
+      const createdProject = await projectService.createProject({
+        name: project.project_name,
+        description: project.description || undefined,
+        color: 'indigo',
+        icon: '🚀',
+        status: 'Pending',
+        priority: 'Medium',
+        visibility: 'Workspace'
+      })
+      
+      const projectId = createdProject.id
+      
+      // 2. Create Milestones and Tasks sequentially
+      for (let i = 0; i < project.milestones.length; i++) {
+        const milestone = project.milestones[i]
+        setCreationStatus(`Creating milestone: ${milestone.title}...`)
+        
+        const createdMilestone = await milestoneService.createMilestone({
+          project_id: projectId,
+          title: milestone.title,
+          description: milestone.description || undefined,
+          status: 'Planned'
+        })
+        
+        const milestoneId = createdMilestone.id
+        
+        for (let j = 0; j < milestone.tasks.length; j++) {
+          const task = milestone.tasks[j]
+          setCreationStatus(`Creating task: ${task.title} under ${milestone.title}...`)
+          
+          await taskService.createTask({
+            project_id: projectId,
+            milestone_id: milestoneId,
+            title: task.title,
+            description: task.description || undefined,
+            priority: task.priority,
+            status: 'Todo',
+            estimated_time: task.estimated_hours
+          })
+        }
+      }
+      
+      setToastMessage('Project created successfully!')
+      setTimeout(() => {
+        setToastMessage(null)
+        router.push(`/projects/${projectId}`)
+      }, 2000)
+      
+    } catch (err: any) {
+      console.error(err)
+      const errMsg = err.response?.data?.detail || 'Failed to create project resources. Please check your network and try again.'
+      setValidationErrors([errMsg])
+    } finally {
+      setCreating(false)
+      setCreationStatus('')
+    }
   }
 
   return (
     <MainLayout>
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-4 right-4 z-50 p-4 rounded-xl bg-[#5BB98C] text-black font-semibold text-xs shadow-2xl flex items-center gap-2 animate-bounce">
+          <CheckCircle2 className="h-4 w-4" /> {toastMessage}
+        </div>
+      )}
+
+      {/* Global project resource creation loading step overlay */}
+      {creating && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md p-4">
+          <div className="h-12 w-12 rounded-full border-2 border-t-primary border-r-transparent border-b-transparent border-l-transparent animate-spin mb-4" />
+          <h3 className="text-sm font-bold text-white uppercase tracking-wider">{creationStatus}</h3>
+          <p className="text-xs text-muted-foreground mt-1">Please do not refresh or close the page while resources are initializing...</p>
+        </div>
+      )}
+
       <div className="max-w-4xl mx-auto space-y-6 pb-12">
         {/* Header Block */}
         <div className="flex items-center justify-between border-b border-white/5 pb-4">
