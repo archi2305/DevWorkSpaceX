@@ -111,19 +111,19 @@ class AIService:
                 break
 
         # 1. Sprint suggestions
-        if "sprint" in last_message or "sprint plan" in last_message:
+        if "suggest sprint plan" in last_message or "sprint allocation" in last_message:
             return cls._generate_fallback_sprint(context_msg)
             
         # 2. Blockers
-        if "blocker" in last_message or "overdue" in last_message:
+        if "find blockers" in last_message or "blocker summary" in last_message:
             return cls._generate_fallback_blockers(context_msg)
 
         # 3. Project Summary
-        if "summarize" in last_message or "summary" in last_message:
+        if "summarize project" in last_message or "project summary report" in last_message:
             return cls._generate_fallback_summary(context_msg)
 
         # 4. Generate documentation
-        if "document" in last_message or "documentation" in last_message:
+        if "generate documentation" in last_message or "documentation manual" in last_message:
             return cls._generate_fallback_documentation(context_msg)
 
         # 5. Default contextual answer

@@ -140,10 +140,12 @@ def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
     """
     Handle database connection or integrity issues gracefully.
     """
+    import traceback
+    traceback.print_exception(type(exc), exc, exc.__traceback__)
     logger.exception("database error", extra={"path": request.url.path})
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"detail": "A database error occurred. Please try again later."}
+        content={"detail": f"A database error occurred: {str(exc)}"}
     )
 
 @app.exception_handler(Exception)

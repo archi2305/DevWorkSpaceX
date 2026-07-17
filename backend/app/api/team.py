@@ -30,12 +30,9 @@ def get_workspace_members(
     # Ensure querying user is registered as a member
     current_membership = db.query(WorkspaceMember).filter(WorkspaceMember.user_id == current_user.id).first()
     if not current_membership:
-        # Assign Owner if it is the first member, otherwise Developer
-        has_any = db.query(WorkspaceMember).first()
-        role = "Owner" if not has_any else "Developer"
         current_membership = WorkspaceMember(
             user_id=current_user.id,
-            role=role
+            role="Owner"
         )
         db.add(current_membership)
         db.commit()

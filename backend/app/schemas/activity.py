@@ -24,7 +24,7 @@ class ActivityResponse(BaseModel):
     target_id: Optional[uuid.UUID] = None
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
-    metadata: Optional[dict[str, Any]] = None
+    meta_data: Optional[dict[str, Any]] = None
     created_at: datetime
     user: UserMiniResponse
 

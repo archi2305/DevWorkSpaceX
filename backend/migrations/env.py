@@ -41,6 +41,7 @@ from app.models.system_webhook import SystemWebhook
 from app.models.chat_channel import ChatChannel, ChannelMessage
 from app.models.support_ticket import SupportTicket
 from app.models.faq import FAQ
+from app.models.label import Label, task_labels
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
