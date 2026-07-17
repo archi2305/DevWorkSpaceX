@@ -554,9 +554,9 @@ export default function AIProjectCopilotPage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+              className="w-full"
             >
-              <div className="lg:col-span-2 space-y-6">
+              <form onSubmit={handleGenerate} className="space-y-6">
                 {error && (
                   <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex gap-3 items-start">
                     <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
@@ -567,114 +567,119 @@ export default function AIProjectCopilotPage() {
                   </div>
                 )}
 
-                <div className="rounded-2xl border border-white/5 bg-[#09090b] p-6 space-y-4 shadow-xl">
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-white block text-left">
-                      Describe your project concept:
-                    </label>
-                    <textarea
-                      value={prompt}
-                      onChange={(e) => setPrompt(e.target.value)}
-                      placeholder="e.g. Build an Airbnb Clone with real-time bookings..."
-                      rows={5}
-                      required
-                      className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/[0.01] text-sm text-white placeholder-[#52525b] outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none transition-all"
-                    />
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Left Column: Prompt Input */}
+                  <div className="lg:col-span-2 rounded-2xl border border-white/5 bg-[#09090b] p-6 space-y-4 shadow-xl">
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-white block text-left">
+                        Describe your project concept:
+                      </label>
+                      <textarea
+                        value={prompt}
+                        onChange={(e) => setPrompt(e.target.value)}
+                        placeholder="e.g. Build an Airbnb Clone with real-time bookings..."
+                        rows={8}
+                        required
+                        className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/[0.01] text-sm text-white placeholder-[#52525b] outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none transition-all"
+                      />
+                    </div>
                   </div>
-                  <div className="flex justify-end">
-                    <button
-                      onClick={() => handleGenerate()}
-                      disabled={!prompt.trim()}
-                      className="flex items-center gap-2 rounded-xl bg-primary hover:bg-primary/95 text-black font-semibold px-6 py-2.5 text-sm transition-all disabled:opacity-50 cursor-pointer"
-                    >
-                      <Sparkles className="h-4 w-4" /> Start Copilot Session
-                    </button>
+
+                  {/* Right Column: Advanced Configuration Settings */}
+                  <div className="rounded-2xl border border-white/5 bg-[#09090b] p-6 space-y-4 shadow-xl h-fit">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-white border-b border-white/5 pb-3">
+                      <Settings className="h-4 w-4 text-primary" /> Advanced Config
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Project Type</label>
+                        <select
+                          value={projectType}
+                          onChange={(e) => setProjectType(e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-white/10 bg-[#18181b] text-xs text-white outline-none animate-none"
+                        >
+                          <option value="Web Application">Web Application</option>
+                          <option value="Mobile App">Mobile App</option>
+                          <option value="SaaS">SaaS</option>
+                          <option value="AI/ML">AI/ML</option>
+                          <option value="Desktop Application">Desktop Application</option>
+                          <option value="API Backend">API Backend</option>
+                          <option value="E-Commerce">E-Commerce</option>
+                          <option value="Portfolio">Portfolio</option>
+                          <option value="CRM">CRM</option>
+                          <option value="ERP">ERP</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Difficulty</label>
+                        <select
+                          value={difficulty}
+                          onChange={(e) => setDifficulty(e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-white/10 bg-[#18181b] text-xs text-white outline-none animate-none"
+                        >
+                          <option value="Beginner">Beginner</option>
+                          <option value="Intermediate">Intermediate</option>
+                          <option value="Advanced">Advanced</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Estimated Timeline</label>
+                        <select
+                          value={timeline}
+                          onChange={(e) => setTimeline(e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-white/10 bg-[#18181b] text-xs text-white outline-none animate-none"
+                        >
+                          <option value="2 Weeks">2 Weeks</option>
+                          <option value="1 Month">1 Month</option>
+                          <option value="3 Months">3 Months</option>
+                          <option value="6 Months">6 Months</option>
+                          <option value="Custom">Custom</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Team Size</label>
+                        <select
+                          value={teamSize}
+                          onChange={(e) => setTeamSize(e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-white/10 bg-[#18181b] text-xs text-white outline-none animate-none"
+                        >
+                          <option value="Solo">Solo</option>
+                          <option value="2–5">2–5</option>
+                          <option value="5–10">5–10</option>
+                          <option value="10+">10+</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Preferred Stack (Optional)</label>
+                        <input
+                          type="text"
+                          value={techStackInput}
+                          onChange={(e) => setTechStackInput(e.target.value)}
+                          placeholder="e.g. Next.js, FastAPI, Postgres"
+                          className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/[0.01] text-xs text-white outline-none placeholder-[#52525b]"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Advanced Configuration Settings sidebar */}
-              <div className="rounded-2xl border border-white/5 bg-[#09090b] p-6 space-y-4 shadow-xl h-fit">
-                <div className="flex items-center gap-2 text-sm font-semibold text-white border-b border-white/5 pb-3">
-                  <Settings className="h-4 w-4 text-primary" /> Advanced Config
+                {/* Clearly visible primary action button at the bottom of the form */}
+                <div className="flex justify-end pt-4 border-t border-white/5">
+                  <button
+                    type="submit"
+                    disabled={!prompt.trim() || step === 'loading'}
+                    className="flex items-center gap-2 rounded-xl bg-primary hover:bg-primary/90 text-black font-bold px-8 py-3 text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-lg shadow-primary/10"
+                  >
+                    <Sparkles className="h-4.5 w-4.5" /> Start Copilot Session
+                  </button>
                 </div>
-
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Project Type</label>
-                    <select
-                      value={projectType}
-                      onChange={(e) => setProjectType(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-white/10 bg-[#18181b] text-xs text-white outline-none"
-                    >
-                      <option value="Web Application">Web Application</option>
-                      <option value="Mobile App">Mobile App</option>
-                      <option value="SaaS">SaaS</option>
-                      <option value="AI/ML">AI/ML</option>
-                      <option value="Desktop Application">Desktop Application</option>
-                      <option value="API Backend">API Backend</option>
-                      <option value="E-Commerce">E-Commerce</option>
-                      <option value="Portfolio">Portfolio</option>
-                      <option value="CRM">CRM</option>
-                      <option value="ERP">ERP</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Difficulty</label>
-                    <select
-                      value={difficulty}
-                      onChange={(e) => setDifficulty(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-white/10 bg-[#18181b] text-xs text-white outline-none"
-                    >
-                      <option value="Beginner">Beginner</option>
-                      <option value="Intermediate">Intermediate</option>
-                      <option value="Advanced">Advanced</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Estimated Timeline</label>
-                    <select
-                      value={timeline}
-                      onChange={(e) => setTimeline(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-white/10 bg-[#18181b] text-xs text-white outline-none"
-                    >
-                      <option value="2 Weeks">2 Weeks</option>
-                      <option value="1 Month">1 Month</option>
-                      <option value="3 Months">3 Months</option>
-                      <option value="6 Months">6 Months</option>
-                      <option value="Custom">Custom</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Team Size</label>
-                    <select
-                      value={teamSize}
-                      onChange={(e) => setTeamSize(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-white/10 bg-[#18181b] text-xs text-white outline-none"
-                    >
-                      <option value="Solo">Solo</option>
-                      <option value="2–5">2–5</option>
-                      <option value="5–10">5–10</option>
-                      <option value="10+">10+</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Preferred Stack (Optional)</label>
-                    <input
-                      type="text"
-                      value={techStackInput}
-                      onChange={(e) => setTechStackInput(e.target.value)}
-                      placeholder="e.g. Next.js, FastAPI, Postgres"
-                      className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/[0.01] text-xs text-white outline-none placeholder-[#52525b]"
-                    />
-                  </div>
-                </div>
-              </div>
+              </form>
             </motion.div>
           )}
 
