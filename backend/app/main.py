@@ -37,6 +37,7 @@ from app.api.time_log import router as time_log_router
 from app.api.report import router as report_router
 from app.api.github import router as github_router
 from app.api.invitation import router as invitation_router
+from app.ai.routes import router as gemini_router
 from app.api.custom_field import router as custom_field_router
 from app.api.recurring_task import router as recurring_task_router
 from app.api.user_profile import router as user_profile_router
@@ -110,6 +111,7 @@ app.include_router(file_router)
 app.include_router(calendar_router)
 app.include_router(notification_router)
 app.include_router(ai_router)
+app.include_router(gemini_router)
 app.include_router(milestone_router)
 app.include_router(release_router)
 app.include_router(workload_router)
