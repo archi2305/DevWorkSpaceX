@@ -44,6 +44,9 @@ from app.api.user_preference import router as user_preference_router
 from app.api.integration import router as integration_router
 from app.api.export import router as export_router
 from app.api.webhooks import router as webhooks_router
+from app.api.chat import router as chat_router
+from app.api.help import router as help_router
+from app.api.quick_action import router as quick_actions_router
 from app.core.config import settings
 from app.core.logging import setup_logging
 
@@ -125,6 +128,9 @@ app.include_router(user_preference_router)
 app.include_router(integration_router)
 app.include_router(export_router)
 app.include_router(webhooks_router)
+app.include_router(chat_router)
+app.include_router(help_router)
+app.include_router(quick_actions_router)
 app.add_api_websocket_route("/notifications/ws", websocket_endpoint)
 
 # --- Global Exception Handlers ---

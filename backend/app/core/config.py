@@ -13,7 +13,7 @@ class Settings(BaseModel):
     DEBUG: bool = os.getenv("DEBUG", "true").lower() == "true"
     
     # Database
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/devworkspacex_db")
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://archisnehi@localhost:5432/devworkspacex_db")
     
     # Redis
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
@@ -27,7 +27,7 @@ class Settings(BaseModel):
     # CORS
     CORS_ORIGINS: List[str] = [
         origin.strip()
-        for origin in os.getenv("CORS_ORIGINS", "").split(",")
+        for origin in os.getenv("CORS_ORIGINS", os.getenv("ALLOWED_ORIGINS", "")).split(",")
         if origin.strip()
     ]
     ALLOWED_ORIGINS: List[str] = CORS_ORIGINS  # Alias for compatibility

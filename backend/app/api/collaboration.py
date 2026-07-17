@@ -6,6 +6,7 @@ from typing import List, Dict, Set
 from app.dependencies.db import get_db
 from app.dependencies.auth import get_current_user
 from app.models.user import User
+from app.models.chat_channel import ChannelMessage
 from jose import jwt, JWTError
 from app.core.config import settings
 
@@ -112,6 +113,28 @@ async def websocket_collaboration(websocket: WebSocket, token: str, db: Session 
                 # Broadcast real-time events to all other connected participants
                 if event_type in ["typing", "kanban_update", "comment_added", "dashboard_refresh"]:
                     await manager.broadcast(event, exclude_socket=websocket)
+                elif event_type == "chat_message":
+                    channel_id = event.get("channel_id")
+                    content = event.get("content")
+                    if channel_id and content:
+                        db_message = ChannelMessage(
+                            channel_id=uuid.UUID(channel_id),
+                            user_id=user.id,
+                            content=content
+                        )
+                        db.add(db_message)
+                        db.commit()
+                        db.refresh(db_message)
+                        
+                        event["id"] = str(db_message.id)
+                        event["created_at"] = db_message.created_at.isoformat()
+                        event["user"] = {
+                            "id": str(user.id),
+                            "full_name": user.full_name,
+                            "email": user.email,
+                            "profile_image": user.profile_image
+                        }
+                        await manager.broadcast(event)
             except (json.JSONDecodeError, KeyError):
                 # Ignore malformed events
                 pass
