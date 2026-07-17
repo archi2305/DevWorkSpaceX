@@ -8,6 +8,7 @@ from app.dependencies.db import get_db
 from app.dependencies.auth import get_current_user
 from app.models.user import User
 from app.models.support_ticket import SupportTicket
+from app.models.faq import FAQ
 
 router = APIRouter(prefix="/help", tags=["Help & Support"])
 
@@ -33,37 +34,46 @@ class SupportTicketResponse(BaseModel):
         from_attributes = True
 
 class FAQResponse(BaseModel):
+    id: uuid.UUID
     question: str
     answer: str
     category: str
 
+    class Config:
+        from_attributes = True
+
 # --- Endpoints ---
 
 @router.get("/faqs", response_model=List[FAQResponse])
-def get_faqs():
-    # Mock data for FAQs
-    return [
-        {
-            "question": "How do I configure git triggers?",
-            "answer": "Go to Integration Settings, select the GitHub provider, authorize access, and link a repository.",
-            "category": "Git Integration"
-        },
-        {
-            "question": "What formats can I export my workspace data in?",
-            "answer": "You can export in JSON, CSV, Excel, Markdown, and full ZIP format from the /workspace route.",
-            "category": "Workspace Data"
-        },
-        {
-            "question": "How do I configure custom task workflows?",
-            "answer": "Custom task columns can be adjusted within each project's settings tab. You can add, rename, or delete columns.",
-            "category": "Task Management"
-        },
-        {
-            "question": "Can I configure automatic database backups?",
-            "answer": "Yes, backup triggers are managed under the Automations panel where you can setup schedule routines.",
-            "category": "Automations & Backup"
-        }
-    ]
+def get_faqs(db: Session = Depends(get_db)):
+    faqs = db.query(FAQ).all()
+    if not faqs:
+        seed_faqs = [
+            FAQ(
+                question="How do I configure git triggers?",
+                answer="Go to Integration Settings, select the GitHub provider, authorize access, and link a repository.",
+                category="Git Integration"
+            ),
+            FAQ(
+                question="What formats can I export my workspace data in?",
+                answer="You can export in JSON, CSV, Excel, Markdown, and full ZIP format from the /workspace route.",
+                category="Workspace Data"
+            ),
+            FAQ(
+                question="How do I configure custom task workflows?",
+                answer="Custom task columns can be adjusted within each project's settings tab. You can add, rename, or delete columns.",
+                category="Task Management"
+            ),
+            FAQ(
+                question="Can I configure automatic database backups?",
+                answer="Yes, backup triggers are managed under the Automations panel where you can setup schedule routines.",
+                category="Automations & Backup"
+            )
+        ]
+        db.add_all(seed_faqs)
+        db.commit()
+        faqs = db.query(FAQ).all()
+    return faqs
 
 @router.post("/tickets", response_model=SupportTicketResponse, status_code=status.HTTP_201_CREATED)
 def create_support_ticket(
