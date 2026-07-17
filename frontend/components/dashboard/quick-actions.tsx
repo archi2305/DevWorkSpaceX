@@ -52,7 +52,10 @@ const colorClasses: Record<string, string> = {
   teal: 'bg-teal-500',
 }
 
+import { useRouter } from 'next/navigation'
+
 export function QuickActions() {
+  const router = useRouter()
   const queryClient = useQueryClient()
   const { data: dashboardData } = useDashboardData()
   const projects = dashboardData?.recentProjects || []
@@ -93,6 +96,8 @@ export function QuickActions() {
       setActiveModal('project')
     } else if (id === 2) {
       setActiveModal('task')
+    } else if (id === 4) {
+      router.push('/projects/ai-planner')
     } else {
       alert(`${actions.find((a) => a.id === id)?.label} is currently a placeholder action.`)
     }

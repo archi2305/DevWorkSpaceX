@@ -114,5 +114,13 @@ export const aiService = {
    */
   async deletePrompt(id: string): Promise<void> {
     await api.delete(`/ai/prompts/${id}`)
+  },
+
+  /**
+   * Generate structured project plan.
+   */
+  async generateProjectPlan(prompt: string): Promise<any> {
+    const response = await api.post('/api/ai/project-planner', { prompt })
+    return response.data
   }
 }
