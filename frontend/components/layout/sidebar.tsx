@@ -21,11 +21,17 @@ import {
   Shield,
   Sparkles,
   Terminal,
-  Layers
+  Layers,
+  Sun,
+  Moon,
+  ChevronRight
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useCollaboration } from '@/hooks/use-collaboration'
+import { useTheme } from 'next-themes'
+import { useQueryClient } from '@tanstack/react-query'
+import { api } from '@/services/api'
 
 const navItems = [
   { icon: Home, label: 'Home', href: '/' },
@@ -54,6 +60,13 @@ export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const { user, logout } = useAuth()
   const { onlineUsers } = useCollaboration()
+  const { theme, setTheme } = useTheme()
+  const queryClient = useQueryClient()
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   const getInitials = (name: string) => {
     return name
@@ -66,37 +79,40 @@ export function Sidebar() {
 
   const userInitials = user ? getInitials(user.full_name) : 'U'
 
+  const handleThemeChange = async (newTheme: 'light' | 'dark') => {
+    setTheme(newTheme)
+    try {
+      await api.put('/workspace/settings', { theme: newTheme })
+      queryClient.invalidateQueries({ queryKey: ['workspace-settings'] })
+    } catch (e) {
+      console.error('Failed to sync theme', e)
+    }
+  }
+
   return (
     <motion.aside
       initial={{ x: -320 }}
       animate={{ x: 0 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
       className={`
-        fixed left-0 top-0 h-screen border-r border-sidebar-border/50 bg-sidebar text-sidebar-foreground
-        transition-all duration-300 z-40 backdrop-blur-sm
+        fixed left-0 top-0 h-screen border-r border-sidebar-border bg-sidebar text-sidebar-foreground
+        transition-all duration-300 z-40 backdrop-blur-sm flex flex-col justify-between
         ${isCollapsed ? 'w-20' : 'w-64'}
       `}
     >
-      <div className="flex h-full flex-col">
-        {/* Logo */}
-        <div className="flex items-center justify-between border-b border-sidebar-border/40 px-4 py-5">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
-            className={`flex items-center gap-3 ${isCollapsed ? 'justify-center' : ''}`}
-          >
-            <motion.div
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/80 shadow-md shadow-primary/20"
-              whileHover={{ scale: 1.05 }}
-            >
-              <span className="text-sm font-bold text-primary-foreground">DW</span>
-            </motion.div>
-            {!isCollapsed && <span className="font-semibold text-sidebar-foreground text-sm">DevWorkspace</span>}
-          </motion.div>
+      <div className="flex flex-col h-full overflow-hidden">
+        
+        {/* Logo Header */}
+        <div className="flex items-center justify-between border-b border-sidebar-border/40 px-4 py-5 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            {!isCollapsed && <span className="font-extrabold text-foreground text-sm tracking-tight">DevWorkspace X</span>}
+          </div>
           <motion.button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            whileHover={{ scale: 1.1 }}
+            whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             className="rounded-lg p-1.5 hover:bg-primary/10 transition-colors"
           >
@@ -118,7 +134,7 @@ export function Sidebar() {
                 whileHover={{ x: 4 }}
                 className={`
                   group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm
-                  transition-all duration-200 hover:bg-primary/10 hover:text-primary
+                  transition-all duration-200 hover:bg-primary/10 hover:text-primary font-bold
                   ${isCollapsed ? 'justify-center' : ''}
                 `}
               >
@@ -131,7 +147,7 @@ export function Sidebar() {
 
         {/* Presence status section */}
         {!isCollapsed && onlineUsers.length > 0 && (
-          <div className="px-4 py-2 border-t border-sidebar-border/40 space-y-2 text-left">
+          <div className="px-4 py-2 border-t border-sidebar-border/40 space-y-2 text-left shrink-0">
             <span className="text-[10px] font-bold text-[#7E848C] uppercase tracking-wider">Online ({onlineUsers.length})</span>
             <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
               {onlineUsers.map((ou) => (
@@ -150,8 +166,10 @@ export function Sidebar() {
           </div>
         )}
 
-        {/* Profile Section */}
-        <div className="border-t border-sidebar-border/40 px-2 py-4">
+        {/* Profile, Theme Switcher & Pro Card */}
+        <div className="border-t border-sidebar-border/40 px-3 py-4 space-y-3 shrink-0">
+          
+          {/* User profile card */}
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -178,22 +196,63 @@ export function Sidebar() {
             {!isCollapsed && user && (
               <div className="flex-1 text-left truncate">
                 <p className="text-sm font-medium text-sidebar-foreground truncate">{user.full_name}</p>
-                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                <p className="text-xs text-muted-foreground truncate">Admin</p>
               </div>
             )}
           </motion.button>
+
+          {/* Theme switcher Light / Dark buttons */}
+          {isMounted && !isCollapsed && (
+            <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-[#09090b]/50 border border-sidebar-border/60">
+              <button
+                onClick={() => handleThemeChange('light')}
+                className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  theme === 'light'
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Sun className="h-4 w-4" /> Light
+              </button>
+              <button
+                onClick={() => handleThemeChange('dark')}
+                className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  theme === 'dark'
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Moon className="h-4 w-4" /> Dark
+              </button>
+            </div>
+          )}
+
+          {/* Upgrade to Pro Card */}
+          {!isCollapsed && (
+            <div className="p-4 rounded-2xl border border-sidebar-border bg-[#09090b]/30 space-y-2.5 text-left">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black text-foreground">Upgrade to Pro</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground leading-relaxed">
+                Unlock advanced AI features, unlimited generations and more.
+              </p>
+              <button className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-[10px] transition-all cursor-pointer">
+                Upgrade Now <ChevronRight className="h-3 w-3" />
+              </button>
+            </div>
+          )}
 
           <motion.button
             onClick={logout}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className={`
-              mt-2 w-full flex items-center gap-3 rounded-lg px-3 py-2.5
-              text-sm transition-all duration-200 hover:bg-primary/10 hover:text-primary
+              w-full flex items-center gap-3 rounded-lg px-3 py-2.5
+              text-xs transition-all duration-200 hover:bg-primary/10 hover:text-primary font-bold
               ${isCollapsed ? 'justify-center' : 'text-muted-foreground'}
             `}
           >
-            <LogOut className="h-5 w-5 flex-shrink-0" />
+            <LogOut className="h-4.5 w-4.5 flex-shrink-0" />
             {!isCollapsed && <span>Logout</span>}
           </motion.button>
         </div>

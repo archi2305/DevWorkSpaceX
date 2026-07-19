@@ -18,9 +18,18 @@ interface TopNavProps {
 
 export function TopNav({ onNotificationClick }: TopNavProps) {
   const { theme, setTheme } = useTheme()
+  const queryClient = useQueryClient()
+  const handleThemeChange = async (newTheme: string) => {
+    setTheme(newTheme)
+    try {
+      await api.put('/workspace/settings', { theme: newTheme })
+      queryClient.invalidateQueries({ queryKey: ['workspace-settings'] })
+    } catch (e) {
+      console.error('Failed to sync theme settings to backend', e)
+    }
+  }
   const [isMounted, setIsMounted] = useState(false)
   const { user } = useAuth()
-  const queryClient = useQueryClient()
   const { setSearchQuery: setGlobalSearchQuery, setActiveModal } = useProjectStore()
 
   // Consume dashboard unified query
@@ -282,7 +291,7 @@ export function TopNav({ onNotificationClick }: TopNavProps) {
           {isMounted && (
             <motion.button
               whileHover={{ scale: 1.05 }}
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              onClick={() => handleThemeChange(theme === 'dark' ? 'light' : 'dark')}
               className="rounded-lg p-2.5 hover:bg-muted transition-colors cursor-pointer"
             >
               {theme === 'dark' ? (
