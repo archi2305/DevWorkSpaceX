@@ -18,7 +18,8 @@ import {
   Calendar,
   Activity,
   FileText,
-  Shield
+  Shield,
+  Sparkles
 } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
@@ -27,6 +28,7 @@ import { useCollaboration } from '@/hooks/use-collaboration'
 const navItems = [
   { icon: Home, label: 'Home', href: '/' },
   { icon: Files, label: 'Projects', href: '/projects' },
+  { icon: Sparkles, label: 'AI Software Architect', href: '/projects/ai-planner' },
   { icon: Briefcase, label: 'Sprints', href: '/sprints' },
   { icon: FolderOpen, label: 'Files', href: '/files' },
   { icon: Calendar, label: 'Calendar', href: '/calendar' },

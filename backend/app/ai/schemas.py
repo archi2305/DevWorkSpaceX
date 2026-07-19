@@ -183,3 +183,9 @@ class BlueprintResponse(BaseModel):
     database_design: DatabaseDesignResponse = Field(..., description="Generated database structure design")
     api_design: ApiDesignResponse = Field(..., description="Generated REST API contract specification")
     architecture: ArchitectureResponse = Field(..., description="Generated systems architectural components layouts")
+
+class ChatRequest(BaseModel):
+    message: str = Field(..., description="User query message to the AI Architect")
+
+class ChatResponse(BaseModel):
+    reply: str = Field(..., description="Response reply from the AI Architect")

@@ -302,3 +302,12 @@ export async function generateArchitecture(params: {
   const response = await api.post<ArchitectureResponse>('/api/ai/architecture', params)
   return response.data
 }
+
+export interface ChatResponse {
+  reply: string
+}
+
+export async function generateChat(message: string): Promise<ChatResponse> {
+  const response = await api.post<ChatResponse>('/api/ai/chat', { message })
+  return response.data
+}

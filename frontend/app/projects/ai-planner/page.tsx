@@ -1,57 +1,218 @@
 'use client'
 
-import React, { useState } from 'react'
-import { motion } from 'framer-motion'
+import { useState } from 'react'
 import { MainLayout } from '@/components/layout/main-layout'
-import { generateProjectPlan, ProjectPlanResponse } from '@/services/ai'
-import { 
-  Sparkles, 
-  Layers, 
-  Clock, 
-  AlertCircle,
+import {
+  Sparkles,
+  Download,
   FileText,
-  Settings
+  RefreshCw,
+  Zap
 } from 'lucide-react'
+import {
+  generateProjectPlan,
+  generateMilestonePlan,
+  generateDatabaseDesign,
+  generateApiDesign,
+  generateArchitecture,
+  ProjectPlanResponse,
+  MilestonePlanResponse,
+  DatabaseDesignResponse,
+  ApiDesignResponse,
+  ArchitectureResponse
+} from '@/services/ai'
 
-export default function AIProjectCopilotPage() {
-  // Input Form States
-  const [prompt, setPrompt] = useState('')
+import { BlueprintTabs } from '@/components/ai/BlueprintTabs'
+import { PlannerForm } from '@/components/ai/PlannerForm'
+import { GenerationProgress } from '@/components/ai/GenerationProgress'
+import { OverviewSection } from '@/components/ai/OverviewSection'
+import { SummarySection } from '@/components/ai/SummarySection'
+import { TechStackSection } from '@/components/ai/TechStackSection'
+import { FeaturesSection } from '@/components/ai/FeaturesSection'
+import { MilestoneSection } from '@/components/ai/MilestoneSection'
+import { DatabaseSection } from '@/components/ai/DatabaseSection'
+import { ApiSection } from '@/components/ai/ApiSection'
+import { ArchitectureSection } from '@/components/ai/ArchitectureSection'
+import { AIChatPanel } from '@/components/ai/AIChatPanel'
+
+interface CompleteBlueprint {
+  project_plan: ProjectPlanResponse
+  milestone_plan: MilestonePlanResponse
+  database_design: DatabaseDesignResponse
+  api_design: ApiDesignResponse
+  architecture: ArchitectureResponse
+}
+
+type GenerationStep =
+  | 'idle'
+  | 'project-plan'
+  | 'milestone'
+  | 'database'
+  | 'api'
+  | 'architecture'
+  | 'ready'
+
+export default function AIArchitectPage() {
+  // Input settings states
+  const [prompt, setPrompt] = useState('Build a collaborative task management board with real-time sync')
   const [projectType, setProjectType] = useState('Web Application')
   const [difficulty, setDifficulty] = useState('Intermediate')
   const [timeline, setTimeline] = useState('1 Month')
-  const [teamSize, setTeamSize] = useState('2–5')
-  const [techStackInput, setTechStackInput] = useState('')
+  const [techStackInput, setTechStackInput] = useState('Next.js, FastAPI, PostgreSQL')
 
-  // Control States
-  const [loading, setLoading] = useState(false)
+  // Orchestrator flow control states
+  const [step, setStep] = useState<GenerationStep>('idle')
   const [error, setError] = useState<string | null>(null)
-  const [plan, setPlan] = useState<ProjectPlanResponse | null>(null)
+  const [blueprint, setBlueprint] = useState<CompleteBlueprint | null>(null)
+  
+  // Tab control state
+  const [activeTab, setActiveTab] = useState<'planner' | 'blueprint'>('planner')
 
-  // Call generation API
   const handleGenerate = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     if (!prompt.trim()) return
-    
+
     setError(null)
-    setLoading(true)
-    setPlan(null)
-    
+    setBlueprint(null)
+    setStep('project-plan')
+    setActiveTab('planner')
+
     try {
-      const data = await generateProjectPlan({
+      // 1. Generate Project Plan
+      const projectPlan = await generateProjectPlan({
         idea: prompt,
         project_type: projectType,
         difficulty,
         timeline,
         preferred_stack: techStackInput || undefined
       })
-      setPlan(data)
+
+      // 2. Generate Milestone Plan (using first milestone from project plan)
+      setStep('milestone')
+      const firstMilestone = projectPlan.milestones?.[0] || 'Initial Setup'
+      const milestonePlan = await generateMilestonePlan({
+        project_title: projectPlan.title,
+        milestone: firstMilestone,
+        preferred_stack: techStackInput || undefined
+      })
+
+      // 3. Generate Database Design
+      setStep('database')
+      const databaseDesign = await generateDatabaseDesign({
+        project_title: projectPlan.title,
+        description: projectPlan.description,
+        preferred_database: projectPlan.tech_stack?.database || techStackInput || undefined
+      })
+
+      // 4. Generate API Design
+      setStep('api')
+      const tablesList = databaseDesign.tables?.map((t) => t.name) || []
+      const apiDesign = await generateApiDesign({
+        project_title: projectPlan.title,
+        description: projectPlan.description,
+        database_tables: tablesList
+      })
+
+      // 5. Generate Architecture
+      setStep('architecture')
+      const resourceNames = apiDesign.resources?.map((r) => r.name) || []
+      const architecture = await generateArchitecture({
+        project_title: projectPlan.title,
+        description: projectPlan.description,
+        tech_stack: projectPlan.tech_stack,
+        database_tables: tablesList,
+        api_resources: resourceNames
+      })
+
+      setBlueprint({
+        project_plan: projectPlan,
+        milestone_plan: milestonePlan,
+        database_design: databaseDesign,
+        api_design: apiDesign,
+        architecture: architecture
+      })
+      setStep('ready')
+      setActiveTab('blueprint') // Automatically switch to blueprint tab
     } catch (err: any) {
       console.error(err)
-      setError(err.response?.data?.detail || 'An error occurred while generating the plan. Please try again.')
-    } finally {
-      setLoading(false)
+      setError(err.response?.data?.detail || 'An error occurred during blueprint generation. Please try again.')
+      setStep('idle')
     }
   }
+
+  // File download handlers
+  const handleDownloadJson = () => {
+    if (!blueprint) return
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(blueprint, null, 2))
+    const downloadAnchor = document.createElement('a')
+    downloadAnchor.setAttribute('href', dataStr)
+    downloadAnchor.setAttribute('download', `${blueprint.project_plan.title.toLowerCase().replace(/\s+/g, '_')}_blueprint.json`)
+    document.body.appendChild(downloadAnchor)
+    downloadAnchor.click()
+    downloadAnchor.remove()
+  }
+
+  const handleExportMarkdown = () => {
+    if (!blueprint) return
+    const mdContent = `
+# Software Engineering Blueprint: ${blueprint.project_plan.title}
+
+## 1. Overview
+${blueprint.project_plan.description}
+
+- **Difficulty**: ${difficulty}
+- **Timeline**: ${timeline}
+- **Preferred Stack**: ${techStackInput || 'Not Specified'}
+
+## 2. Tech Stack Recommendations
+- **Frontend**: ${blueprint.project_plan.tech_stack.frontend}
+- **Backend**: ${blueprint.project_plan.tech_stack.backend}
+- **Database**: ${blueprint.project_plan.tech_stack.database}
+
+## 3. Database Design Details
+Selected Database: ${blueprint.database_design.database}
+
+### Tables
+${blueprint.database_design.tables.map((table) => `
+#### Table: ${table.name}
+*Description*: ${table.description}
+*Columns*:
+${table.columns.map((c) => `- \`${c.name}\` (${c.type}) ${c.primary_key ? '[PK]' : ''} ${c.nullable ? '[Null]' : '[Not Null]'} ${c.unique ? '[Unique]' : ''}`).join('\n')}
+`).join('\n')}
+
+## 4. API Design Specs
+Base URL: \`${blueprint.api_design.base_url}\`
+Authentication: ${blueprint.api_design.authentication.login.description} (${blueprint.api_design.authentication.login.method} ${blueprint.api_design.authentication.login.path})
+
+### Endpoints
+${blueprint.api_design.resources.map((res) => `
+#### Resource: ${res.name}
+${res.endpoints.map((e) => `- **${e.method}** \`${e.path}\` : ${e.description}`).join('\n')}
+`).join('\n')}
+
+## 5. System Architecture Layout
+- **Style**: ${blueprint.architecture.architecture_style}
+- **Core Modules**: ${blueprint.architecture.modules.join(', ')}
+- **External Dependencies**: ${blueprint.architecture.external_services.join(', ')}
+- **Communication Flow**: ${blueprint.architecture.communication}
+    `
+    const dataStr = 'data:text/markdown;charset=utf-8,' + encodeURIComponent(mdContent.trim())
+    const downloadAnchor = document.createElement('a')
+    downloadAnchor.setAttribute('href', dataStr)
+    downloadAnchor.setAttribute('download', `${blueprint.project_plan.title.toLowerCase().replace(/\s+/g, '_')}_blueprint.md`)
+    document.body.appendChild(downloadAnchor)
+    downloadAnchor.click()
+    downloadAnchor.remove()
+  }
+
+  // Calculate statistics metrics
+  const totalFeatures = blueprint?.project_plan.features?.length || 0
+  const totalTables = blueprint?.database_design.tables?.length || 0
+  const totalEndpoints = blueprint?.api_design.resources?.reduce((acc, r) => acc + r.endpoints.length, 0) || 0
+  const totalMilestones = blueprint?.project_plan.milestones?.length || 0
+  const totalModules = blueprint?.architecture.modules?.length || 0
+
+  const isGenerating = step !== 'idle' && step !== 'ready'
 
   return (
     <MainLayout>
@@ -59,253 +220,126 @@ export default function AIProjectCopilotPage() {
         {/* Header */}
         <div className="rounded-2xl border border-white/5 bg-gradient-to-r from-primary/10 via-card/50 to-primary/5 p-6 md:p-8 flex items-center gap-4 text-left">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 shrink-0">
-            <Sparkles className="h-6 w-6 text-primary" />
+            <Zap className="h-6 w-6 text-primary" />
           </div>
           <div className="space-y-1">
-            <h1 className="text-2xl font-bold text-white">AI Project Planner</h1>
+            <h1 className="text-2xl font-bold text-white">AI Software Architect</h1>
             <p className="text-sm text-muted-foreground">
-              Define your concept, select stack options, and immediately output a scoped project plan.
+              Define your software specifications and generate a complete production-ready development blueprint.
             </p>
           </div>
         </div>
 
-        {/* Input Form */}
-        <div className="w-full">
-          <form onSubmit={handleGenerate} className="space-y-6">
+        {/* Navigation Tabs */}
+        <BlueprintTabs
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          hasBlueprint={!!blueprint}
+        />
+
+        {/* TAB 1: Project Planner Form */}
+        {activeTab === 'planner' && (
+          <div className="space-y-8">
+            <PlannerForm
+              prompt={prompt}
+              setPrompt={setPrompt}
+              projectType={projectType}
+              setProjectType={setProjectType}
+              difficulty={difficulty}
+              setDifficulty={setDifficulty}
+              timeline={timeline}
+              setTimeline={setTimeline}
+              techStackInput={techStackInput}
+              setTechStackInput={setTechStackInput}
+              onSubmit={handleGenerate}
+              loading={isGenerating}
+            />
+
             {error && (
-              <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex gap-3 items-start text-left">
-                <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-white">Generation Failed</p>
-                  <p className="mt-1 opacity-90">{error}</p>
-                </div>
+              <div className="p-4 rounded-xl border border-red-500/20 bg-red-500/5 text-left text-sm text-red-400">
+                {error}
               </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left Column: Prompt Input */}
-              <div className="lg:col-span-2 rounded-2xl border border-white/5 bg-[#09090b] p-6 space-y-4 shadow-xl">
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-white block text-left">
-                    Describe your project concept:
-                  </label>
-                  <textarea
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="e.g. Build an Airbnb Clone with real-time bookings..."
-                    rows={8}
-                    required
-                    disabled={loading}
-                    className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/[0.01] text-sm text-white placeholder-[#52525b] outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none transition-all disabled:opacity-50"
-                  />
-                </div>
-              </div>
-
-              {/* Right Column: Advanced Configuration Settings */}
-              <div className="rounded-2xl border border-white/5 bg-[#09090b] p-6 space-y-4 shadow-xl h-fit">
-                <div className="flex items-center gap-2 text-sm font-semibold text-white border-b border-white/5 pb-3">
-                  <Settings className="h-4 w-4 text-primary" /> Configuration
-                </div>
-
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block text-left">Project Type</label>
-                    <select
-                      value={projectType}
-                      onChange={(e) => setProjectType(e.target.value)}
-                      disabled={loading}
-                      className="w-full px-3 py-2 rounded-lg border border-white/10 bg-[#18181b] text-xs text-white outline-none disabled:opacity-50"
-                    >
-                      <option value="Web Application">Web Application</option>
-                      <option value="Mobile App">Mobile App</option>
-                      <option value="SaaS">SaaS</option>
-                      <option value="AI/ML">AI/ML</option>
-                      <option value="Desktop Application">Desktop Application</option>
-                      <option value="API Backend">API Backend</option>
-                      <option value="E-Commerce">E-Commerce</option>
-                      <option value="Portfolio">Portfolio</option>
-                      <option value="CRM">CRM</option>
-                      <option value="ERP">ERP</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block text-left">Difficulty</label>
-                    <select
-                      value={difficulty}
-                      onChange={(e) => setDifficulty(e.target.value)}
-                      disabled={loading}
-                      className="w-full px-3 py-2 rounded-lg border border-white/10 bg-[#18181b] text-xs text-white outline-none disabled:opacity-50"
-                    >
-                      <option value="Beginner">Beginner</option>
-                      <option value="Intermediate">Intermediate</option>
-                      <option value="Advanced">Advanced</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block text-left">Estimated Timeline</label>
-                    <select
-                      value={timeline}
-                      onChange={(e) => setTimeline(e.target.value)}
-                      disabled={loading}
-                      className="w-full px-3 py-2 rounded-lg border border-white/10 bg-[#18181b] text-xs text-white outline-none disabled:opacity-50"
-                    >
-                      <option value="2 Weeks">2 Weeks</option>
-                      <option value="1 Month">1 Month</option>
-                      <option value="3 Months">3 Months</option>
-                      <option value="6 Months">6 Months</option>
-                      <option value="Custom">Custom</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block text-left">Preferred Stack (Optional)</label>
-                    <input
-                      type="text"
-                      value={techStackInput}
-                      onChange={(e) => setTechStackInput(e.target.value)}
-                      placeholder="e.g. Next.js, FastAPI, Postgres"
-                      disabled={loading}
-                      className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/[0.01] text-xs text-white outline-none placeholder-[#52525b] disabled:opacity-50"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-4 border-t border-white/5">
-              <button
-                type="submit"
-                disabled={loading || !prompt.trim()}
-                className="flex items-center justify-center gap-2 h-12 px-8 rounded-xl bg-primary hover:bg-primary/90 active:scale-95 focus:ring-2 focus:ring-primary/50 focus:outline-none text-black font-bold text-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer shadow-lg shadow-primary/10"
-              >
-                {loading ? (
-                  <>
-                    <div className="h-4 w-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                    Generating Project Plan...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4.5 w-4.5" /> Generate Project Plan
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
-
-        {/* Empty State / Result Rendering */}
-        {!loading && !plan && !error && (
-          <div className="py-16 rounded-2xl border border-dashed border-white/5 bg-white/[0.005] text-center flex flex-col items-center justify-center p-6">
-            <Sparkles className="h-10 w-10 text-muted-foreground mb-3 animate-pulse" />
-            <p className="text-sm font-medium text-muted-foreground">
-              Describe your idea and generate an AI project roadmap.
-            </p>
+            {/* Generation Checklist step animation */}
+            <GenerationProgress step={step} />
           </div>
         )}
 
-        {loading && (
-          <div className="py-16 rounded-2xl border border-white/5 bg-[#09090b] text-center flex flex-col items-center justify-center space-y-4 shadow-xl">
-            <div className="h-10 w-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-            <p className="text-sm text-muted-foreground">Formulating project architecture and mapping workflows...</p>
-          </div>
-        )}
+        {/* TAB 2: Blueprint Dashboard */}
+        {activeTab === 'blueprint' && blueprint && (
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 text-left animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="lg:col-span-3 space-y-8">
+              {/* Download and utility buttons */}
+              <div className="flex flex-wrap items-center justify-end gap-3">
+                <button
+                  onClick={handleDownloadJson}
+                  className="flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 text-white transition-all active:scale-95 cursor-pointer"
+                >
+                  <Download className="h-3.5 w-3.5" /> Download Blueprint
+                </button>
+                <button
+                  onClick={handleExportMarkdown}
+                  className="flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 text-white transition-all active:scale-95 cursor-pointer"
+                >
+                  <FileText className="h-3.5 w-3.5" /> Export Markdown
+                </button>
+                <button
+                  onClick={handleGenerate}
+                  className="flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 transition-all active:scale-95 cursor-pointer"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" /> Regenerate
+                </button>
+              </div>
 
-        {plan && (
-          <div className="space-y-8 text-left animate-in fade-in slide-in-from-bottom-4 duration-300">
-            {/* 1. Project Header */}
-            <div className="rounded-2xl border border-white/5 bg-gradient-to-r from-primary/10 via-card/50 to-primary/5 p-6 md:p-8">
-              <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">{plan.title}</h2>
-              <p className="mt-2 text-sm md:text-base text-muted-foreground max-w-3xl leading-relaxed">{plan.description}</p>
+              {/* Section 1: Overview */}
+              <OverviewSection
+                title={blueprint.project_plan.title}
+                description={blueprint.project_plan.description}
+                projectType={projectType}
+                difficulty={difficulty}
+                timeline={timeline}
+                preferredStack={techStackInput}
+              />
+
+              {/* Section 8: Summary statistics */}
+              <SummarySection
+                totalFeatures={totalFeatures}
+                totalTables={totalTables}
+                totalEndpoints={totalEndpoints}
+                totalMilestones={totalMilestones}
+                totalModules={totalModules}
+              />
+
+              {/* Section 2: Tech Stack */}
+              <TechStackSection
+                frontend={blueprint.project_plan.tech_stack.frontend}
+                backend={blueprint.project_plan.tech_stack.backend}
+                database={blueprint.database_design.database || blueprint.project_plan.tech_stack.database}
+              />
+
+              {/* Section 3: Project Features */}
+              <FeaturesSection features={blueprint.project_plan.features} />
+
+              {/* Section 4: Milestones vertical timeline */}
+              <MilestoneSection
+                milestones={blueprint.project_plan.milestones}
+                milestonePlan={blueprint.milestone_plan}
+              />
+
+              {/* Section 5: Database Design */}
+              <DatabaseSection databaseDesign={blueprint.database_design} />
+
+              {/* Section 6: REST API */}
+              <ApiSection apiDesign={blueprint.api_design} />
+
+              {/* Section 7: Architecture */}
+              <ArchitectureSection architecture={blueprint.architecture} />
             </div>
 
-            {/* 2. Features */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Sparkles className="h-4.5 w-4.5 text-primary" /> Key Features
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {plan.features.map((feature, idx) => (
-                  <div key={idx} className="p-5 rounded-xl border border-white/5 bg-white/[0.01] hover:bg-white/[0.02] transition-colors">
-                    <span className="text-xs font-semibold text-primary/80 uppercase tracking-widest block mb-1">Feature {idx + 1}</span>
-                    <p className="text-sm text-foreground leading-normal">{feature}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* 3. Tech Stack */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Layers className="h-4.5 w-4.5 text-primary" /> Tech Stack
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-5 rounded-xl border border-white/5 bg-white/[0.01] hover:bg-white/[0.02] transition-colors space-y-1">
-                  <span className="text-xs font-bold text-blue-400 uppercase tracking-wider block">Frontend</span>
-                  <p className="text-sm text-white font-medium">{plan.tech_stack.frontend}</p>
-                </div>
-                <div className="p-5 rounded-xl border border-white/5 bg-white/[0.01] hover:bg-white/[0.02] transition-colors space-y-1">
-                  <span className="text-xs font-bold text-purple-400 uppercase tracking-wider block">Backend</span>
-                  <p className="text-sm text-white font-medium">{plan.tech_stack.backend}</p>
-                </div>
-                <div className="p-5 rounded-xl border border-white/5 bg-white/[0.01] hover:bg-white/[0.02] transition-colors space-y-1">
-                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider block">Database</span>
-                  <p className="text-sm text-white font-medium">{plan.tech_stack.database}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* 4. Milestones */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Clock className="h-4.5 w-4.5 text-primary" /> Project Milestones
-              </h3>
-              <div className="relative pl-6 border-l border-white/10 ml-4 space-y-6">
-                {plan.milestones.map((milestone, idx) => (
-                  <div key={idx} className="relative">
-                    <span className="absolute -left-[34px] top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 border border-primary/40 text-xs font-bold text-primary">
-                      {idx + 1}
-                    </span>
-                    <p className="text-sm font-semibold text-white">{milestone}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* 5. Tasks */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <FileText className="h-4.5 w-4.5 text-primary" /> Scoped Tasks
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {plan.tasks.map((task, idx) => {
-                  const prioLower = (task.priority || '').toLowerCase()
-                  let badgeClass = 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'
-                  if (prioLower === 'high' || prioLower === 'urgent') {
-                    badgeClass = 'bg-red-500/10 text-red-400 border-red-500/20'
-                  } else if (prioLower === 'medium') {
-                    badgeClass = 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
-                  } else if (prioLower === 'low') {
-                    badgeClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                  }
-
-                  return (
-                    <div key={idx} className="p-5 rounded-xl border border-white/5 bg-white/[0.01] hover:bg-white/[0.02] transition-all flex flex-col justify-between gap-3 text-left">
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between gap-3">
-                          <h4 className="text-sm font-bold text-white truncate">{task.title}</h4>
-                          <span className={`text-[10px] font-bold uppercase tracking-wider border rounded-md px-1.5 py-0.5 ${badgeClass}`}>
-                            {task.priority}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground leading-normal line-clamp-3">{task.description}</p>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+            {/* Chat Panel on the right */}
+            <div className="lg:col-span-1">
+              <AIChatPanel />
             </div>
           </div>
         )}

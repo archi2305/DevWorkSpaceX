@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, status
 from app.ai.service import GeminiService
-from app.ai.schemas import ProjectPlannerRequest, ProjectPlannerResponse, CopilotChatRequest, CopilotChatResponse, AITestRequest, AITestResponse, ProjectPlanRequest, ProjectPlanResponse, MilestonePlanRequest, MilestonePlanResponse, DatabaseDesignRequest, DatabaseDesignResponse, ApiDesignRequest, ApiDesignResponse, ArchitectureRequest, ArchitectureResponse, BlueprintRequest, BlueprintResponse
+from app.ai.schemas import ProjectPlannerRequest, ProjectPlannerResponse, CopilotChatRequest, CopilotChatResponse, AITestRequest, AITestResponse, ProjectPlanRequest, ProjectPlanResponse, MilestonePlanRequest, MilestonePlanResponse, DatabaseDesignRequest, DatabaseDesignResponse, ApiDesignRequest, ApiDesignResponse, ArchitectureRequest, ArchitectureResponse, BlueprintRequest, BlueprintResponse, ChatRequest, ChatResponse
 from fastapi import HTTPException
 from pydantic import ValidationError
 
@@ -123,6 +123,18 @@ async def generate_blueprint_endpoint(
         timeline=request.timeline,
         preferred_stack=request.preferred_stack
     )
+
+@router.post(
+    "/chat",
+    response_model=ChatResponse,
+    status_code=status.HTTP_200_OK,
+    summary="AI Software Architect Chat"
+)
+async def chat_endpoint(
+    request: ChatRequest,
+    service: GeminiService = Depends(get_gemini_service)
+):
+    return service.chat(request.message)
 
 @router.post(
     "/project-planner",

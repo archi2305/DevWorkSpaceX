@@ -3,7 +3,7 @@ import json
 from groq import Groq
 from fastapi import HTTPException, status
 from app.core.config import settings
-from app.ai.schemas import ProjectPlanResponse, MilestonePlanResponse, DatabaseDesignResponse, ApiDesignResponse, ArchitectureResponse, TechStack, BlueprintResponse
+from app.ai.schemas import ProjectPlanResponse, MilestonePlanResponse, DatabaseDesignResponse, ApiDesignResponse, ArchitectureResponse, TechStack, BlueprintResponse, ChatResponse
 
 logger = logging.getLogger(__name__)
 
@@ -602,6 +602,48 @@ class AIService:
             api_design=api_design,
             architecture=architecture
         )
+
+    def chat(self, message: str) -> ChatResponse:
+        """
+        Chat with a senior software architect AI.
+        """
+        if not self.api_key or not self.client:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Groq API is not configured or missing a valid API key on this server."
+            )
+        
+        system_instruction = (
+            "You are a senior software architect. Provide clear, concise, and expert guidance on software design, "
+            "architecture, systems planning, databases, and backend services."
+        )
+
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_instruction},
+                    {"role": "user", "content": message}
+                ]
+            )
+            
+            if not response or not response.choices or not response.choices[0].message.content:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Received empty content from Groq AI provider during chat."
+                )
+                
+            reply = response.choices[0].message.content
+            return ChatResponse(reply=reply)
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.exception("Error calling Groq model for chat.")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error contacting Groq AI during chat: {str(e)}"
+            )
 
 # Compatibility aliases for existing project router
 GeminiService = AIService
