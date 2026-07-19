@@ -370,6 +370,16 @@ export default function AIProjectCopilotPage() {
     }
   }
 
+  const confirmExit = () => {
+    setShowExitWarning(false)
+    setIsDirty(false)
+    if (pendingRoute) {
+      router.push(pendingRoute)
+    } else {
+      router.push('/projects')
+    }
+  }
+
   // final create project trigger
   const handleCreateProject = async () => {
     if (!project) return
@@ -451,12 +461,76 @@ export default function AIProjectCopilotPage() {
   }
 
   // --- Mutators ---
+  const updateProjectField = (field: keyof ProjectState, value: any) => {
+    if (!project) return
+    const nextProject = {
+      ...project,
+      [field]: value
+    }
+    pushHistory(nextProject)
+  }
+
   const updateMilestone = (mId: string, field: keyof MilestoneState, value: any) => {
-    updateMilestoneField(mId, field, value)
+    if (!project) return
+    const nextProject = {
+      ...project,
+      milestones: project.milestones.map(m => m.id === mId ? { ...m, [field]: value } : m)
+    }
+    pushHistory(nextProject)
   }
 
   const updateTask = (mId: string, tId: string, field: keyof TaskState, value: any) => {
-    updateTaskField(mId, tId, field, value)
+    if (!project) return
+    const nextProject = {
+      ...project,
+      milestones: project.milestones.map(m => m.id === mId ? {
+        ...m,
+        tasks: m.tasks.map(t => t.id === tId ? { ...t, [field]: value } : t)
+      } : m)
+    }
+    pushHistory(nextProject)
+  }
+
+  const deleteMilestone = (mId: string) => {
+    if (!project) return
+    const nextProject = {
+      ...project,
+      milestones: project.milestones.filter(m => m.id !== mId)
+    }
+    pushHistory(nextProject)
+  }
+
+  const addTask = (mId: string) => {
+    if (!project) return
+    const nextProject = {
+      ...project,
+      milestones: project.milestones.map(m => m.id === mId ? {
+        ...m,
+        tasks: [
+          ...m.tasks,
+          {
+            id: `task-${Date.now()}-${Math.random()}`,
+            title: 'New Task',
+            description: '',
+            priority: 'MEDIUM' as 'LOW' | 'MEDIUM' | 'HIGH',
+            estimated_hours: 4
+          }
+        ]
+      } : m)
+    }
+    pushHistory(nextProject)
+  }
+
+  const deleteTask = (mId: string, tId: string) => {
+    if (!project) return
+    const nextProject = {
+      ...project,
+      milestones: project.milestones.map(m => m.id === mId ? {
+        ...m,
+        tasks: m.tasks.filter(t => t.id !== tId)
+      } : m)
+    }
+    pushHistory(nextProject)
   }
 
   return (
@@ -673,7 +747,7 @@ export default function AIProjectCopilotPage() {
                 <div className="flex justify-end pt-4 border-t border-white/5">
                   <button
                     type="submit"
-                    disabled={!prompt.trim() || step === 'loading'}
+                    disabled={!prompt.trim()}
                     className="flex items-center gap-2 rounded-xl bg-primary hover:bg-primary/90 text-black font-bold px-8 py-3 text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-lg shadow-primary/10"
                   >
                     <Sparkles className="h-4.5 w-4.5" /> Start Copilot Session

@@ -1,7 +1,7 @@
 import axios from 'axios'
 
-// Resolve the backend URL dynamically or default to port 8001
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'
+// Resolve the backend URL dynamically or default to port 8000
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 export const api = axios.create({
   baseURL: API_URL,
