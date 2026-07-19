@@ -7,7 +7,8 @@ from typing import List
 from app.dependencies.db import get_db
 from app.dependencies.auth import get_current_user
 from app.models.user import User
-from app.models.workspace import Workspace, WorkspaceInvitation, WorkspaceMember
+from app.models.workspace import Workspace, WorkspaceInvitation
+from app.models.workspace_member import WorkspaceMember
 from app.schemas.workspace import WorkspaceInvitationCreate, WorkspaceInvitationResponse
 from app.models.activity import ActivityLog
 from app.dependencies.rbac import PermissionChecker

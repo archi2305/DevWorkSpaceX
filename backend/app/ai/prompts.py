@@ -1,4 +1,4 @@
-# Prompt templates for Gemini workspace operations
+# Prompt templates for workspace operations
 
 SYSTEM_INSTRUCTION = (
     "You are an assistant integrated into a workspace developer board. "

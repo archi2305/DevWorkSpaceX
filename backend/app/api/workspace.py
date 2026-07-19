@@ -18,6 +18,7 @@ from app.schemas.workspace import (
     APIKeyResponse,
     APIKeyCreateRequest,
     APIKeyCreateResponse,
+    APIKeyUsageHistoryResponse,
     UserSessionResponse,
     ConnectedAccountResponse,
     ConnectedAccountCreateRequest

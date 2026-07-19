@@ -8,7 +8,7 @@ from app.models.user import User
 from app.models.task import Task
 from app.models.project import Project
 from app.models.activity import ActivityLog
-from app.models.workspace import WorkspaceMember
+from app.models.workspace_member import WorkspaceMember
 from app.schemas.user import UserResponse, UserUpdate
 from app.schemas.task import TaskResponse
 from app.schemas.project import ProjectResponse
