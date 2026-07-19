@@ -120,3 +120,66 @@ class DatabaseDesignResponse(BaseModel):
     tables: List[DatabaseTable] = Field(..., description="List of tables in the design")
     relationships: List[Relationship] = Field(..., description="List of relationships between tables")
     indexes: List[str] = Field(..., description="List of recommended indexes")
+
+class ApiDesignRequest(BaseModel):
+    project_title: str = Field(..., description="The title of the project")
+    description: str = Field(..., description="Detailed description of the project and its API needs")
+    database_tables: List[str] = Field(..., description="List of database tables involved")
+
+class ApiEndpoint(BaseModel):
+    method: str = Field(..., description="HTTP Method (GET, POST, PUT, DELETE, etc.)")
+    path: str = Field(..., description="Endpoint path URL")
+    description: str = Field(..., description="Endpoint purpose and action description")
+
+class ApiResource(BaseModel):
+    name: str = Field(..., description="Resource name (e.g. Products, Users)")
+    endpoints: List[ApiEndpoint] = Field(..., description="Endpoints exposed by this resource")
+
+class AuthenticationEndpoint(BaseModel):
+    method: str = Field(..., description="HTTP Method (GET, POST, etc.)")
+    path: str = Field(..., description="Endpoint path URL")
+    description: str = Field(..., description="Endpoint description")
+
+class AuthenticationDesign(BaseModel):
+    login: AuthenticationEndpoint = Field(..., description="Login endpoint specification")
+    register: AuthenticationEndpoint = Field(..., description="Registration endpoint specification")
+
+class ApiDesignResponse(BaseModel):
+    base_url: str = Field(..., description="Proposed Base API URL path")
+    resources: List[ApiResource] = Field(..., description="List of resources exposed by this API")
+    authentication: AuthenticationDesign = Field(..., description="Proposed authentication mechanisms details")
+    request_examples: dict = Field(..., description="Map of endpoint request payload examples")
+    response_examples: dict = Field(..., description="Map of endpoint response payload examples")
+    status_codes: List[int] = Field(..., description="List of HTTP status codes returned by this API")
+
+class ArchitectureRequest(BaseModel):
+    project_title: str = Field(..., description="The title of the project")
+    description: str = Field(..., description="Detailed description of the project and its overall architectural goals")
+    tech_stack: TechStack = Field(..., description="Recommended technology stack")
+    database_tables: List[str] = Field(..., description="List of database tables involved")
+    api_resources: List[str] = Field(..., description="List of REST API resource names")
+
+class ArchitectureFolderStructure(BaseModel):
+    backend: List[str] = Field(..., description="List of proposed backend project files/directories")
+    frontend: List[str] = Field(..., description="List of proposed frontend project files/directories")
+
+class ArchitectureResponse(BaseModel):
+    architecture_style: str = Field(..., description="Name of the selected architecture style (e.g. Clean Architecture, Monolith)")
+    modules: List[str] = Field(..., description="List of proposed core application modules")
+    folder_structure: ArchitectureFolderStructure = Field(..., description="Proposed directory layout structure")
+    external_services: List[str] = Field(..., description="List of external services integrated (e.g. SendGrid, Stripe)")
+    communication: str = Field(..., description="Detailed description of components communication flow")
+
+class BlueprintRequest(BaseModel):
+    idea: str = Field(..., description="The project idea prompt description")
+    project_type: str = Field(..., description="Type of project")
+    difficulty: str = Field(..., description="Project implementation difficulty")
+    timeline: str = Field(..., description="Timeline estimation")
+    preferred_stack: Optional[str] = Field(None, description="Preferred technology stack")
+
+class BlueprintResponse(BaseModel):
+    project_plan: ProjectPlanResponse = Field(..., description="Generated base project plan")
+    milestone_plan: MilestonePlanResponse = Field(..., description="Generated implementation details for first milestone")
+    database_design: DatabaseDesignResponse = Field(..., description="Generated database structure design")
+    api_design: ApiDesignResponse = Field(..., description="Generated REST API contract specification")
+    architecture: ArchitectureResponse = Field(..., description="Generated systems architectural components layouts")

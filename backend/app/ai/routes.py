@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, status
 from app.ai.service import GeminiService
-from app.ai.schemas import ProjectPlannerRequest, ProjectPlannerResponse, CopilotChatRequest, CopilotChatResponse, AITestRequest, AITestResponse, ProjectPlanRequest, ProjectPlanResponse, MilestonePlanRequest, MilestonePlanResponse, DatabaseDesignRequest, DatabaseDesignResponse
+from app.ai.schemas import ProjectPlannerRequest, ProjectPlannerResponse, CopilotChatRequest, CopilotChatResponse, AITestRequest, AITestResponse, ProjectPlanRequest, ProjectPlanResponse, MilestonePlanRequest, MilestonePlanResponse, DatabaseDesignRequest, DatabaseDesignResponse, ApiDesignRequest, ApiDesignResponse, ArchitectureRequest, ArchitectureResponse, BlueprintRequest, BlueprintResponse
 from fastapi import HTTPException
 from pydantic import ValidationError
 
@@ -70,6 +70,58 @@ async def generate_database_design_endpoint(
         project_title=request.project_title,
         description=request.description,
         preferred_database=request.preferred_database
+    )
+
+@router.post(
+    "/api-design",
+    response_model=ApiDesignResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Generate production-ready REST API specification"
+)
+async def generate_api_design_endpoint(
+    request: ApiDesignRequest,
+    service: GeminiService = Depends(get_gemini_service)
+):
+    return service.generate_api_design(
+        project_title=request.project_title,
+        description=request.description,
+        database_tables=request.database_tables
+    )
+
+@router.post(
+    "/architecture",
+    response_model=ArchitectureResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Generate software architecture plan"
+)
+async def generate_architecture_endpoint(
+    request: ArchitectureRequest,
+    service: GeminiService = Depends(get_gemini_service)
+):
+    return service.generate_architecture(
+        project_title=request.project_title,
+        description=request.description,
+        tech_stack=request.tech_stack,
+        database_tables=request.database_tables,
+        api_resources=request.api_resources
+    )
+
+@router.post(
+    "/blueprint",
+    response_model=BlueprintResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Generate a complete unified software blueprint"
+)
+async def generate_blueprint_endpoint(
+    request: BlueprintRequest,
+    service: GeminiService = Depends(get_gemini_service)
+):
+    return service.generate_blueprint(
+        idea=request.idea,
+        project_type=request.project_type,
+        difficulty=request.difficulty,
+        timeline=request.timeline,
+        preferred_stack=request.preferred_stack
     )
 
 @router.post(
