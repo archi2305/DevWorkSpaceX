@@ -1,6 +1,12 @@
 from pydantic import BaseModel, Field
 from typing import List, Literal, Optional
 
+class AITestRequest(BaseModel):
+    prompt: str = Field(..., description="Prompt payload for AI integration test")
+
+class AITestResponse(BaseModel):
+    reply: str = Field(..., description="Reply text from the Groq model")
+
 class TaskPlan(BaseModel):
     title: str = Field(..., description="Task title")
     description: str = Field(..., description="Task description")

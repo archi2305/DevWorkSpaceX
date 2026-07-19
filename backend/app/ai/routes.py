@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, status
 from app.ai.service import GeminiService
-from app.ai.schemas import ProjectPlannerRequest, ProjectPlannerResponse, CopilotChatRequest, CopilotChatResponse
+from app.ai.schemas import ProjectPlannerRequest, ProjectPlannerResponse, CopilotChatRequest, CopilotChatResponse, AITestRequest, AITestResponse
 from fastapi import HTTPException
 from pydantic import ValidationError
 
@@ -8,6 +8,19 @@ router = APIRouter(prefix="/api/ai", tags=["AI Integration"])
 
 def get_gemini_service() -> GeminiService:
     return GeminiService()
+
+@router.post(
+    "/test",
+    response_model=AITestResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Minimal AI test endpoint"
+)
+async def test_ai_integration(
+    request: AITestRequest,
+    service: GeminiService = Depends(get_gemini_service)
+):
+    reply = service.generate(request.prompt)
+    return AITestResponse(reply=reply)
 
 @router.post(
     "/project-planner",
