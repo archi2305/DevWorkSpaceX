@@ -142,3 +142,34 @@ export const aiService = {
     return response.data
   }
 }
+
+export interface TechStack {
+  frontend: string
+  backend: string
+  database: string
+}
+
+export interface ProjectTask {
+  title: string
+  description: string
+  priority: string
+}
+
+export interface ProjectPlanResponse {
+  title: string
+  description: string
+  features: string[]
+  tech_stack: TechStack
+  milestones: string[]
+  tasks: ProjectTask[]
+}
+
+/**
+ * Send request to generate a software project plan.
+ */
+export async function generateProjectPlan(idea: string): Promise<ProjectPlanResponse> {
+  const response = await api.post<ProjectPlanResponse>('/api/ai/project-plan', {
+    idea
+  })
+  return response.data
+}

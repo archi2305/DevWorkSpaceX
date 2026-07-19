@@ -48,3 +48,24 @@ class CopilotChatRequest(BaseModel):
 
 class CopilotChatResponse(BaseModel):
     updated_project: dict = Field(..., description="Updated JSON state of the project following chat refinement")
+
+class ProjectPlanRequest(BaseModel):
+    idea: str = Field(..., description="The project idea prompt description")
+
+class TechStack(BaseModel):
+    frontend: str = Field(..., description="Frontend framework/library name")
+    backend: str = Field(..., description="Backend framework/library name")
+    database: str = Field(..., description="Database management system name")
+
+class ProjectTask(BaseModel):
+    title: str = Field(..., description="Task title")
+    description: str = Field(..., description="Task description detail")
+    priority: str = Field(..., description="Task priority value")
+
+class ProjectPlanResponse(BaseModel):
+    title: str = Field(..., description="Proposed project title")
+    description: str = Field(..., description="Detailed project description")
+    features: List[str] = Field(..., description="Key features included in the plan")
+    tech_stack: TechStack = Field(..., description="Recommended technology stack")
+    milestones: List[str] = Field(..., description="Key milestones listed for delivery")
+    tasks: List[ProjectTask] = Field(..., description="Detailed tasks required for the project")
