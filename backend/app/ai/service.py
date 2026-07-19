@@ -1,17 +1,14 @@
-import os
 import logging
 from groq import Groq
 from fastapi import HTTPException, status
-from dotenv import load_dotenv
-from pathlib import Path
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
-env_path = Path(__file__).resolve().parents[2] / ".env"
-load_dotenv(env_path)
+
 class AIService:
     def __init__(self):
-        self.api_key = os.getenv("GROQ_API_KEY")
-        self.model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+        self.api_key = settings.GROQ_API_KEY
+        self.model = settings.GROQ_MODEL
         
         if not self.api_key:
             logger.warning("GROQ_API_KEY is not set in environment variables.")

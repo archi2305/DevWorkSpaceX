@@ -66,6 +66,10 @@ class Settings(BaseModel):
     SMTP_PASSWORD: Optional[str] = os.getenv("SMTP_PASSWORD")
     SMTP_FROM: Optional[str] = os.getenv("SMTP_FROM")
 
+    # Groq Configuration
+    GROQ_API_KEY: Optional[str] = os.getenv("GROQ_API_KEY")
+    GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+
     class Config:
         case_sensitive = True
 
