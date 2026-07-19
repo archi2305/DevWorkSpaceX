@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { MainLayout } from '@/components/layout/main-layout'
 import {
   Layers,
   Code,
   Terminal,
+  Zap,
   MessageSquare,
   Sparkles,
   Folder,
@@ -19,79 +20,74 @@ import {
   Bell,
   CheckCircle,
   TrendingUp,
-  Cpu
+  Cpu,
+  Plus,
+  ArrowRightLeft,
+  CheckCircle2,
+  AlertTriangle,
+  Play,
+  FileText,
+  Settings,
+  HelpCircle,
+  Clock,
+  User,
+  Users,
+  CheckSquare,
+  Calendar,
+  ChevronRight
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
-import { listBlueprints, aiService, BlueprintResponseSchema, AIConversation } from '@/services/ai'
-import { projectService } from '@/services/project'
-import { activityService } from '@/services/activity'
+import { listBlueprints, BlueprintResponseSchema } from '@/services/ai'
 
 export default function Page() {
-  const { user, isLoading: authLoading } = useAuth()
+  const { user } = useAuth()
   const router = useRouter()
-
-  // Data states
-  const [blueprints, setBlueprints] = useState<BlueprintResponseSchema[]>([])
-  const [conversations, setConversations] = useState<AIConversation[]>([])
-  const [projectsCount, setProjectsCount] = useState(0)
-  const [activities, setActivities] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
   const [commandQuery, setCommandQuery] = useState('')
+  const [blueprints, setBlueprints] = useState<BlueprintResponseSchema[]>([])
 
   const currentHour = new Date().getHours()
   const greeting = currentHour < 12 ? 'Good morning' : currentHour < 18 ? 'Good afternoon' : 'Good evening'
 
   useEffect(() => {
-    if (!user) return
+    loadBlueprints()
+  }, [])
 
-    const loadDashboardData = async () => {
-      try {
-        const bps = await listBlueprints()
-        setBlueprints(bps)
-
-        const convs = await aiService.getConversations()
-        setConversations(convs)
-
-        const projs = await projectService.getProjects()
-        setProjectsCount(projs?.length || 0)
-
-        const logs = await activityService.getActivities()
-        setActivities(logs?.slice(0, 5) || [])
-      } catch (err) {
-        console.error('Failed to load dashboard statistics', err)
-      } finally {
-        setLoading(false)
-      }
+  const loadBlueprints = async () => {
+    try {
+      const bps = await listBlueprints()
+      setBlueprints(bps)
+    } catch (e) {
+      console.error(e)
     }
-
-    loadDashboardData()
-  }, [user])
-
-  if (authLoading || loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="h-8 w-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-      </div>
-    )
   }
 
-  // Calculate statistics
-  const blueprintsCount = blueprints.length
-  const conversationsCount = conversations.length
-  
-  const totalModules = blueprints.reduce((sum, bp) => sum + (bp.generated_code?.length || 0), 0)
-  
-  const totalLinesOfCode = blueprints.reduce((sum, bp) => {
-    const codeList = bp.generated_code || []
-    return sum + codeList.reduce((acc, file) => acc + (file.content || '').split('\n').length, 0)
-  }, 0)
+  // Sample static projects matching reference image
+  const projects = [
+    { name: 'E-Commerce Platform', status: 'In Progress', progress: 65, avatars: ['AD', 'JD', '+1'], statusColor: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
+    { name: 'Mobile App Redesign', status: 'In Progress', progress: 42, avatars: ['AF', 'ES'], statusColor: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
+    { name: 'Design System v2', status: 'Review', progress: 88, avatars: ['AF', 'MC', '+2'], statusColor: 'bg-primary/10 text-primary border-primary/20' },
+    { name: 'API Documentation', status: 'In Progress', progress: 15, avatars: ['JD'], statusColor: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' }
+  ]
 
-  const recentFiles = blueprints.reduce<any[]>((acc, bp) => {
-    const files = bp.generated_code || []
-    return [...acc, ...files.map(f => ({ ...f, projectTitle: bp.title, blueprintId: bp.id }))]
-  }, []).slice(0, 3)
+  // Upcoming Tasks matching reference image
+  const tasks = [
+    { title: 'Review API documentation', priority: 'high', due: 'Today', assignee: 'You', color: 'bg-red-500/10 text-red-500 border-red-500/20' },
+    { title: 'Update design system components', priority: 'high', due: 'Tomorrow', assignee: 'Sarah Chen', color: 'bg-red-500/10 text-red-500 border-red-500/20' },
+    { title: 'Fix mobile responsiveness issues', priority: 'medium', due: 'Mar 15', assignee: 'You', color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' },
+    { title: 'Prepare Q1 roadmap presentation', priority: 'medium', due: 'Mar 18', assignee: 'Team Lead', color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' },
+    { title: 'Conduct user research interviews', priority: 'low', due: 'Mar 20', assignee: 'You', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' }
+  ]
 
-  const handleOpenBlueprint = (bp: BlueprintResponseSchema, redirectPath: string) => {
+  // Recent activity matching reference image
+  const activities = [
+    { title: 'Created project milestone', desc: 'Milestone v1.2.0 added to E-Commerce Platform', time: '2 hours ago', icon: FileText, color: 'text-emerald-500 bg-emerald-500/10' },
+    { title: 'New comment on design proposal', desc: 'Sarah commented on your design mockups', time: '4 hours ago', icon: MessageSquare, color: 'text-blue-500 bg-blue-500/10' },
+    { title: 'Team member invited', desc: 'John Doe was added to your workspace', time: '1 day ago', icon: Users, color: 'text-purple-500 bg-purple-500/10' },
+    { title: 'Code pushed to main branch', desc: 'API improvements in E-Commerce Platform', time: '2 days ago', icon: Code, color: 'text-indigo-500 bg-indigo-500/10' },
+    { title: 'Performance improvements deployed', desc: 'Database query optimizations go live', time: '3 days ago', icon: Zap, color: 'text-yellow-500 bg-yellow-500/10' }
+  ]
+
+  const handleOpenBlueprint = (bp: BlueprintResponseSchema) => {
     const combinedBlueprint = {
       project_plan: bp.overview,
       milestone_plan: bp.milestones,
@@ -101,261 +97,373 @@ export default function Page() {
     }
     localStorage.setItem('devworkspace_active_blueprint', JSON.stringify(combinedBlueprint))
     localStorage.setItem('devworkspace_active_blueprint_id', bp.id)
-    router.push(redirectPath)
+    router.push('/projects/ai-planner')
   }
 
   return (
     <MainLayout>
-      <div className="max-w-7xl mx-auto space-y-8 relative z-10 text-left">
-        {/* Welcome message & Notification Banner */}
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="space-y-1">
-            <h1 className="text-3xl font-extrabold text-foreground tracking-tight select-none">
-              {greeting}, {user?.full_name || 'Developer'}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Here is your AI software engineering workspace review.
-            </p>
+      <div className="max-w-[1800px] w-full mx-auto space-y-8 text-left relative z-10 font-sans">
+        
+        {/* Welcome message header */}
+        <div className="space-y-1.5">
+          <h1 className="text-3xl font-extrabold text-foreground tracking-tight select-none">
+            {greeting}, {user?.full_name?.split(' ')[0] || 'Archi'} 👋
+          </h1>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Welcome back. Here&apos;s what&apos;s happening in your workspace.
+          </p>
+        </div>
+
+        {/* Dynamic AI Input bar */}
+        <div className="space-y-3">
+          <div className="rounded-full border border-border bg-card p-2 flex items-center gap-3 shadow-sm hover:shadow-md transition-all glow-card">
+            <Sparkles className="h-5 w-5 text-primary ml-3 shrink-0" />
+            <input
+              type="text"
+              value={commandQuery}
+              onChange={(e) => setCommandQuery(e.target.value)}
+              placeholder="Ask AI to help you..."
+              className="flex-1 bg-transparent text-sm text-foreground placeholder-muted-foreground outline-none py-2"
+            />
+            <button
+              onClick={() => router.push(`/projects/ai-planner?prompt=${encodeURIComponent(commandQuery)}`)}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-primary hover:bg-primary/95 text-primary-foreground transition-all cursor-pointer"
+            >
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs font-bold text-foreground">
+            {[
+              { label: 'Create new project', prompt: 'Design a web platform for task tracking' },
+              { label: 'Review pull requests', prompt: 'Audit standard API structure' },
+              { label: 'Check team updates', prompt: 'Provide project milestone logs' }
+            ].map((chip) => (
+              <button
+                key={chip.label}
+                onClick={() => setCommandQuery(chip.prompt)}
+                className="px-4 py-2 rounded-full border border-border bg-card hover:bg-white/[0.01] transition-all cursor-pointer"
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Continue where you left off row */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-black text-foreground">Continue Where You Left Off</h2>
+            <button
+              onClick={() => router.push('/projects')}
+              className="flex items-center gap-1 text-xs text-primary font-bold hover:underline cursor-pointer"
+            >
+              View all <ChevronRight className="h-3.5 w-3.5" />
+            </button>
           </div>
           
-          {/* Subtle live indicator */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-[10px] font-bold text-primary animate-pulse">
-            <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-            AI Core Active
-          </div>
-        </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {projects.map((proj, idx) => (
+              <div key={idx} className="p-5 rounded-2xl border border-border bg-card space-y-4 flex flex-col justify-between hover:border-primary/20 transition-all glow-card shadow-sm">
+                <div className="space-y-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="text-sm font-bold text-foreground truncate">{proj.name}</h3>
+                    <span className={`text-[9px] font-bold uppercase rounded-full px-2.5 py-0.5 border shrink-0 ${proj.statusColor}`}>
+                      {proj.status}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground block">Assigned to you</span>
+                </div>
 
-        {/* AI Command Bar / Quick Search */}
-        <div className="rounded-2xl border border-border bg-card p-2 flex items-center gap-3 shadow-sm glow-card">
-          <Search className="h-5 w-5 text-muted-foreground ml-3 shrink-0" />
-          <input
-            type="text"
-            value={commandQuery}
-            onChange={(e) => setCommandQuery(e.target.value)}
-            placeholder="Ask AI to design a database, write routes, or audit architecture..."
-            className="flex-1 bg-transparent text-sm text-foreground placeholder-muted-foreground outline-none py-2"
-          />
-          <button
-            onClick={() => router.push(`/projects/ai-planner?prompt=${encodeURIComponent(commandQuery)}`)}
-            className="flex items-center gap-1.5 px-4 h-9 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-bold text-xs transition-all cursor-pointer"
-          >
-            <Sparkles className="h-3.5 w-3.5" /> Prompt AI
-          </button>
-        </div>
-
-        {/* Statistics Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {[
-            { label: 'Active Projects', val: projectsCount, icon: Folder, color: 'text-blue-500 bg-blue-500/10' },
-            { label: 'Blueprints Saved', val: blueprintsCount, icon: Layers, color: 'text-emerald-500 bg-emerald-500/10' },
-            { label: 'Modules Compiled', val: totalModules, icon: Terminal, color: 'text-amber-500 bg-amber-500/10' },
-            { label: 'Generated Lines', val: totalLinesOfCode, icon: Code, color: 'text-purple-500 bg-purple-500/10' },
-            { label: 'AI Conversations', val: conversationsCount, icon: MessageSquare, color: 'text-pink-500 bg-pink-500/10' }
-          ].map((stat, idx) => {
-            const Icon = stat.icon
-            return (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.05 }}
-                className="p-5 rounded-2xl border border-border bg-card space-y-4 hover:shadow-md hover:border-primary/20 transition-all glow-card"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{stat.label}</span>
-                  <div className={`p-1.5 rounded-lg ${stat.color}`}>
-                    <Icon className="h-4 w-4" />
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[10px] font-bold text-foreground">
+                    <span className="text-muted-foreground">PROGRESS</span>
+                    <span>{proj.progress}%</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+                    <div className="h-full bg-primary" style={{ width: `${proj.progress}%` }} />
                   </div>
                 </div>
-                <p className="text-3xl font-black text-foreground">{stat.val}</p>
-              </motion.div>
-            )
-          })}
+
+                <div className="flex items-center justify-between pt-1">
+                  <div className="flex -space-x-1.5 overflow-hidden">
+                    {proj.avatars.map((av, avIdx) => (
+                      <div
+                        key={avIdx}
+                        className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-secondary border border-border text-[8px] font-bold text-muted-foreground"
+                      >
+                        {av}
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => router.push('/projects/code-generator')}
+                    className="px-3 py-1 rounded-lg border border-border bg-white/[0.01] hover:bg-white/[0.02] text-[10px] font-bold text-foreground transition-all cursor-pointer"
+                  >
+                    Open
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Dashboard Main Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Dashboard Grid layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
-          {/* Left / Center Sections */}
-          <div className="lg:col-span-2 space-y-6">
+          {/* Left Column (span 6) */}
+          <div className="lg:col-span-6 space-y-6">
             
-            {/* Recent Blueprints list */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-base font-bold text-foreground flex items-center gap-2">
-                  <Layers className="h-4.5 w-4.5 text-primary" /> Saved Architect Blueprints
-                </h2>
-                <button
-                  onClick={() => router.push('/projects/blueprints')}
-                  className="text-xs text-primary hover:underline flex items-center gap-1 cursor-pointer font-bold"
-                >
-                  View Library <ArrowRight className="h-3 w-3" />
-                </button>
+            {/* AI Suggestions Card */}
+            <div className="p-6 rounded-2xl border border-border bg-card space-y-4 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <div className="text-left">
+                  <h3 className="text-sm font-bold text-foreground">AI Suggestions</h3>
+                  <p className="text-[10px] text-muted-foreground">Smart recommendations for your workspace</p>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {blueprints.slice(0, 4).map((bp, idx) => {
-                  const isDraft = bp.status === 'Draft'
-                  return (
-                    <motion.div
-                      key={bp.id}
-                      initial={{ opacity: 0, y: 15 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 + idx * 0.05 }}
-                      className="p-5 rounded-2xl border border-border bg-card flex flex-col justify-between space-y-4 hover:border-primary/20 transition-all glow-card"
-                    >
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between gap-2">
-                          <h3 className="text-sm font-bold text-foreground truncate">{bp.title}</h3>
-                          <span className={`text-[8px] font-bold uppercase rounded px-2 py-0.5 border ${
-                            isDraft 
-                              ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' 
-                              : 'bg-primary/10 text-primary border-primary/20'
-                          }`}>
-                            {bp.status}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground line-clamp-2">{bp.description || 'No description provided.'}</p>
-                      </div>
+              <div className="space-y-3">
+                <div className="p-4 rounded-xl border border-border bg-white/[0.005] flex items-center justify-between gap-4">
+                  <div className="space-y-1 text-left min-w-0">
+                    <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <Zap className="h-3.5 w-3.5 text-amber-500" /> Optimize Database Queries
+                      <span className="text-[8px] font-bold px-1.5 py-0.5 rounded border border-primary/20 bg-primary/10 text-primary">Review</span>
+                    </h4>
+                    <p className="text-[10px] text-muted-foreground leading-normal truncate">Your recent queries could benefit from indexing. I found 3 slow queries.</p>
+                  </div>
+                  <button
+                    onClick={() => router.push('/projects/review')}
+                    className="px-3 py-1.5 rounded-lg border border-border hover:bg-white/5 text-[10px] font-bold text-foreground transition-all shrink-0 cursor-pointer"
+                  >
+                    Review
+                  </button>
+                </div>
 
-                      <div className="flex items-center justify-between text-[11px] border-t border-border pt-3">
-                        <span className="text-muted-foreground">{bp.generated_code?.length || 0} Modules generated</span>
-                        <button
-                          onClick={() => handleOpenBlueprint(bp, '/projects/ai-planner')}
-                          className="text-primary hover:underline font-bold flex items-center gap-0.5 cursor-pointer"
-                        >
-                          Open Workspace <ArrowUpRight className="h-3 w-3" />
-                        </button>
+                <div className="p-4 rounded-xl border border-border bg-white/[0.005] flex items-center justify-between gap-4">
+                  <div className="space-y-1 text-left min-w-0">
+                    <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <Folder className="h-3.5 w-3.5 text-blue-500" /> Update Dependencies
+                      <span className="text-[8px] font-bold px-1.5 py-0.5 rounded border border-border bg-white/5 text-muted-foreground">Update</span>
+                    </h4>
+                    <p className="text-[10px] text-muted-foreground leading-normal truncate">New versions available for 5 packages. Security updates included.</p>
+                  </div>
+                  <button
+                    onClick={() => router.push('/projects/code-generator')}
+                    className="px-3 py-1.5 rounded-lg border border-border hover:bg-white/5 text-[10px] font-bold text-foreground transition-all shrink-0 cursor-pointer"
+                  >
+                    Update
+                  </button>
+                </div>
+              </div>
+
+              <button
+                onClick={() => router.push('/projects/review')}
+                className="w-full py-2.5 rounded-xl border border-border hover:bg-white/5 text-xs font-bold text-foreground transition-all cursor-pointer"
+              >
+                View all suggestions
+              </button>
+            </div>
+
+            {/* Recent Workspace Activity */}
+            <div className="p-6 rounded-2xl border border-border bg-card space-y-4 shadow-sm">
+              <h3 className="text-sm font-bold text-foreground">Recent Workspace Activity</h3>
+              <div className="space-y-4">
+                {activities.map((act, idx) => {
+                  const Icon = act.icon
+                  return (
+                    <div key={idx} className="flex items-start gap-4">
+                      <div className={`p-2 rounded-full shrink-0 ${act.color}`}>
+                        <Icon className="h-4 w-4" />
                       </div>
-                    </motion.div>
+                      <div className="flex-1 text-left min-w-0 space-y-0.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <h4 className="text-xs font-bold text-foreground truncate">{act.title}</h4>
+                          <span className="text-[9px] text-muted-foreground shrink-0">{act.time}</span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground truncate">{act.desc}</p>
+                      </div>
+                    </div>
                   )
                 })}
-                {blueprints.length === 0 && (
-                  <div className="col-span-2 p-8 rounded-2xl border border-dashed border-border bg-card/20 text-center flex flex-col items-center justify-center space-y-2">
-                    <span className="text-xs text-muted-foreground">No blueprints created yet.</span>
-                    <button
-                      onClick={() => router.push('/projects/ai-planner')}
-                      className="text-xs text-primary hover:underline font-bold cursor-pointer"
-                    >
-                      Generate Blueprint
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
 
-            {/* Generated Code Modules */}
-            <div className="space-y-4">
-              <h2 className="text-base font-bold text-foreground flex items-center gap-2">
-                <Code className="h-4.5 w-4.5 text-purple-500" /> Compiled Software Modules
-              </h2>
-              <div className="rounded-2xl border border-border bg-card overflow-hidden divide-y divide-border shadow-sm">
-                {recentFiles.map((file, idx) => (
-                  <div key={idx} className="p-4 flex items-center justify-between gap-4 hover:bg-white/[0.01] transition-colors">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0">
-                        <Terminal className="h-4 w-4 text-purple-500" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-mono font-bold text-foreground truncate">{file.filename}</p>
-                        <p className="text-[10px] text-muted-foreground truncate">Blueprint context: {file.projectTitle}</p>
-                      </div>
+            {/* Team Activity list */}
+            <div className="p-6 rounded-2xl border border-border bg-card space-y-4 shadow-sm">
+              <h3 className="text-sm font-bold text-foreground">Team Activity</h3>
+              <div className="space-y-1">
+                <span className="text-[9px] font-bold text-[#7E848C] uppercase tracking-wider block">Team Members</span>
+                <div className="flex items-center gap-1.5">
+                  {['AR', 'SL', 'JD', 'MC', 'DJ', 'ES'].map((m) => (
+                    <div key={m} className="flex h-7 w-7 items-center justify-center rounded-full bg-[#1D2024] border border-white/[0.06] text-[9px] font-bold text-[#F5F5F5]">
+                      {m}
                     </div>
-                    <button
-                      onClick={() => router.push('/projects/code-generator')}
-                      className="flex items-center gap-1 text-xs text-primary font-bold hover:underline cursor-pointer shrink-0"
-                    >
-                      Open Code <ArrowRight className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                ))}
-                {recentFiles.length === 0 && (
-                  <p className="p-6 text-xs text-muted-foreground text-center">No compiled software modules in history yet.</p>
-                )}
+                  ))}
+                  <span className="text-[10px] text-muted-foreground ml-1.5">6 members online</span>
+                </div>
+              </div>
+              <div className="space-y-2 pt-2 border-t border-border/40">
+                <div className="flex items-center justify-between text-xs py-1">
+                  <span className="text-muted-foreground"><strong className="text-foreground">Sarah Lee</strong> updated Design System</span>
+                  <span className="text-[9px] text-muted-foreground">5 min ago</span>
+                </div>
+                <div className="flex items-center justify-between text-xs py-1">
+                  <span className="text-muted-foreground"><strong className="text-foreground">John Doe</strong> reviewed API Documentation</span>
+                  <span className="text-[9px] text-muted-foreground">23 min ago</span>
+                </div>
+                <div className="flex items-center justify-between text-xs py-1">
+                  <span className="text-muted-foreground"><strong className="text-foreground">Maria Chen</strong> completed Mobile Components</span>
+                  <span className="text-[9px] text-muted-foreground">1 hour ago</span>
+                </div>
               </div>
             </div>
 
           </div>
 
-          {/* Right sidebar Column */}
-          <div className="space-y-6">
+          {/* Right Column (span 6) */}
+          <div className="lg:col-span-6 space-y-6">
             
+            {/* Upcoming Tasks Card */}
+            <div className="p-6 rounded-2xl border border-border bg-card space-y-4 shadow-sm">
+              <div className="text-left">
+                <h3 className="text-sm font-bold text-foreground">Upcoming Tasks</h3>
+                <p className="text-[10px] text-muted-foreground">Your assigned tasks and deadlines</p>
+              </div>
+
+              <div className="space-y-2.5">
+                {tasks.map((t, idx) => (
+                  <div key={idx} className="flex items-center justify-between gap-4 p-2 rounded-xl border border-border bg-white/[0.002] hover:bg-white/[0.005]">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-4 w-4 rounded-full border border-muted-foreground shrink-0 cursor-pointer hover:border-primary transition-all" />
+                      <div className="min-w-0">
+                        <span className="text-xs font-bold text-foreground block truncate">{t.title}</span>
+                        <span className="text-[9px] text-muted-foreground block">{t.due} • {t.assignee}</span>
+                      </div>
+                    </div>
+                    <span className={`text-[8px] font-bold uppercase rounded px-2 py-0.5 border shrink-0 ${t.color}`}>
+                      {t.priority}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Sprint 24 Progress Card */}
+            <div className="p-6 rounded-2xl border border-border bg-card space-y-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="text-left">
+                  <h3 className="text-sm font-bold text-foreground">Sprint 24</h3>
+                  <p className="text-[10px] text-muted-foreground">Mar 10 — Mar 23</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-lg font-black text-foreground">67%</span>
+                  <p className="text-[9px] text-muted-foreground uppercase font-bold">Complete</p>
+                </div>
+              </div>
+
+              <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+                <div className="h-full bg-primary" style={{ width: '67%' }} />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3.5 rounded-xl border border-border bg-white/[0.005]">
+                  <span className="text-[9px] font-bold text-muted-foreground uppercase block">COMPLETED</span>
+                  <span className="text-base font-extrabold text-foreground">12 <span className="text-xs font-medium text-muted-foreground">/18</span></span>
+                </div>
+                <div className="p-3.5 rounded-xl border border-border bg-white/[0.005]">
+                  <span className="text-[9px] font-bold text-muted-foreground uppercase block">REMAINING</span>
+                  <span className="text-base font-extrabold text-foreground">6 <span className="text-xs font-medium text-muted-foreground">/18</span></span>
+                </div>
+              </div>
+
+              {/* Team Velocity with dynamic graphic */}
+              <div className="p-4 rounded-xl border border-border bg-white/[0.005] flex items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <span className="text-[9px] font-bold text-muted-foreground uppercase">TEAM VELOCITY</span>
+                  <span className="text-xl font-black text-foreground block">42</span>
+                  <span className="text-[9px] text-muted-foreground">Story points/sprint</span>
+                </div>
+                <div className="h-8 w-20 shrink-0 opacity-80 flex items-end gap-1 select-none pr-1">
+                  {[4, 6, 8, 12, 16, 24, 18, 32, 42].map((v, i) => (
+                    <div key={i} className="bg-primary/20 hover:bg-primary transition-colors flex-1" style={{ height: `${(v / 42) * 100}%` }} />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Workspace Health card */}
+            <div className="p-6 rounded-2xl border border-border bg-card space-y-4 shadow-sm">
+              <div className="text-left">
+                <h3 className="text-sm font-bold text-foreground">Workspace Health</h3>
+                <p className="text-[10px] text-muted-foreground">Overview of your workspace</p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="p-4 rounded-xl border border-border bg-white/[0.005] text-center space-y-2">
+                  <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10 text-primary mx-auto">
+                    <Users className="h-4 w-4" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-bold text-muted-foreground block">Team Members</span>
+                    <span className="text-base font-extrabold text-foreground">6</span>
+                    <span className="text-[8px] text-emerald-500 block font-bold">+2 this month</span>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl border border-border bg-white/[0.005] text-center space-y-2">
+                  <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10 text-primary mx-auto">
+                    <CheckSquare className="h-4 w-4" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-bold text-muted-foreground block">Tasks Completed</span>
+                    <span className="text-base font-extrabold text-foreground">43</span>
+                    <span className="text-[8px] text-emerald-500 block font-bold">+8 this week</span>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl border border-border bg-white/[0.005] text-center space-y-2">
+                  <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10 text-primary mx-auto">
+                    <Folder className="h-4 w-4" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-bold text-muted-foreground block">Active Projects</span>
+                    <span className="text-base font-extrabold text-foreground">4</span>
+                    <span className="text-[8px] text-emerald-500 block font-bold">On track</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Quick Actions Panel */}
-            <div className="p-5 rounded-2xl border border-border bg-card space-y-4 shadow-sm">
-              <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Quick Shortcuts</h3>
-              <div className="grid grid-cols-2 gap-2 text-xs font-bold text-foreground">
-                <button
-                  onClick={() => router.push('/projects/ai-planner')}
-                  className="p-3 rounded-xl border border-border bg-white/[0.01] hover:bg-white/[0.02] hover:border-primary/20 text-center transition-all cursor-pointer"
-                >
-                  Planner
-                </button>
-                <button
-                  onClick={() => router.push('/projects/code-generator')}
-                  className="p-3 rounded-xl border border-border bg-white/[0.01] hover:bg-white/[0.02] hover:border-primary/20 text-center transition-all cursor-pointer"
-                >
-                  Code Gen
-                </button>
-                <button
-                  onClick={() => router.push('/projects/review')}
-                  className="p-3 rounded-xl border border-border bg-white/[0.01] hover:bg-white/[0.02] hover:border-primary/20 text-center transition-all cursor-pointer"
-                >
-                  Review
-                </button>
-                <button
-                  onClick={() => router.push('/documentation')}
-                  className="p-3 rounded-xl border border-border bg-white/[0.01] hover:bg-white/[0.02] hover:border-primary/20 text-center transition-all cursor-pointer"
-                >
-                  Docs
-                </button>
-              </div>
-            </div>
-
-            {/* AI Assistant Chats */}
             <div className="space-y-3">
-              <h2 className="text-base font-bold text-foreground flex items-center gap-2">
-                <MessageSquare className="h-4.5 w-4.5 text-pink-500" /> Recent AI Conversations
-              </h2>
-              <div className="rounded-2xl border border-border bg-card overflow-hidden divide-y divide-border">
-                {conversations.slice(0, 3).map((convo) => (
-                  <div key={convo.id} className="p-4 hover:bg-white/[0.01] transition-colors flex items-center justify-between gap-3 text-xs">
-                    <div className="min-w-0">
-                      <p className="font-bold text-foreground truncate">{convo.title}</p>
-                      <p className="text-[10px] text-muted-foreground">{new Date(convo.created_at).toLocaleDateString()}</p>
-                    </div>
+              <h3 className="text-sm font-bold text-foreground">Quick Actions</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[
+                  { title: 'Create Project', desc: 'Start a new project', icon: Plus, path: '/projects' },
+                  { title: 'Create Task', desc: 'Add a new task', icon: CheckSquare, path: '/sprints' },
+                  { title: 'Generate Docs', desc: 'Auto-generate documentation', icon: FileText, path: '/documentation' },
+                  { title: 'Ask AI', desc: 'Get AI assistance', icon: Sparkles, path: '/projects/ai-planner' }
+                ].map((act, idx) => {
+                  const Icon = act.icon
+                  return (
                     <button
-                      onClick={() => router.push('/projects/ai-planner')}
-                      className="text-[10px] text-muted-foreground hover:text-foreground border border-border px-2.5 py-1.5 rounded-lg cursor-pointer"
+                      key={idx}
+                      onClick={() => router.push(act.path)}
+                      className="p-4 rounded-xl border border-border bg-card flex flex-col items-center text-center gap-2 hover:border-primary/20 transition-all cursor-pointer glow-card"
                     >
-                      Resume
+                      <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <div className="space-y-0.5">
+                        <span className="text-[11px] font-bold text-foreground block">{act.title}</span>
+                        <span className="text-[9px] text-muted-foreground block">{act.desc}</span>
+                      </div>
                     </button>
-                  </div>
-                ))}
-                {conversations.length === 0 && (
-                  <p className="p-6 text-xs text-muted-foreground text-center">No active chat sessions.</p>
-                )}
-              </div>
-            </div>
-
-            {/* Activities Logs list */}
-            <div className="space-y-3">
-              <h2 className="text-base font-bold text-foreground flex items-center gap-2">
-                <Activity className="h-4.5 w-4.5 text-blue-500" /> Workspace Activity
-              </h2>
-              <div className="rounded-2xl border border-border bg-card overflow-hidden divide-y divide-border">
-                {activities.map((act) => (
-                  <div key={act.id} className="p-4 text-xs space-y-1">
-                    <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                      <span className="font-bold uppercase text-primary">{act.category}</span>
-                      <span>{new Date(act.created_at).toLocaleDateString()}</span>
-                    </div>
-                    <p className="text-foreground font-medium">{act.action}</p>
-                    <p className="text-[10px] text-muted-foreground">{act.details}</p>
-                  </div>
-                ))}
-                {activities.length === 0 && (
-                  <p className="p-6 text-xs text-muted-foreground text-center">No logs recorded.</p>
-                )}
+                  )
+                })}
               </div>
             </div>
 
