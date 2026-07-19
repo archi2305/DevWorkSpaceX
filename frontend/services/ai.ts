@@ -177,3 +177,128 @@ export async function generateProjectPlan(params: {
   const response = await api.post<ProjectPlanResponse>('/api/ai/project-plan', params)
   return response.data
 }
+
+export interface ImplementationTask {
+  title: string
+  description: string
+  priority: string
+  estimated_hours: number
+}
+
+export interface MilestonePlanResponse {
+  milestone: string
+  overview: string
+  subtasks: ImplementationTask[]
+  api_endpoints: string[]
+  database_tables: string[]
+  folder_structure: string
+}
+
+export interface DatabaseColumn {
+  name: string
+  type: string
+  primary_key: boolean
+  nullable: boolean
+  unique: boolean
+}
+
+export interface DatabaseTable {
+  name: string
+  description: string
+  columns: DatabaseColumn[]
+}
+
+export interface Relationship {
+  from_table: string
+  to_table: string
+  relationship_type: string
+}
+
+export interface DatabaseDesignResponse {
+  database: string
+  tables: DatabaseTable[]
+  relationships: Relationship[]
+  indexes: string[]
+}
+
+export interface ApiEndpoint {
+  method: string
+  path: string
+  description: string
+}
+
+export interface ApiResource {
+  name: string
+  endpoints: ApiEndpoint[]
+}
+
+export interface AuthenticationEndpoint {
+  method: string
+  path: string
+  description: string
+}
+
+export interface AuthenticationDesign {
+  login: AuthenticationEndpoint
+  register: AuthenticationEndpoint
+}
+
+export interface ApiDesignResponse {
+  base_url: string
+  resources: ApiResource[]
+  authentication: AuthenticationDesign
+  request_examples: Record<string, any>
+  response_examples: Record<string, any>
+  status_codes: number[]
+}
+
+export interface ArchitectureFolderStructure {
+  backend: string[]
+  frontend: string[]
+}
+
+export interface ArchitectureResponse {
+  architecture_style: string
+  modules: string[]
+  folder_structure: ArchitectureFolderStructure
+  external_services: string[]
+  communication: string
+}
+
+export async function generateMilestonePlan(params: {
+  project_title: string
+  milestone: string
+  preferred_stack?: string
+}): Promise<MilestonePlanResponse> {
+  const response = await api.post<MilestonePlanResponse>('/api/ai/milestone-plan', params)
+  return response.data
+}
+
+export async function generateDatabaseDesign(params: {
+  project_title: string
+  description: string
+  preferred_database?: string
+}): Promise<DatabaseDesignResponse> {
+  const response = await api.post<DatabaseDesignResponse>('/api/ai/database-design', params)
+  return response.data
+}
+
+export async function generateApiDesign(params: {
+  project_title: string
+  description: string
+  database_tables: string[]
+}): Promise<ApiDesignResponse> {
+  const response = await api.post<ApiDesignResponse>('/api/ai/api-design', params)
+  return response.data
+}
+
+export async function generateArchitecture(params: {
+  project_title: string
+  description: string
+  tech_stack: TechStack
+  database_tables: string[]
+  api_resources: string[]
+}): Promise<ArchitectureResponse> {
+  const response = await api.post<ArchitectureResponse>('/api/ai/architecture', params)
+  return response.data
+}
