@@ -44,6 +44,11 @@ module.exports = {
         border: 'var(--border)',
         input: 'var(--input)',
         ring: 'var(--ring)',
+        sidebar: {
+          DEFAULT: 'var(--sidebar)',
+          border: 'var(--sidebar-border)',
+          foreground: 'var(--sidebar-foreground)',
+        }
       }
     },
   },

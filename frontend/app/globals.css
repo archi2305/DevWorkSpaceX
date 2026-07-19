@@ -23,6 +23,9 @@
   --input: #F1F5F9;
   --ring: #10B981;
   --radius: 1.25rem;
+  --sidebar: #FFFFFF;
+  --sidebar-border: #E8EDF4;
+  --sidebar-foreground: #0F172A;
 }
 
 .dark {
@@ -46,6 +49,9 @@
   --input: #1B1A23;
   --ring: #10B981;
   --radius: 1.25rem;
+  --sidebar: #12111A;
+  --sidebar-border: #222030;
+  --sidebar-foreground: #F1F5F9;
 }
 
 * {
