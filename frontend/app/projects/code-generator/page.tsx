@@ -16,24 +16,55 @@ import {
   HelpCircle,
   Play,
   Clipboard,
-  FileText
+  FileText,
+  User,
+  ShieldCheck,
+  ChevronDown,
+  Monitor,
+  Zap,
+  Globe,
+  Settings,
+  Check,
+  Sparkles
 } from 'lucide-react'
 import { generateCode, GeneratedFile, updateBlueprint, getBlueprintDetail } from '@/services/ai'
 
 const categories = [
-  { id: 'backend', label: 'Backend', icon: ServerIcon, color: 'text-blue-400' },
-  { id: 'frontend', label: 'Frontend', icon: MonitorIcon, color: 'text-[#5bb98c]' },
-  { id: 'database', label: 'Database', icon: Database, color: 'text-amber-500' },
-  { id: 'api', label: 'API Specs', icon: Code, color: 'text-purple-500' },
-  { id: 'utilities', label: 'Utilities', icon: Cpu, color: 'text-pink-500' }
+  { id: 'backend', label: 'Backend', desc: 'APIs, services, logic', icon: Terminal, color: 'text-blue-500 bg-blue-500/10' },
+  { id: 'frontend', label: 'Frontend', desc: 'Pages, components', icon: Monitor, color: 'text-emerald-500 bg-emerald-500/10' },
+  { id: 'database', label: 'Database', desc: 'Schemas, models', icon: Database, color: 'text-amber-500 bg-amber-500/10' },
+  { id: 'api', label: 'API Specs', desc: 'OpenAPI, docs', icon: Code, color: 'text-purple-500 bg-purple-500/10' },
+  { id: 'utilities', label: 'Utilities', desc: 'Helpers, configs', icon: Cpu, color: 'text-pink-500 bg-pink-500/10' }
 ]
 
-const modulesByCategory: Record<string, string[]> = {
-  backend: ['User Authentication Controller', 'API Route Handlers', 'Middleware Validators', 'Data Access Repository'],
-  frontend: ['Dashboard Panel View', 'AI Conversation Container', 'Form Settings Wrapper', 'Directory Navigation list'],
-  database: ['Database Schema Setup', 'Migration Version Scripts', 'Seed Mock Records'],
-  api: ['OpenAPI Spec definitions', 'GraphQL Resolver Handlers', 'WebSocket Sync handlers'],
-  utilities: ['Logger helpers', 'Common Exception classes', 'Config loader tools']
+const modulesByCategory: Record<string, { title: string; desc: string; icon: any }[]> = {
+  backend: [
+    { title: 'User Authentication', desc: 'Login, register, JWT', icon: User },
+    { title: 'API Route Handlers', desc: 'CRUD operations', icon: Globe },
+    { title: 'Middleware Validators', desc: 'Request validation, auth', icon: ShieldCheck },
+    { title: 'Data Access Repository', desc: 'Database interactions', icon: Database }
+  ],
+  frontend: [
+    { title: 'Dashboard View', desc: 'Grid charts display', icon: Monitor },
+    { title: 'AI Chat Panel', desc: 'Copilot chat bubbles', icon: Terminal },
+    { title: 'Form Wrapper', desc: 'Input fields control', icon: FileText },
+    { title: 'Navigation List', desc: 'Sidebar links mapping', icon: Layers }
+  ],
+  database: [
+    { title: 'Database Setup', desc: 'ORM connection strings', icon: Database },
+    { title: 'Migration Scripts', desc: 'Alembic version files', icon: Terminal },
+    { title: 'Seed Records', desc: 'Mock rows injection', icon: FileText }
+  ],
+  api: [
+    { title: 'OpenAPI Spec', desc: 'Swagger parameter files', icon: Code },
+    { title: 'WebSocket Handlers', desc: 'Realtime socket channels', icon: Globe },
+    { title: 'Resolver Controllers', desc: 'Graphql endpoints', icon: Terminal }
+  ],
+  utilities: [
+    { title: 'Logger Helper', desc: 'Trace outputs recorder', icon: Terminal },
+    { title: 'Exception Handler', desc: 'Generic errors catcher', icon: ShieldCheck },
+    { title: 'Env Config Loader', desc: 'Pydantic settings parser', icon: Settings }
+  ]
 }
 
 type GenerationStage =
@@ -48,15 +79,14 @@ type GenerationStage =
 export default function CodeGeneratorPage() {
   const [blueprint, setBlueprint] = useState<any>(null)
   const [activeCategory, setActiveCategory] = useState('backend')
-  const [selectedModule, setSelectedModule] = useState(modulesByCategory.backend[0])
+  const [selectedModule, setSelectedModule] = useState(modulesByCategory.backend[0].title)
 
   // Language & Framework configurations
   const [language, setLanguage] = useState('Python')
   const [framework, setFramework] = useState('FastAPI')
-  const [codingStyle, setCodingStyle] = useState('Clean & Modular')
-  const [commentLevel, setCommentLevel] = useState('Detailed')
+  const [codingStyle, setCodingStyle] = useState('Standard')
   const [includeTests, setIncludeTests] = useState(true)
-  const [generateDoc, setGenerateDoc] = useState(true)
+  const [generateDoc, setGenerateDoc] = useState(false)
 
   // Stage & Result states
   const [stage, setStage] = useState<GenerationStage>('idle')
@@ -74,7 +104,6 @@ export default function CodeGeneratorPage() {
         const bp = JSON.parse(saved)
         setBlueprint(bp)
         
-        // Auto-configure options based on blueprint tech stack
         const tech = bp.project_plan?.tech_stack
         if (tech) {
           const backendStack = tech.backend || ''
@@ -99,7 +128,7 @@ export default function CodeGeneratorPage() {
     setActiveCategory(catId)
     const modules = modulesByCategory[catId] || []
     if (modules.length > 0) {
-      setSelectedModule(modules[0])
+      setSelectedModule(modules[0].title)
     }
   }
 
@@ -133,7 +162,6 @@ export default function CodeGeneratorPage() {
         language,
         framework,
         coding_style: codingStyle,
-        comment_level: commentLevel,
         include_tests: includeTests,
         generate_doc: generateDoc
       })
@@ -181,207 +209,319 @@ export default function CodeGeneratorPage() {
     downloadAnchor.remove()
   }
 
-  const handleDownloadAll = () => {
-    generatedFiles.forEach((file) => {
-      handleDownloadFile(file)
-    })
-  }
-
   const isGenerating = stage !== 'idle' && stage !== 'ready'
   const activeFile = generatedFiles[activeFileIdx]
 
   return (
     <MainLayout>
-      <div className="max-w-6xl mx-auto space-y-8 text-left">
-        {/* Header */}
-        <div className="rounded-2xl border border-border bg-gradient-to-r from-primary/10 via-card/50 to-primary/5 p-6 md:p-8 flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 shrink-0">
-            <Terminal className="h-6 w-6 text-primary" />
+      <div className="max-w-[1800px] w-full mx-auto space-y-6 text-left font-sans">
+        
+        {/* Header Title section */}
+        <div className="rounded-2xl border border-border bg-card p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm glow-card">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/10 text-blue-500 shrink-0">
+              <Code className="h-6 w-6" />
+            </div>
+            <div className="space-y-1">
+              <h1 className="text-2xl font-black text-foreground">AI Code Generator</h1>
+              <p className="text-sm text-muted-foreground">
+                Generate fully realized, production-ready modules conforming exactly to the active project specification blueprint.
+              </p>
+            </div>
           </div>
-          <div className="space-y-1">
-            <h1 className="text-2xl font-bold text-foreground">AI Code Generator</h1>
-            <p className="text-sm text-muted-foreground">
-              Generate fully realized, production-ready modules conforming exactly to the active project specification blueprint.
-            </p>
-          </div>
+          <button
+            onClick={() => window.location.href = '/projects/ai-planner'}
+            className="flex items-center gap-1.5 px-4 h-10 rounded-xl bg-card hover:bg-white/[0.02] border border-border text-xs text-foreground font-bold shrink-0 transition-all cursor-pointer"
+          >
+            <FileText className="h-4 w-4" /> View Blueprint
+          </button>
         </div>
 
+        {/* Blueprint context card */}
         {blueprint && (
-          <div className="p-5 rounded-2xl border border-border bg-card flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">Currently Loaded Blueprint</span>
-              <h2 className="text-base font-bold text-foreground mt-0.5">{blueprint.project_plan.title}</h2>
+          <div className="p-6 rounded-2xl border border-border bg-card flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm relative overflow-hidden">
+            <div className="space-y-1.5 max-w-xl">
+              <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">Currently Loaded Blueprint</span>
+              <h2 className="text-lg font-black text-foreground">{blueprint.project_plan.title}</h2>
+              <p className="text-xs text-muted-foreground">{blueprint.project_plan.description}</p>
             </div>
-            <div className="flex items-center gap-6 text-xs">
-              <div>
-                <span className="text-[9px] font-bold text-muted-foreground uppercase block">Backend</span>
-                <span className="text-foreground font-semibold">{blueprint.project_plan.tech_stack.backend}</span>
+            
+            <div className="flex items-center gap-6 text-xs text-muted-foreground shrink-0 border-l border-border pl-6">
+              <div className="space-y-1">
+                <span className="text-[9px] font-bold uppercase block tracking-wider">Backend</span>
+                <span className="px-2.5 py-0.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-emerald-500 font-bold block">
+                  {blueprint.project_plan.tech_stack.backend}
+                </span>
               </div>
-              <div>
-                <span className="text-[9px] font-bold text-muted-foreground uppercase block">Frontend</span>
-                <span className="text-foreground font-semibold">{blueprint.project_plan.tech_stack.frontend}</span>
+              <div className="space-y-1">
+                <span className="text-[9px] font-bold uppercase block tracking-wider">Frontend</span>
+                <span className="px-2.5 py-0.5 rounded-full border border-blue-500/20 bg-blue-500/10 text-blue-500 font-bold block">
+                  {blueprint.project_plan.tech_stack.frontend}
+                </span>
               </div>
-              <div>
-                <span className="text-[9px] font-bold text-muted-foreground uppercase block">Database</span>
-                <span className="text-foreground font-semibold">{blueprint.database_design.database || blueprint.project_plan.tech_stack.database}</span>
+              <div className="space-y-1">
+                <span className="text-[9px] font-bold uppercase block tracking-wider">Database</span>
+                <span className="px-2.5 py-0.5 rounded-full border border-purple-500/20 bg-purple-500/10 text-purple-500 font-bold block">
+                  {blueprint.database_design.database || blueprint.project_plan.tech_stack.database}
+                </span>
               </div>
+              <ChevronDown className="h-5 w-5 text-muted-foreground cursor-pointer" />
             </div>
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">1. Select Module Category</span>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              {categories.map((cat) => {
-                const Icon = cat.icon
-                const isActive = activeCategory === cat.id
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => handleCategoryChange(cat.id)}
-                    disabled={isGenerating}
-                    className={`p-4 rounded-xl border flex flex-col items-start gap-3 transition-all cursor-pointer ${
-                      isActive
-                        ? 'border-primary bg-primary/5 shadow-md shadow-primary/5'
-                        : 'border-border bg-card hover:bg-white/[0.01]'
-                    }`}
-                  >
-                    <Icon className={`h-5 w-5 ${cat.color}`} />
-                    <span className="text-xs font-bold text-foreground">{cat.label}</span>
-                  </button>
-                )
-              })}
-            </div>
-
+        {/* Configuration Columns */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          {/* Left panel parameters (span 7) */}
+          <div className="lg:col-span-7 space-y-6">
+            
+            {/* Category Select */}
             <div className="space-y-3">
-              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">2. Select Module component</span>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {(modulesByCategory[activeCategory] || []).map((mod) => {
-                  const isSel = selectedModule === mod
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">1. Select Module Category</span>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                {categories.map((cat) => {
+                  const Icon = cat.icon
+                  const isActive = activeCategory === cat.id
                   return (
                     <button
-                      key={mod}
-                      onClick={() => setSelectedModule(mod)}
+                      key={cat.id}
+                      onClick={() => handleCategoryChange(cat.id)}
                       disabled={isGenerating}
-                      className={`p-3 rounded-xl border flex items-center justify-between transition-all text-xs text-left cursor-pointer ${
-                        isSel
-                          ? 'border-primary bg-primary/5 text-primary'
-                          : 'border-border bg-card text-muted-foreground hover:text-foreground'
+                      className={`p-4 rounded-2xl border flex flex-col items-start gap-4 transition-all text-left cursor-pointer ${
+                        isActive
+                          ? 'border-primary bg-primary/5 shadow-md shadow-primary/5'
+                          : 'border-border bg-card hover:bg-white/[0.01]'
                       }`}
                     >
-                      <span>{mod}</span>
-                      {isSel && <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />}
+                      <div className={`p-2 rounded-xl ${cat.color}`}>
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div className="space-y-0.5 min-w-0 w-full">
+                        <span className="text-xs font-extrabold text-foreground block truncate">{cat.label}</span>
+                        <span className="text-[10px] text-muted-foreground block truncate">{cat.desc}</span>
+                      </div>
                     </button>
                   )
                 })}
               </div>
             </div>
 
-            <div className="p-5 rounded-2xl border border-border bg-card space-y-4">
-              <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">Parameters Options</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-bold text-foreground">
-                <div className="space-y-1">
-                  <label className="text-muted-foreground text-[10px] block">Language</label>
-                  <input
-                    type="text"
-                    value={language}
-                    onChange={(e) => setLanguage(e.target.value)}
-                    disabled={isGenerating}
-                    className="w-full px-3 py-2 border border-border rounded-lg bg-background outline-none text-foreground"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-muted-foreground text-[10px] block">Framework</label>
-                  <input
-                    type="text"
-                    value={framework}
-                    onChange={(e) => setFramework(e.target.value)}
-                    disabled={isGenerating}
-                    className="w-full px-3 py-2 border border-border rounded-lg bg-background outline-none text-foreground"
-                  />
-                </div>
+            {/* Components Select */}
+            <div className="space-y-3">
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">2. Select Module Component</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {(modulesByCategory[activeCategory] || []).map((mod) => {
+                  const Icon = mod.icon
+                  const isSel = selectedModule === mod.title
+                  return (
+                    <button
+                      key={mod.title}
+                      onClick={() => setSelectedModule(mod.title)}
+                      disabled={isGenerating}
+                      className={`p-4 rounded-xl border flex items-center justify-between gap-3 transition-all text-left cursor-pointer ${
+                        isSel
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border bg-card hover:bg-white/[0.01]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`p-1.5 rounded-lg border ${isSel ? 'border-primary/20 bg-primary/10 text-primary' : 'border-border bg-white/5 text-muted-foreground'}`}>
+                          <Icon className="h-4.5 w-4.5 shrink-0" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-xs font-bold text-foreground block truncate">{mod.title}</span>
+                          <span className="text-[10px] text-muted-foreground block truncate">{mod.desc}</span>
+                        </div>
+                      </div>
+                      {isSel && <Check className="h-4 w-4 shrink-0 text-primary" />}
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
+            {/* Parameters Settings Options */}
+            <div className="p-6 rounded-2xl border border-border bg-card space-y-4 shadow-sm">
+              <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">Parameters Options</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-bold text-foreground">
+                <div className="space-y-1">
+                  <label className="text-muted-foreground text-[10px] block">Language</label>
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      value={language}
+                      onChange={(e) => setLanguage(e.target.value)}
+                      disabled={isGenerating}
+                      className="w-full pl-8 pr-3 py-2 border border-border rounded-lg bg-background outline-none text-foreground font-semibold"
+                    />
+                    <Zap className="h-3.5 w-3.5 text-blue-500 absolute left-3" />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-muted-foreground text-[10px] block">Framework</label>
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      value={framework}
+                      onChange={(e) => setFramework(e.target.value)}
+                      disabled={isGenerating}
+                      className="w-full pl-8 pr-3 py-2 border border-border rounded-lg bg-background outline-none text-foreground font-semibold"
+                    />
+                    <Zap className="h-3.5 w-3.5 text-emerald-500 absolute left-3" />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-muted-foreground text-[10px] block">Coding Style</label>
+                  <input
+                    type="text"
+                    value={codingStyle}
+                    onChange={(e) => setCodingStyle(e.target.value)}
+                    disabled={isGenerating}
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background outline-none text-foreground font-semibold"
+                  />
+                </div>
+              </div>
+
+              {/* Checkboxes */}
+              <div className="flex flex-wrap items-center gap-6 pt-2 text-xs font-bold text-muted-foreground">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={includeTests}
+                    onChange={(e) => setIncludeTests(e.target.checked)}
+                    disabled={isGenerating}
+                    className="rounded border-border bg-background text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                  />
+                  <span>Include Tests</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={generateDoc}
+                    onChange={(e) => setGenerateDoc(e.target.checked)}
+                    disabled={isGenerating}
+                    className="rounded border-border bg-background text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                  />
+                  <span>Include Docs</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Solid violet/indigo Generate Code Button */}
             <button
               onClick={handleGenerate}
               disabled={!blueprint || isGenerating}
-              className="w-full flex items-center justify-center gap-2 h-11 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs transition-all cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] hover:opacity-95 text-white font-extrabold text-sm transition-all shadow-lg shadow-indigo-500/10 cursor-pointer active:scale-98 disabled:opacity-50"
             >
               {isGenerating ? (
                 <>
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                  Generating {stage.toUpperCase()}...
+                  <RefreshCw className="h-4 w-4 animate-spin text-white" />
+                  Compiling {stage.toUpperCase()}...
                 </>
               ) : (
                 <>
-                  <Play className="h-4 w-4 fill-primary-foreground" /> Compile Module Code
+                  <Sparkles className="h-4 w-4 fill-white" /> Generate Module Code
                 </>
               )}
             </button>
+
+            {/* Feature Chips Banner */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-3">
+              {[
+                { title: 'Production Ready', desc: 'Clean, secure and scalable code', icon: ShieldCheck },
+                { title: 'AI Powered', desc: 'Context aware generation', icon: Sparkles },
+                { title: 'Fully Structured', desc: 'Best practices enforced', icon: Layers },
+                { title: 'Instant Preview', desc: 'Review before download', icon: FileCode }
+              ].map((chip, idx) => {
+                const Icon = chip.icon
+                return (
+                  <div key={idx} className="p-3 rounded-xl border border-border bg-card flex items-center gap-2.5">
+                    <div className="p-1 rounded-lg bg-primary/10 text-primary shrink-0">
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 text-left">
+                      <span className="text-[10px] font-bold text-foreground block truncate">{chip.title}</span>
+                      <span className="text-[8px] text-muted-foreground block truncate">{chip.desc}</span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
           </div>
 
-          <div className="space-y-6">
-            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">3. Code preview Output</span>
+          {/* Right panel IDE preview (span 5) */}
+          <div className="lg:col-span-5 space-y-3">
+            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">3. Code Preview Output</span>
             {isGenerating ? (
-              <div className="h-[450px] border border-border bg-card rounded-2xl flex flex-col items-center justify-center space-y-3">
+              <div className="h-[520px] border border-border bg-card rounded-2xl flex flex-col items-center justify-center space-y-3">
                 <RefreshCw className="h-8 w-8 text-primary animate-spin" />
-                <span className="text-xs text-muted-foreground">AI Architect generating {selectedModule}...</span>
+                <span className="text-xs text-muted-foreground">AI compiling code workspace...</span>
               </div>
             ) : activeFile ? (
-              <div className="rounded-2xl border border-border bg-card overflow-hidden flex flex-col shadow-2xl">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-white/[0.01]">
-                  <span className="text-xs font-mono font-bold text-foreground">{activeFile.filename}</span>
+              <div className="rounded-2xl border border-border bg-[#0B0F19] overflow-hidden flex flex-col shadow-2xl h-[520px]">
+                
+                {/* Editor Tab Bar */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-[#070A10]">
+                  <div className="flex items-center gap-2">
+                    <FileCode className="h-4 w-4 text-blue-400" />
+                    <span className="text-xs font-mono font-bold text-slate-300">{activeFile.filename}</span>
+                  </div>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleCopyCode(activeFile.content, activeFileIdx)}
-                      className="p-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground cursor-pointer"
+                      className="p-1.5 rounded-lg border border-white/10 hover:border-white/20 text-slate-400 hover:text-white transition-all cursor-pointer bg-white/5"
                     >
-                      {copiedFileIdx === activeFileIdx ? <CheckCircle2 className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
+                      {copiedFileIdx === activeFileIdx ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
                     </button>
                     <button
                       onClick={() => handleDownloadFile(activeFile)}
-                      className="p-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground cursor-pointer"
+                      className="p-1.5 rounded-lg border border-white/10 hover:border-white/20 text-slate-400 hover:text-white transition-all cursor-pointer bg-white/5"
                     >
-                      <Download className="h-4 w-4" />
+                      <Download className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 </div>
-                <div className="p-4 max-h-[400px] overflow-y-auto font-mono text-[11px] text-emerald-400">
-                  <pre className="text-left leading-relaxed">{activeFile.content}</pre>
+
+                {/* Editor Content with Line Numbers */}
+                <div className="flex-1 overflow-y-auto p-4 font-mono text-[11px] text-slate-300 flex leading-relaxed">
+                  {/* Line numbers column */}
+                  <div className="text-right text-slate-600 select-none pr-3 border-r border-white/5 font-mono">
+                    {activeFile.content.split('\n').map((_, lineIdx) => (
+                      <div key={lineIdx} className="h-5">{lineIdx + 1}</div>
+                    ))}
+                  </div>
+                  {/* Code content column */}
+                  <div className="pl-3 overflow-x-auto w-full text-left font-mono">
+                    {activeFile.content.split('\n').map((line, idx) => (
+                      <div key={idx} className="h-5 whitespace-pre">{line || ' '}</div>
+                    ))}
+                  </div>
                 </div>
+
+                {/* Bottom Bar */}
+                <div className="flex items-center justify-between px-4 py-2 bg-[#070A10] border-t border-white/5 text-[10px] text-slate-500 font-bold select-none">
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>Generated • 2.4s</span>
+                  </div>
+                  <span>{activeFile.content.split('\n').length} Lines</span>
+                </div>
+
               </div>
             ) : (
-              <div className="h-[450px] border border-dashed border-border bg-card/10 rounded-2xl flex flex-col items-center justify-center p-8 text-center space-y-2">
+              <div className="h-[520px] border border-dashed border-border bg-card/10 rounded-2xl flex flex-col items-center justify-center p-8 text-center space-y-2">
                 <HelpCircle className="h-8 w-8 text-muted-foreground animate-pulse" />
                 <p className="text-sm font-semibold text-foreground">No code compiled yet</p>
+                <p className="text-xs text-muted-foreground">Select a category and trigger compilation to preview files.</p>
               </div>
             )}
           </div>
+
         </div>
+
       </div>
     </MainLayout>
-  )
-}
-
-function ServerIcon(props: any) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <rect width="20" height="8" x="2" y="2" rx="2" ry="2" />
-      <rect width="20" height="8" x="2" y="14" rx="2" ry="2" />
-      <line x1="6" x2="6.01" y1="6" y2="6" />
-      <line x1="6" x2="6.01" y1="18" y2="18" />
-    </svg>
-  )
-}
-
-function MonitorIcon(props: any) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <rect width="20" height="14" x="2" y="3" rx="2" />
-      <line x1="8" x2="16" y1="21" y2="21" />
-      <line x1="12" x2="12" y1="17" y2="21" />
-    </svg>
   )
 }
