@@ -22,9 +22,12 @@ export function AccentStyleInjector() {
     }
   })
 
+  const hasSetInitialTheme = React.useRef(false)
+
   useEffect(() => {
-    if (settings?.theme) {
+    if (settings?.theme && !hasSetInitialTheme.current) {
       setTheme(settings.theme)
+      hasSetInitialTheme.current = true
     }
   }, [settings?.theme, setTheme])
 
