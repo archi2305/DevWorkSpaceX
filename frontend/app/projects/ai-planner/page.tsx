@@ -37,7 +37,13 @@ export default function AIProjectCopilotPage() {
     setPlan(null)
     
     try {
-      const data = await generateProjectPlan(prompt)
+      const data = await generateProjectPlan({
+        idea: prompt,
+        project_type: projectType,
+        difficulty,
+        timeline,
+        preferred_stack: techStackInput || undefined
+      })
       setPlan(data)
     } catch (err: any) {
       console.error(err)

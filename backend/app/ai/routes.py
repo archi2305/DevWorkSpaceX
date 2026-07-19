@@ -32,7 +32,13 @@ async def generate_project_plan_endpoint(
     request: ProjectPlanRequest,
     service: GeminiService = Depends(get_gemini_service)
 ):
-    return service.generate_project_plan(request.idea)
+    return service.generate_project_plan(
+        idea=request.idea,
+        project_type=request.project_type,
+        difficulty=request.difficulty,
+        timeline=request.timeline,
+        preferred_stack=request.preferred_stack
+    )
 
 @router.post(
     "/project-planner",

@@ -167,9 +167,13 @@ export interface ProjectPlanResponse {
 /**
  * Send request to generate a software project plan.
  */
-export async function generateProjectPlan(idea: string): Promise<ProjectPlanResponse> {
-  const response = await api.post<ProjectPlanResponse>('/api/ai/project-plan', {
-    idea
-  })
+export async function generateProjectPlan(params: {
+  idea: string
+  project_type: string
+  difficulty: string
+  timeline: string
+  preferred_stack?: string
+}): Promise<ProjectPlanResponse> {
+  const response = await api.post<ProjectPlanResponse>('/api/ai/project-plan', params)
   return response.data
 }

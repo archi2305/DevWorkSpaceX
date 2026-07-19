@@ -57,7 +57,14 @@ class AIService:
         """
         return self.generate(prompt)
 
-    def generate_project_plan(self, idea: str) -> ProjectPlanResponse:
+    def generate_project_plan(
+        self, 
+        idea: str, 
+        project_type: str, 
+        difficulty: str, 
+        timeline: str, 
+        preferred_stack: Optional[str] = None
+    ) -> ProjectPlanResponse:
         """
         Generate a project plan using the Groq model and return a validated ProjectPlanResponse.
         """
@@ -68,7 +75,9 @@ class AIService:
             )
         
         system_instruction = (
-            "You are a senior software architect. Generate a project plan for the provided project idea. "
+            "You are a senior software architect. Generate a complete software project plan. "
+            "Respect ALL constraints when generating the plan. "
+            "If a preferred stack is provided: DO NOT replace it with another stack. Recommend technologies compatible with it.\n\n"
             "You must return ONLY valid JSON with exactly the following structure:\n"
             "{\n"
             "  \"title\": \"...\",\n"
@@ -90,13 +99,22 @@ class AIService:
             "}\n"
             "Do not allow markdown. Do not allow explanations. Do not wrap JSON inside ``` blocks."
         )
+
+        user_content = (
+            f"Project Idea:\n{idea}\n\n"
+            f"Project Type:\n{project_type}\n\n"
+            f"Difficulty:\n{difficulty}\n\n"
+            f"Timeline:\n{timeline}\n\n"
+        )
+        if preferred_stack:
+            user_content += f"Preferred Stack:\n{preferred_stack}\n\n"
         
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": system_instruction},
-                    {"role": "user", "content": f"Project idea: {idea}"}
+                    {"role": "user", "content": user_content}
                 ],
                 response_format={"type": "json_object"},
                 temperature=0

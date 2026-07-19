@@ -51,6 +51,10 @@ class CopilotChatResponse(BaseModel):
 
 class ProjectPlanRequest(BaseModel):
     idea: str = Field(..., description="The project idea prompt description")
+    project_type: str = Field(..., description="Type of project")
+    difficulty: str = Field(..., description="Project implementation difficulty")
+    timeline: str = Field(..., description="Timeline estimation")
+    preferred_stack: Optional[str] = Field(None, description="Preferred technology stack")
 
 class TechStack(BaseModel):
     frontend: str = Field(..., description="Frontend framework/library name")
