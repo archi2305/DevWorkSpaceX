@@ -14,19 +14,37 @@ interface Message {
   content: string
 }
 
-export function AIChatPanel() {
+interface AIChatPanelProps {
+  blueprint?: any
+}
+
+export function AIChatPanel({ blueprint: propBlueprint }: AIChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(false)
+  const [activeBlueprint, setActiveBlueprint] = useState<any>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Auto-scroll to newest message
   useEffect(() => {
+    if (propBlueprint) {
+      setActiveBlueprint(propBlueprint)
+    } else {
+      const saved = localStorage.getItem('devworkspace_active_blueprint')
+      if (saved) {
+        setActiveBlueprint(JSON.parse(saved))
+      }
+    }
+  }, [propBlueprint])
+
+  const scrollToBottom = () => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
+  }
+
+  useEffect(() => {
+    scrollToBottom()
   }, [messages, loading])
 
-  // Real respond logic
   const handleSend = async (text: string) => {
     const userMsg: Message = {
       id: Math.random().toString(),
@@ -37,7 +55,7 @@ export function AIChatPanel() {
     setLoading(true)
 
     try {
-      const response = await generateChat(text)
+      const response = await generateChat(text, activeBlueprint)
       const aiMsg: Message = {
         id: Math.random().toString(),
         role: 'assistant',
@@ -46,11 +64,10 @@ export function AIChatPanel() {
       setMessages((prev) => [...prev, aiMsg])
     } catch (err: any) {
       console.error(err)
-      const errMsg = err.response?.data?.detail || 'Architect Chat failed. Please try again.'
       const aiErrorMsg: Message = {
         id: Math.random().toString(),
         role: 'assistant',
-        content: `⚠️ Error: ${errMsg}`
+        content: "Sorry, I couldn't process your request. Please try again."
       }
       setMessages((prev) => [...prev, aiErrorMsg])
     } finally {
@@ -59,26 +76,29 @@ export function AIChatPanel() {
   }
 
   return (
-    <div className="flex flex-col h-[650px] rounded-2xl border border-white/5 bg-[#0d0d0e]/60 backdrop-blur-xl overflow-hidden shadow-2xl">
-      {/* Header */}
+    <div className="flex flex-col h-[650px] rounded-2xl border border-border bg-card overflow-hidden shadow-sm hover:shadow-md transition-all glow-card">
       <ChatHeader />
 
-      {/* Messages Scroll Area */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth scrollbar-thin scrollbar-thumb-white/10"
+        className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth scrollbar-thin"
       >
         {messages.length === 0 ? (
-          <SuggestionChips onSelect={handleSend} />
+          <div className="space-y-4 text-center py-6">
+            <span className="text-2xl">✨</span>
+            <p className="text-xs text-muted-foreground">Ask anything about your architecture design...</p>
+            <SuggestionChips onSelect={handleSend} />
+          </div>
         ) : (
-          messages.map((msg) => (
-            <MessageBubble key={msg.id} message={msg} />
-          ))
+          <div className="space-y-4">
+            {messages.map((msg) => (
+              <MessageBubble key={msg.id} message={msg} />
+            ))}
+          </div>
         )}
         {loading && <TypingIndicator />}
       </div>
 
-      {/* Input */}
       <ChatInput onSend={handleSend} disabled={loading} />
     </div>
   )

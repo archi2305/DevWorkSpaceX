@@ -3,6 +3,7 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 import { Sparkles, User } from 'lucide-react'
+import { MarkdownRenderer } from './MarkdownRenderer'
 
 interface Message {
   id: string
@@ -29,10 +30,16 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       }`}>
         {isUser ? <User className="h-3 w-3" /> : <Sparkles className="h-3 w-3" />}
       </div>
-      <div className={`p-3 rounded-2xl text-xs text-left leading-relaxed ${
-        isUser ? 'bg-primary/10 text-white rounded-tr-none border border-primary/20' : 'bg-white/[0.02] text-muted-foreground rounded-tl-none border border-white/5'
+      <div className={`p-3.5 rounded-2xl text-xs text-left leading-relaxed ${
+        isUser ? 'bg-primary/10 text-white rounded-tr-none border border-primary/20' : 'bg-white/[0.02] text-muted-foreground rounded-tl-none border border-white/5 w-full'
       }`}>
-        <p className="whitespace-pre-line">{message.content}</p>
+        {isUser ? (
+          <p className="whitespace-pre-line">{message.content}</p>
+        ) : (
+          <div className="prose prose-invert max-w-none text-xs text-muted-foreground">
+            <MarkdownRenderer content={message.content} />
+          </div>
+        )}
       </div>
     </motion.div>
   )

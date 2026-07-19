@@ -25,7 +25,7 @@ from app.models.workspace_member import WorkspaceMember
 from app.models.document import Document, DocumentVersion
 from app.models.file_asset import FileAsset
 from app.models.comment import Comment, CommentReply
-from app.models.ai import AIConversation, AIMessage
+from app.models.ai import AIConversation, AIMessage, Blueprint
 from app.models.workspace import Workspace, APIKey, UserSession, ConnectedAccount, APIKeyUsageHistory
 from app.models.milestone import Milestone
 from app.models.release import Release

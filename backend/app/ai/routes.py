@@ -1,8 +1,15 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, HTTPException
+from sqlalchemy.orm import Session
+from typing import List, Optional
+import uuid
+from app.dependencies.db import get_db
+from app.dependencies.auth import get_current_user
+from app.models.user import User
+from app.models.ai import Blueprint
 from app.ai.service import GeminiService
-from app.ai.schemas import ProjectPlannerRequest, ProjectPlannerResponse, CopilotChatRequest, CopilotChatResponse, AITestRequest, AITestResponse, ProjectPlanRequest, ProjectPlanResponse, MilestonePlanRequest, MilestonePlanResponse, DatabaseDesignRequest, DatabaseDesignResponse, ApiDesignRequest, ApiDesignResponse, ArchitectureRequest, ArchitectureResponse, BlueprintRequest, BlueprintResponse, ChatRequest, ChatResponse
-from fastapi import HTTPException
+from app.ai.schemas import ProjectPlannerRequest, ProjectPlannerResponse, CopilotChatRequest, CopilotChatResponse, AITestRequest, AITestResponse, ProjectPlanRequest, ProjectPlanResponse, MilestonePlanRequest, MilestonePlanResponse, DatabaseDesignRequest, DatabaseDesignResponse, ApiDesignRequest, ApiDesignResponse, ArchitectureRequest, ArchitectureResponse, BlueprintRequest, BlueprintResponse, ChatRequest, ChatResponse, CodeGenerationRequest, CodeGenerationResponse, BlueprintCreate, BlueprintUpdate, BlueprintResponseSchema, DocumentationRequest, DocumentationResponse, ReviewRequest, ReviewResponse
 from pydantic import ValidationError
+from sqlalchemy import or_, desc, asc
 
 router = APIRouter(prefix="/api/ai", tags=["AI Integration"])
 
@@ -134,7 +141,43 @@ async def chat_endpoint(
     request: ChatRequest,
     service: GeminiService = Depends(get_gemini_service)
 ):
-    return service.chat(request.message)
+    return service.chat(request.message, request.project_context)
+
+@router.post(
+    "/generate-code",
+    response_model=CodeGenerationResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Generate software module code"
+)
+async def generate_code_endpoint(
+    request: CodeGenerationRequest,
+    service: GeminiService = Depends(get_gemini_service)
+):
+    return service.generate_code(request)
+
+@router.post(
+    "/generate-docs",
+    response_model=DocumentationResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Generate software documentation file"
+)
+async def generate_docs_endpoint(
+    request: DocumentationRequest,
+    service: GeminiService = Depends(get_gemini_service)
+):
+    return service.generate_documentation(request)
+
+@router.post(
+    "/review",
+    response_model=ReviewResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Review generated project specs blueprint"
+)
+async def generate_review_endpoint(
+    request: ReviewRequest,
+    service: GeminiService = Depends(get_gemini_service)
+):
+    return service.generate_review(request)
 
 @router.post(
     "/project-planner",
@@ -292,3 +335,153 @@ async def copilot_chat_refinement(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Failed to parse copilot response: {str(e)}"
         )
+
+@router.post("/blueprints", response_model=BlueprintResponseSchema, status_code=status.HTTP_201_CREATED)
+def create_blueprint(
+    request: BlueprintCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    blueprint = Blueprint(
+        user_id=current_user.id,
+        title=request.title,
+        description=request.description,
+        status=request.status or "Draft",
+        overview=request.overview,
+        tech_stack=request.tech_stack,
+        features=request.features,
+        database_design=request.database_design,
+        api_design=request.api_design,
+        architecture=request.architecture,
+        milestones=request.milestones,
+        generated_code=request.generated_code,
+        chat_history=request.chat_history,
+        metadata_info=request.metadata_info
+    )
+    db.add(blueprint)
+    db.commit()
+    db.refresh(blueprint)
+    return blueprint
+
+@router.get("/blueprints", response_model=List[BlueprintResponseSchema])
+def list_blueprints(
+    search: Optional[str] = None,
+    status: Optional[str] = None,
+    sort: Optional[str] = "newest",
+    include_archived: bool = False,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    query = db.query(Blueprint).filter(Blueprint.user_id == current_user.id)
+    
+    if not include_archived:
+        query = query.filter(Blueprint.is_archived == False)
+
+    if status:
+        query = query.filter(Blueprint.status == status)
+
+    if search:
+        search_filter = f"%{search}%"
+        query = query.filter(
+            or_(
+                Blueprint.title.ilike(search_filter),
+                Blueprint.description.ilike(search_filter),
+                Blueprint.status.ilike(search_filter)
+            )
+        )
+
+    if sort == "oldest":
+        query = query.order_by(asc(Blueprint.created_at))
+    elif sort == "recently_modified":
+        query = query.order_by(desc(Blueprint.updated_at))
+    else:
+        query = query.order_by(desc(Blueprint.created_at))
+
+    return query.all()
+
+@router.get("/blueprints/{blueprint_id}", response_model=BlueprintResponseSchema)
+def get_blueprint_detail(
+    blueprint_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    blueprint = db.query(Blueprint).filter(
+        Blueprint.id == blueprint_id,
+        Blueprint.user_id == current_user.id
+    ).first()
+    if not blueprint:
+        raise HTTPException(status_code=404, detail="Blueprint not found")
+    return blueprint
+
+@router.put("/blueprints/{blueprint_id}", response_model=BlueprintResponseSchema)
+def update_blueprint(
+    blueprint_id: uuid.UUID,
+    request: BlueprintUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    blueprint = db.query(Blueprint).filter(
+        Blueprint.id == blueprint_id,
+        Blueprint.user_id == current_user.id
+    ).first()
+    if not blueprint:
+        raise HTTPException(status_code=404, detail="Blueprint not found")
+
+    update_data = request.model_dump(exclude_unset=True)
+    for key, val in update_data.items():
+        setattr(blueprint, key, val)
+
+    db.commit()
+    db.refresh(blueprint)
+    return blueprint
+
+@router.post("/blueprints/{blueprint_id}/duplicate", response_model=BlueprintResponseSchema)
+def duplicate_blueprint(
+    blueprint_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    blueprint = db.query(Blueprint).filter(
+        Blueprint.id == blueprint_id,
+        Blueprint.user_id == current_user.id
+    ).first()
+    if not blueprint:
+        raise HTTPException(status_code=404, detail="Blueprint not found")
+
+    duplicated = Blueprint(
+        user_id=current_user.id,
+        title=f"{blueprint.title} (Copy)",
+        description=blueprint.description,
+        status="Draft",
+        overview=blueprint.overview,
+        tech_stack=blueprint.tech_stack,
+        features=blueprint.features,
+        database_design=blueprint.database_design,
+        api_design=blueprint.api_design,
+        architecture=blueprint.architecture,
+        milestones=blueprint.milestones,
+        generated_code=blueprint.generated_code,
+        chat_history=blueprint.chat_history,
+        metadata_info=blueprint.metadata_info
+    )
+    db.add(duplicated)
+    db.commit()
+    db.refresh(duplicated)
+    return duplicated
+
+@router.delete("/blueprints/{blueprint_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_blueprint(
+    blueprint_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    blueprint = db.query(Blueprint).filter(
+        Blueprint.id == blueprint_id,
+        Blueprint.user_id == current_user.id
+    ).first()
+    if not blueprint:
+        raise HTTPException(status_code=404, detail="Blueprint not found")
+
+    db.delete(blueprint)
+    db.commit()
+    return None

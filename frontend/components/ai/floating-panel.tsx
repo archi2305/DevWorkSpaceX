@@ -109,6 +109,7 @@ export function FloatingAIPanel() {
 
   const handleSendPrompt = async (e?: React.FormEvent, customPrompt?: string) => {
     if (e) e.preventDefault()
+    if (loading) return
     
     const queryStr = customPrompt || prompt
     if (!queryStr.trim()) return
@@ -126,115 +127,23 @@ export function FloatingAIPanel() {
     setGeneratedTasks([])
 
     try {
-      const response = await aiService.chat(queryStr, activeConvoId)
-      if (!activeConvoId) {
-        setActiveConvoId(response.conversation_id)
-        loadConversations()
-      } else {
-        // Append response
-        const tempAssistantMsg: AIMessage = {
-          id: response.conversation_id + Math.random().toString(),
-          role: 'assistant',
-          content: response.reply,
-          created_at: new Date().toISOString()
-        }
-        setMessages((prev) => [...prev, tempAssistantMsg])
+      const response = await aiService.chat(queryStr)
+      const tempAssistantMsg: AIMessage = {
+        id: Math.random().toString(),
+        role: 'assistant',
+        content: response.reply,
+        created_at: new Date().toISOString()
       }
+      setMessages((prev) => [...prev, tempAssistantMsg])
     } catch (err) {
       console.error('AI chat delivery failed', err)
       const errorMsg: AIMessage = {
-        id: 'err',
+        id: Math.random().toString(),
         role: 'assistant',
-        content: '⚠️ Failed to connect to AI Assistant services. Please check your network.',
+        content: 'Sorry, something went wrong. Please try again.',
         created_at: new Date().toISOString()
       }
       setMessages((prev) => [...prev, errorMsg])
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Predefined Action triggers
-  const handleTriggerSprintPlan = async () => {
-    setMessages((prev) => [...prev, {
-      id: 'usr-sprint',
-      role: 'user',
-      content: 'Suggest Sprint Plan',
-      created_at: new Date().toISOString()
-    }])
-    setLoading(true)
-    try {
-      const res = await aiService.getSprintPlan()
-      setMessages((prev) => [...prev, {
-        id: 'ast-sprint',
-        role: 'assistant',
-        content: res.reply,
-        created_at: new Date().toISOString()
-      }])
-    } catch {
-      setMessages((prev) => [...prev, {
-        id: 'err-sprint',
-        role: 'assistant',
-        content: '⚠️ Failed to compile sprint configuration suggestions.',
-        created_at: new Date().toISOString()
-      }])
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleTriggerBlockers = async () => {
-    setMessages((prev) => [...prev, {
-      id: 'usr-block',
-      role: 'user',
-      content: 'Find Blockers',
-      created_at: new Date().toISOString()
-    }])
-    setLoading(true)
-    try {
-      const res = await aiService.getBlockers()
-      setMessages((prev) => [...prev, {
-        id: 'ast-block',
-        role: 'assistant',
-        content: res.reply,
-        created_at: new Date().toISOString()
-      }])
-    } catch {
-      setMessages((prev) => [...prev, {
-        id: 'err-block',
-        role: 'assistant',
-        content: '⚠️ Failed to retrieve blocker details.',
-        created_at: new Date().toISOString()
-      }])
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleTriggerGenerateTasks = async () => {
-    setMessages((prev) => [...prev, {
-      id: 'usr-tasks',
-      role: 'user',
-      content: 'Generate Tasks',
-      created_at: new Date().toISOString()
-    }])
-    setLoading(true)
-    try {
-      const tasks = await aiService.generateTasks()
-      setGeneratedTasks(tasks)
-      setMessages((prev) => [...prev, {
-        id: 'ast-tasks',
-        role: 'assistant',
-        content: `I have generated **${tasks.length} proposed tasks** tailored to your current project scope. Review them below to allocate them to your active Kanban board.`,
-        created_at: new Date().toISOString()
-      }])
-    } catch {
-      setMessages((prev) => [...prev, {
-        id: 'err-tasks',
-        role: 'assistant',
-        content: '⚠️ Failed to generate tasks suggestions.',
-        created_at: new Date().toISOString()
-      }])
     } finally {
       setLoading(false)
     }
@@ -386,19 +295,19 @@ export function FloatingAIPanel() {
                   
                   <div className="grid grid-cols-2 gap-2">
                     <button
-                      onClick={handleTriggerSprintPlan}
+                      onClick={() => handleSendPrompt(undefined, "Suggest Sprint Plan")}
                       className="p-2.5 rounded-xl border border-white/[0.04] bg-[#1D2024] hover:bg-[#23272B] text-left transition-colors text-[10px] font-medium text-white flex items-center gap-1.5 cursor-pointer"
                     >
                       <ClipboardList className="h-3.5 w-3.5 text-[#5BB98C]" /> Suggest Sprint Plan
                     </button>
                     <button
-                      onClick={handleTriggerBlockers}
+                      onClick={() => handleSendPrompt(undefined, "Find Blockers")}
                       className="p-2.5 rounded-xl border border-white/[0.04] bg-[#1D2024] hover:bg-[#23272B] text-left transition-colors text-[10px] font-medium text-white flex items-center gap-1.5 cursor-pointer"
                     >
                       <AlertTriangle className="h-3.5 w-3.5 text-yellow-500" /> Find Blockers
                     </button>
                     <button
-                      onClick={handleTriggerGenerateTasks}
+                      onClick={() => handleSendPrompt(undefined, "Generate proposed tasks")}
                       className="p-2.5 rounded-xl border border-white/[0.04] bg-[#1D2024] hover:bg-[#23272B] text-left transition-colors text-[10px] font-medium text-white flex items-center gap-1.5 cursor-pointer"
                     >
                       <Sparkles className="h-3.5 w-3.5 text-blue-400" /> Generate Tasks
@@ -497,7 +406,8 @@ export function FloatingAIPanel() {
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="Ask workspace copilot..."
-                className="flex-1 px-3 py-2 border border-white/[0.06] bg-[#1D2024] text-xs text-white placeholder-[#7E848C] rounded-xl outline-none focus:border-[#5BB98C] transition-colors"
+                disabled={loading}
+                className="flex-1 px-3 py-2 border border-white/[0.06] bg-[#1D2024] text-xs text-white placeholder-[#7E848C] rounded-xl outline-none focus:border-[#5BB98C] transition-colors disabled:opacity-50"
               />
               {prompt.trim() && (
                 <button

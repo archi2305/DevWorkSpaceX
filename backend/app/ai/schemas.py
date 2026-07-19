@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, Any
+import uuid
+from datetime import datetime
 
 class AITestRequest(BaseModel):
     prompt: str = Field(..., description="Prompt payload for AI integration test")
@@ -186,6 +188,112 @@ class BlueprintResponse(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str = Field(..., description="User query message to the AI Architect")
+    project_context: Optional[BlueprintResponse] = Field(None, description="Optional project context blueprint")
 
 class ChatResponse(BaseModel):
     reply: str = Field(..., description="Response reply from the AI Architect")
+
+class GeneratedFile(BaseModel):
+    filename: str = Field(..., description="Name of the generated source code file")
+    language: str = Field(..., description="Programming language of the file")
+    content: str = Field(..., description="Source code content")
+
+class CodeGenerationRequest(BaseModel):
+    category: str = Field(..., description="Category: backend, frontend, database, api, utilities, documentation")
+    module: str = Field(..., description="Specific module name to generate")
+    language: str = Field(..., description="Target language")
+    framework: str = Field(..., description="Target framework")
+    coding_style: Optional[str] = Field("standard", description="Preferred coding style")
+    comment_level: Optional[str] = Field("normal", description="Verbosity level of code comments")
+    include_tests: bool = Field(False, description="Whether to include unit tests")
+    generate_doc: bool = Field(False, description="Whether to include documentation notes")
+    include_docs: Optional[bool] = Field(False, description="Alias for generate_doc")
+    project_context: Optional[Any] = Field(None, description="Project context blueprint or details dictionary")
+    blueprint_context: Optional[Any] = Field(None, description="Deprecated alias for project_context")
+    project_title: Optional[str] = Field(None, description="Deprecated alias for project title")
+
+class CodeGenerationResponse(BaseModel):
+    files: List[GeneratedFile] = Field(..., description="List of generated module files")
+
+class BlueprintCreate(BaseModel):
+    title: str = Field(..., description="Project blueprint name")
+    description: Optional[str] = Field(None, description="Optional brief description")
+    status: Optional[str] = Field("Draft", description="Blueprint state: Draft or Completed")
+    overview: Optional[dict] = Field(None, description="Project plan overview JSON payload")
+    tech_stack: Optional[dict] = Field(None, description="Technology stack details")
+    features: Optional[list] = Field(None, description="List of key requirements/features")
+    database_design: Optional[dict] = Field(None, description="Database schema details")
+    api_design: Optional[dict] = Field(None, description="API endpoints design")
+    architecture: Optional[dict] = Field(None, description="Architecture style mapping")
+    milestones: Optional[dict] = Field(None, description="Milestone timelines planning")
+    generated_code: Optional[list] = Field(None, description="List of generated code files")
+    chat_history: Optional[list] = Field(None, description="Workspace Chat history log logs")
+    metadata_info: Optional[dict] = Field(None, description="Additional custom metadata fields")
+
+class BlueprintUpdate(BaseModel):
+    title: Optional[str] = Field(None)
+    description: Optional[str] = Field(None)
+    status: Optional[str] = Field(None)
+    is_archived: Optional[bool] = Field(None)
+    overview: Optional[dict] = Field(None)
+    tech_stack: Optional[dict] = Field(None)
+    features: Optional[list] = Field(None)
+    database_design: Optional[dict] = Field(None)
+    api_design: Optional[dict] = Field(None)
+    architecture: Optional[dict] = Field(None)
+    milestones: Optional[dict] = Field(None)
+    generated_code: Optional[list] = Field(None)
+    chat_history: Optional[list] = Field(None)
+    metadata_info: Optional[dict] = Field(None)
+
+class BlueprintResponseSchema(BaseModel):
+    id: uuid.UUID
+    user_id: uuid.UUID
+    title: str
+    description: Optional[str]
+    status: str
+    is_archived: bool
+    created_at: datetime
+    updated_at: datetime
+    overview: Optional[dict] = None
+    tech_stack: Optional[dict] = None
+    features: Optional[list] = None
+    database_design: Optional[dict] = None
+    api_design: Optional[dict] = None
+    architecture: Optional[dict] = None
+    milestones: Optional[dict] = None
+    generated_code: Optional[list] = None
+    chat_history: Optional[list] = None
+    metadata_info: Optional[dict] = None
+
+    class Config:
+        from_attributes = True
+
+class DocumentationRequest(BaseModel):
+    project_context: Any = Field(..., description="Project specification blueprint context")
+    doc_type: str = Field(..., description="Type: readme, installation, overview, folder_structure, architecture, database, api, deployment, env_vars, developer")
+
+class DocumentationResponse(BaseModel):
+    doc_type: str = Field(..., description="Documentation type identifier")
+    filename: str = Field(..., description="Generated file name (e.g. README.md)")
+    content: str = Field(..., description="Generated Markdown content")
+
+class ReviewRecommendation(BaseModel):
+    title: str = Field(..., description="Short title of recommendation")
+    priority: str = Field(..., description="Priority: HIGH, MEDIUM, LOW")
+    description: str = Field(..., description="Explanation of issue and recomendation")
+    fix_snippet: Optional[str] = Field(None, description="Suggested fix source code snippet")
+
+class CategoryReview(BaseModel):
+    category: str = Field(..., description="Review Category name")
+    strengths: List[str] = Field(..., description="Strengths identified")
+    weaknesses: List[str] = Field(..., description="Weakness items")
+    recommendations: List[ReviewRecommendation] = Field(..., description="Recommendations list")
+
+class ReviewRequest(BaseModel):
+    project_context: Any = Field(..., description="Project specification blueprint context")
+
+class ReviewResponse(BaseModel):
+    scores: dict = Field(..., description="Dictionary of category and overall project scores out of 100")
+    categories: List[CategoryReview] = Field(..., description="Category reviews details list")
+    overall_summary: str = Field(..., description="Brief architectural review summary summary")

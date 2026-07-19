@@ -3,27 +3,49 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
-  --background: #09090b;
-  --foreground: #fafafa;
-  --card: #171a1d;
-  --card-foreground: #fafafa;
-  --popover: #171a1d;
-  --popover-foreground: #fafafa;
-  --primary: #5bb98c;
-  --primary-foreground: #09090b;
-  --secondary: #27272a;
-  --secondary-foreground: #fafafa;
-  --muted: #27272a;
-  --muted-foreground: #a1a1aa;
-  --accent: #27272a;
-  --accent-foreground: #fafafa;
-  --destructive: #ef4444;
-  --destructive-foreground: #fafafa;
-  --border: #27272a;
-  --input: #27272a;
-  --ring: #5bb98c;
-  --radius: 0.5rem;
+  --background: #F8FAFC;
+  --foreground: #0F172A;
+  --card: #FFFFFF;
+  --card-foreground: #0F172A;
+  --popover: #FFFFFF;
+  --popover-foreground: #0F172A;
+  --primary: #10B981; /* Mint accent */
+  --primary-foreground: #FFFFFF;
+  --secondary: #F1F5F9;
+  --secondary-foreground: #475569;
+  --muted: #F8FAFC;
+  --muted-foreground: #64748B;
+  --accent: #F1F5F9;
+  --accent-foreground: #0F172A;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --border: #E8EDF4;
+  --input: #F1F5F9;
+  --ring: #10B981;
+  --radius: 1rem;
+}
+
+.dark {
+  --background: #09090B;
+  --foreground: #F8FAFC;
+  --card: #18181B;
+  --card-foreground: #F8FAFC;
+  --popover: #18181B;
+  --popover-foreground: #F8FAFC;
+  --primary: #10B981;
+  --primary-foreground: #09090B;
+  --secondary: #27272A;
+  --secondary-foreground: #A1A1AA;
+  --muted: #18181B;
+  --muted-foreground: #71717A;
+  --accent: #27272A;
+  --accent-foreground: #F8FAFC;
+  --destructive: #EF4444;
+  --destructive-foreground: #F8FAFC;
+  --border: #27272A;
+  --input: #27272A;
+  --ring: #10B981;
+  --radius: 1rem;
 }
 
 * {
@@ -33,4 +55,32 @@
 body {
   background-color: var(--background);
   color: var(--foreground);
+  font-family: var(--font-inter), sans-serif;
+  overflow-x: hidden;
+}
+
+/* Custom premium scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(120, 120, 120, 0.1);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(120, 120, 120, 0.2);
+}
+
+/* Glow effects */
+.glow-card {
+  position: relative;
+  transition: all 0.3s ease;
+}
+.glow-card:hover {
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.05);
+  border-color: rgba(16, 185, 129, 0.2);
 }

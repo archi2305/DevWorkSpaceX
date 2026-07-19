@@ -66,3 +66,47 @@ class PromptTemplate(Base):
 
     user = relationship("User", backref="prompt_templates")
 
+
+from sqlalchemy import JSON, Boolean
+
+class Blueprint(Base):
+    """
+    Model storing saved project software architect blueprints.
+    """
+    __tablename__ = "blueprints"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(50), default="Draft", nullable=False) # 'Draft' or 'Completed'
+    is_archived: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    # JSON specification payloads
+    overview: Mapped[dict] = mapped_column(JSON, nullable=True)
+    tech_stack: Mapped[dict] = mapped_column(JSON, nullable=True)
+    features: Mapped[list] = mapped_column(JSON, nullable=True)
+    database_design: Mapped[dict] = mapped_column(JSON, nullable=True)
+    api_design: Mapped[dict] = mapped_column(JSON, nullable=True)
+    architecture: Mapped[dict] = mapped_column(JSON, nullable=True)
+    milestones: Mapped[dict] = mapped_column(JSON, nullable=True)
+    generated_code: Mapped[list] = mapped_column(JSON, nullable=True)
+    chat_history: Mapped[list] = mapped_column(JSON, nullable=True)
+    metadata_info: Mapped[dict] = mapped_column(JSON, nullable=True)
+
+    user = relationship("User", backref="blueprints")
+
