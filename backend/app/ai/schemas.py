@@ -73,3 +73,50 @@ class ProjectPlanResponse(BaseModel):
     tech_stack: TechStack = Field(..., description="Recommended technology stack")
     milestones: List[str] = Field(..., description="Key milestones listed for delivery")
     tasks: List[ProjectTask] = Field(..., description="Detailed tasks required for the project")
+
+class MilestonePlanRequest(BaseModel):
+    project_title: str = Field(..., description="The title of the project")
+    milestone: str = Field(..., description="The milestone name to plan for")
+    preferred_stack: Optional[str] = Field(None, description="Preferred technology stack")
+
+class ImplementationTask(BaseModel):
+    title: str = Field(..., description="Task title")
+    description: str = Field(..., description="Detailed task description")
+    priority: str = Field(..., description="Task priority (High, Medium, Low)")
+    estimated_hours: int = Field(..., description="Estimated hours to complete")
+
+class MilestonePlanResponse(BaseModel):
+    milestone: str = Field(..., description="Planned milestone name")
+    overview: str = Field(..., description="Milestone overview and description")
+    subtasks: List[ImplementationTask] = Field(..., description="List of implementation subtasks")
+    api_endpoints: List[str] = Field(..., description="List of required API endpoints")
+    database_tables: List[str] = Field(..., description="List of database tables involved")
+    folder_structure: str = Field(..., description="Proposed files and folder structure path list")
+
+class DatabaseDesignRequest(BaseModel):
+    project_title: str = Field(..., description="The title of the project")
+    description: str = Field(..., description="Detailed description of the project and its data needs")
+    preferred_database: Optional[str] = Field(None, description="Preferred database technology")
+
+class DatabaseColumn(BaseModel):
+    name: str = Field(..., description="Column name")
+    type: str = Field(..., description="Column data type")
+    primary_key: bool = Field(..., description="Whether this column is a primary key")
+    nullable: bool = Field(..., description="Whether this column allows null values")
+    unique: bool = Field(..., description="Whether this column values must be unique")
+
+class DatabaseTable(BaseModel):
+    name: str = Field(..., description="Table name")
+    description: str = Field(..., description="Description of the table purpose")
+    columns: List[DatabaseColumn] = Field(..., description="List of columns in this table")
+
+class Relationship(BaseModel):
+    from_table: str = Field(..., description="Origin table name")
+    to_table: str = Field(..., description="Destination table name")
+    relationship_type: str = Field(..., description="Type of relationship (e.g. One-to-Many, Many-to-Many)")
+
+class DatabaseDesignResponse(BaseModel):
+    database: str = Field(..., description="Selected database name")
+    tables: List[DatabaseTable] = Field(..., description="List of tables in the design")
+    relationships: List[Relationship] = Field(..., description="List of relationships between tables")
+    indexes: List[str] = Field(..., description="List of recommended indexes")

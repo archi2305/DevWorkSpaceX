@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, status
 from app.ai.service import GeminiService
-from app.ai.schemas import ProjectPlannerRequest, ProjectPlannerResponse, CopilotChatRequest, CopilotChatResponse, AITestRequest, AITestResponse, ProjectPlanRequest, ProjectPlanResponse
+from app.ai.schemas import ProjectPlannerRequest, ProjectPlannerResponse, CopilotChatRequest, CopilotChatResponse, AITestRequest, AITestResponse, ProjectPlanRequest, ProjectPlanResponse, MilestonePlanRequest, MilestonePlanResponse, DatabaseDesignRequest, DatabaseDesignResponse
 from fastapi import HTTPException
 from pydantic import ValidationError
 
@@ -38,6 +38,38 @@ async def generate_project_plan_endpoint(
         difficulty=request.difficulty,
         timeline=request.timeline,
         preferred_stack=request.preferred_stack
+    )
+
+@router.post(
+    "/milestone-plan",
+    response_model=MilestonePlanResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Generate detailed implementation roadmap for a single milestone"
+)
+async def generate_milestone_plan_endpoint(
+    request: MilestonePlanRequest,
+    service: GeminiService = Depends(get_gemini_service)
+):
+    return service.generate_milestone_plan(
+        project_title=request.project_title,
+        milestone=request.milestone,
+        preferred_stack=request.preferred_stack
+    )
+
+@router.post(
+    "/database-design",
+    response_model=DatabaseDesignResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Generate production-ready database design"
+)
+async def generate_database_design_endpoint(
+    request: DatabaseDesignRequest,
+    service: GeminiService = Depends(get_gemini_service)
+):
+    return service.generate_database_design(
+        project_title=request.project_title,
+        description=request.description,
+        preferred_database=request.preferred_database
     )
 
 @router.post(
