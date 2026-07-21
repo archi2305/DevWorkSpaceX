@@ -26,7 +26,10 @@ export function AccentStyleInjector() {
 
   useEffect(() => {
     if (settings?.theme && !hasSetInitialTheme.current) {
-      setTheme(settings.theme)
+      const localPref = localStorage.getItem('theme')
+      if (!localPref) {
+        setTheme(settings.theme || 'dark')
+      }
       hasSetInitialTheme.current = true
     }
   }, [settings?.theme, setTheme])
