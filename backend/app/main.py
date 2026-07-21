@@ -55,11 +55,24 @@ from app.middleware.security import SecurityHeadersMiddleware, RateLimiterMiddle
 setup_logging(settings.LOG_LEVEL, settings.LOG_FORMAT)
 logger = logging.getLogger(__name__)
 
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        from app.database.init_db import init_db
+        init_db()
+        logger.info("Database schema initialized successfully on startup.")
+    except Exception as e:
+        logger.error(f"Database initialization error on startup: {e}")
+    yield
+
 # Initialize the FastAPI app
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="Core backend services for DevWorkspace X SaaS workspace",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # Register Rate Limiter & Security Headers first (outermost middleware)
