@@ -82,7 +82,7 @@ export const fileService = {
    * Get direct download/preview URL for a file.
    */
   getDownloadUrl(id: string): string {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001'
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
     return `${baseUrl}/files/download/${id}`
   }
 }

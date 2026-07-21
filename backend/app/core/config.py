@@ -13,7 +13,10 @@ class Settings(BaseModel):
     DEBUG: bool = os.getenv("DEBUG", "true").lower() == "true"
     
     # Database
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://archisnehi@localhost:5432/devworkspacex_db")
+    DATABASE_URL: str = (
+        os.getenv("DATABASE_URL", "postgresql://archisnehi@localhost:5432/devworkspacex_db")
+        .replace("postgres://", "postgresql://", 1)
+    )
     
     # Redis
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
@@ -27,13 +30,13 @@ class Settings(BaseModel):
     # CORS
     CORS_ORIGINS: List[str] = [
         origin.strip()
-        for origin in os.getenv("CORS_ORIGINS", os.getenv("ALLOWED_ORIGINS", "")).split(",")
+        for origin in os.getenv("CORS_ORIGINS", os.getenv("ALLOWED_ORIGINS", os.getenv("FRONTEND_URL", "http://localhost:3000,http://127.0.0.1:3000"))).split(",")
         if origin.strip()
     ]
     ALLOWED_ORIGINS: List[str] = CORS_ORIGINS  # Alias for compatibility
 
     # OAuth redirect base (frontend URL)
-    OAUTH_REDIRECT_BASE_URL: str = os.getenv("OAUTH_REDIRECT_BASE_URL", "http://localhost:3000")
+    OAUTH_REDIRECT_BASE_URL: str = os.getenv("OAUTH_REDIRECT_BASE_URL", os.getenv("FRONTEND_URL", "http://localhost:3000"))
 
     # Integration OAuth credentials (empty = mock mode)
     GITHUB_CLIENT_ID: str = os.getenv("GITHUB_CLIENT_ID", "")
