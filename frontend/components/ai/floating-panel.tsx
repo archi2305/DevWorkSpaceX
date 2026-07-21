@@ -39,6 +39,7 @@ export function FloatingAIPanel() {
   const [generatedTasks, setGeneratedTasks] = useState<AIGeneratedTask[]>([])
   
   const scrollRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
 
   // Prompt library templates
   const [promptTemplates, setPromptTemplates] = useState<any[]>([])
@@ -59,11 +60,28 @@ export function FloatingAIPanel() {
   }, [activeConvoId])
 
   useEffect(() => {
-    // Auto-scroll chat box
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [messages, loading, generatedTasks])
+
+  // Click outside to close drawer
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
+        // Only close if clicking outside panel and not on the toggle button
+        const fab = document.getElementById('ai-floating-fab')
+        if (fab && fab.contains(event.target as Node)) return
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
 
   const loadConversations = async () => {
     try {
@@ -99,48 +117,62 @@ export function FloatingAIPanel() {
     try {
       const history = await aiService.getMessages(id)
       setMessages(history)
-      setGeneratedTasks([])
     } catch (err) {
-      console.error('Failed to load messages', err)
+      console.error('Failed to fetch conversation history', err)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleSendPrompt = async (e?: React.FormEvent, customPrompt?: string) => {
-    if (e) e.preventDefault()
-    if (loading) return
-    
-    const queryStr = customPrompt || prompt
-    if (!queryStr.trim()) return
+  const handleNewConversation = () => {
+    setActiveConvoId(undefined)
+    setMessages([])
+    setGeneratedTasks([])
+    setShowThreadHistory(false)
+  }
 
-    // Optimistically update UI thread with user message
+  const handleSendPrompt = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    if (!prompt.trim() || loading) return
+
+    const userMsgText = prompt
+    setPrompt('')
+
+    // Append optimistic user message
     const tempUserMsg: AIMessage = {
       id: Math.random().toString(),
       role: 'user',
-      content: queryStr,
+      content: userMsgText,
       created_at: new Date().toISOString()
     }
     setMessages((prev) => [...prev, tempUserMsg])
-    setPrompt('')
     setLoading(true)
-    setGeneratedTasks([])
 
     try {
-      const response = await aiService.chat(queryStr)
-      const tempAssistantMsg: AIMessage = {
+      const res = await aiService.chat(userMsgText, activeConvoId)
+      
+      if (!activeConvoId && res.conversation_id) {
+        setActiveConvoId(res.conversation_id)
+        loadConversations()
+      }
+
+      const aiMsg: AIMessage = {
         id: Math.random().toString(),
         role: 'assistant',
-        content: response.reply,
+        content: res.reply,
         created_at: new Date().toISOString()
       }
-      setMessages((prev) => [...prev, tempAssistantMsg])
+      setMessages((prev) => [...prev, aiMsg])
+
+      if ((res as any).tasks && (res as any).tasks.length > 0) {
+        setGeneratedTasks((res as any).tasks)
+      }
     } catch (err) {
-      console.error('AI chat delivery failed', err)
+      console.error('Failed to process AI response', err)
       const errorMsg: AIMessage = {
         id: Math.random().toString(),
         role: 'assistant',
-        content: 'Sorry, something went wrong. Please try again.',
+        content: 'Apologies, I ran into an error processing your request. Please try again.',
         created_at: new Date().toISOString()
       }
       setMessages((prev) => [...prev, errorMsg])
@@ -149,249 +181,184 @@ export function FloatingAIPanel() {
     }
   }
 
-  const handleImportTask = async (task: AIGeneratedTask, index: number) => {
+  const handleConfirmTask = async (taskItem: AIGeneratedTask, index: number) => {
     try {
       await taskService.createTask({
-        title: task.title,
-        description: task.description,
-        priority: task.priority,
-        status: task.status,
-        completed: false
+        title: taskItem.title,
+        description: taskItem.description,
+        priority: taskItem.priority || 'medium',
+        status: 'todo'
       })
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
-      queryClient.invalidateQueries({ queryKey: ['calendar-events'] })
-      // Remove imported task from preview list
+      queryClient.invalidateQueries({ queryKey: ['dashboard-data'] })
+
       setGeneratedTasks((prev) => prev.filter((_, idx) => idx !== index))
     } catch (err) {
-      console.error('Failed to import task', err)
+      console.error('Failed to create task from AI recommendation', err)
     }
-  }
-
-  const handleDeleteThread = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    try {
-      await aiService.deleteConversation(id)
-      setConversations((prev) => prev.filter((c) => c.id !== id))
-      if (activeConvoId === id) {
-        setActiveConvoId(undefined)
-        setMessages([])
-      }
-    } catch (err) {
-      console.error('Failed to delete thread', err)
-    }
-  }
-
-  const handleResetChat = () => {
-    setActiveConvoId(undefined)
-    setMessages([])
-    setGeneratedTasks([])
-    setShowThreadHistory(false)
   }
 
   return (
     <>
-      {/* Floating Sparkle Summoner Button */}
+      {/* Floating Trigger Button (FAB) */}
       <motion.button
-        whileHover={{ scale: 1.08 }}
-        whileTap={{ scale: 0.95 }}
+        id="ai-floating-fab"
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 h-12 w-12 rounded-full bg-[#5BB98C] text-[#111315] flex items-center justify-center shadow-lg shadow-[#5BB98C]/25 cursor-pointer z-40 border border-white/10"
-        title="AI Copilot Assistant"
+        whileHover={{ scale: 1.08 }}
+        whileTap={{ scale: 0.92 }}
+        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-2xl hover:shadow-primary/30 transition-all cursor-pointer border border-primary/20"
+        title="Toggle AI Architect Copilot"
       >
-        <Sparkles className="h-5 w-5" />
+        {isOpen ? <X className="h-6 w-6" /> : <Sparkles className="h-6 w-6" />}
       </motion.button>
 
+      {/* Slide-in Drawer Panel */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 30, scale: 0.95 }}
+            ref={panelRef}
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 30, scale: 0.95 }}
-            className="fixed bottom-22 right-6 w-96 h-[550px] border border-white/[0.06] bg-[#171A1D] rounded-2xl flex flex-col overflow-hidden shadow-2xl z-40"
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="fixed bottom-24 right-6 w-[420px] max-w-[calc(100vw-3rem)] h-[620px] max-h-[calc(100vh-8rem)] rounded-3xl border border-border bg-card/95 backdrop-blur-xl shadow-2xl z-50 flex flex-col overflow-hidden text-left"
           >
             {/* Header */}
-            <div className="p-4 border-b border-white/[0.06] bg-[#1D2024] flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Bot className="h-5 w-5 text-[#5BB98C]" />
+            <div className="p-4 border-b border-border bg-white/[0.01] flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Bot className="h-4.5 w-4.5" />
+                </div>
                 <div>
-                  <h3 className="text-xs font-bold text-white leading-none">AI Assistant</h3>
-                  <span className="text-[9px] text-[#A7ADB5]">Linear Copilot Workspace v1.0</span>
+                  <h3 className="text-xs font-bold text-foreground">AI Architect Copilot</h3>
+                  <p className="text-[9px] text-muted-foreground">DevWorkspace Assistant</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <button
+                  type="button"
                   onClick={() => setShowThreadHistory(!showThreadHistory)}
-                  className={`p-1.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer ${showThreadHistory ? 'text-[#5BB98C]' : 'text-[#7E848C]'}`}
+                  className="p-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                   title="Thread History"
                 >
-                  <History className="h-4 w-4" />
+                  <History className="h-3.5 w-3.5" />
                 </button>
                 <button
-                  onClick={handleResetChat}
-                  className="p-1.5 rounded-lg hover:bg-white/5 text-[#7E848C] hover:text-white transition-colors cursor-pointer"
+                  type="button"
+                  onClick={handleNewConversation}
+                  className="p-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                   title="New Thread"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-3.5 w-3.5" />
                 </button>
                 <button
+                  type="button"
                   onClick={() => setIsOpen(false)}
-                  className="p-1.5 rounded-lg hover:bg-white/5 text-[#7E848C] hover:text-white transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
               </div>
             </div>
 
-            {/* Conversation Threads Dropdown overlay */}
-            <AnimatePresence>
-              {showThreadHistory && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="bg-[#1D2024] border-b border-white/[0.06] max-h-40 overflow-y-auto"
-                >
-                  <div className="p-2.5 space-y-1">
-                    <p className="text-[8px] font-bold text-[#7E848C] uppercase tracking-wider px-2">Previous Chats</p>
+            {/* Conversation Threads Drawer Overlay */}
+            {showThreadHistory && (
+              <div className="p-3 border-b border-border bg-background/50 space-y-2 max-h-40 overflow-y-auto">
+                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">Past Conversations</span>
+                {conversations.length === 0 ? (
+                  <p className="text-[10px] text-muted-foreground">No saved threads yet.</p>
+                ) : (
+                  <div className="space-y-1">
                     {conversations.map((c) => (
-                      <div
+                      <button
                         key={c.id}
                         onClick={() => {
                           setActiveConvoId(c.id)
                           setShowThreadHistory(false)
                         }}
-                        className={`flex items-center justify-between p-2 rounded-lg cursor-pointer text-left transition-colors ${
-                          activeConvoId === c.id ? 'bg-[#5BB98C]/10 text-[#5BB98C]' : 'hover:bg-white/5 text-[#A7ADB5] hover:text-white'
+                        className={`w-full p-2 rounded-lg text-left text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
+                          activeConvoId === c.id ? 'bg-primary/10 text-primary' : 'hover:bg-white/5 text-foreground'
                         }`}
                       >
-                        <span className="text-[10px] truncate max-w-[240px] font-medium">{c.title}</span>
-                        <button
-                          onClick={(e) => handleDeleteThread(c.id, e)}
-                          className="p-1 rounded hover:bg-white/10 text-[#7E848C] hover:text-[#EB5757] transition-colors"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      </div>
+                        <span className="truncate">{c.title || 'Untitled Session'}</span>
+                      </button>
                     ))}
-                    {conversations.length === 0 && (
-                      <p className="text-[10px] text-[#7E848C] italic text-center py-2">No threads found</p>
-                    )}
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                )}
+              </div>
+            )}
 
-            {/* Chat Body */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-4" ref={scrollRef}>
-              
-              {/* Quick Action Pills (if new chat) */}
+            {/* Scrollable Chat Area */}
+            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
               {messages.length === 0 && (
-                <div className="space-y-3 text-left py-6">
-                  <div className="space-y-1">
-                    <p className="text-[11px] font-bold text-[#F5F5F5]">Welcome, how can I assist today?</p>
-                    <p className="text-[9px] text-[#A7ADB5]">Use direct commands or chat naturally with your workspace.</p>
+                <div className="text-center py-10 space-y-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary mx-auto">
+                    <Sparkles className="h-6 w-6" />
                   </div>
-                  
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => handleSendPrompt(undefined, "Suggest Sprint Plan")}
-                      className="p-2.5 rounded-xl border border-white/[0.04] bg-[#1D2024] hover:bg-[#23272B] text-left transition-colors text-[10px] font-medium text-white flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <ClipboardList className="h-3.5 w-3.5 text-[#5BB98C]" /> Suggest Sprint Plan
-                    </button>
-                    <button
-                      onClick={() => handleSendPrompt(undefined, "Find Blockers")}
-                      className="p-2.5 rounded-xl border border-white/[0.04] bg-[#1D2024] hover:bg-[#23272B] text-left transition-colors text-[10px] font-medium text-white flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <AlertTriangle className="h-3.5 w-3.5 text-yellow-500" /> Find Blockers
-                    </button>
-                    <button
-                      onClick={() => handleSendPrompt(undefined, "Generate proposed tasks")}
-                      className="p-2.5 rounded-xl border border-white/[0.04] bg-[#1D2024] hover:bg-[#23272B] text-left transition-colors text-[10px] font-medium text-white flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Sparkles className="h-3.5 w-3.5 text-blue-400" /> Generate Tasks
-                    </button>
-                    <button
-                      onClick={() => handleSendPrompt(undefined, "Summarize active project statistics")}
-                      className="p-2.5 rounded-xl border border-white/[0.04] bg-[#1D2024] hover:bg-[#23272B] text-left transition-colors text-[10px] font-medium text-white flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <HelpCircle className="h-3.5 w-3.5 text-[#A7ADB5]" /> Summarize Project
-                    </button>
-                  </div>
+                  <h4 className="text-sm font-bold text-foreground">How can I assist your project?</h4>
+                  <p className="text-[10px] text-muted-foreground max-w-xs mx-auto">
+                    Ask questions about database schemas, API specs, deployment configs, or project milestones.
+                  </p>
                 </div>
               )}
 
-              {/* Chat messages */}
               {messages.map((m) => (
                 <div
                   key={m.id}
-                  className={`flex gap-2.5 max-w-[85%] text-left ${m.role === 'user' ? 'ml-auto flex-row-reverse' : ''}`}
+                  className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[9px] font-bold ${
-                    m.role === 'user' ? 'bg-[#5BB98C] text-[#111315]' : 'bg-[#1D2024] text-white border border-white/5'
-                  }`}>
-                    {m.role === 'user' ? 'U' : 'AI'}
-                  </div>
-
-                  <div className={`p-3 rounded-2xl text-[11px] leading-relaxed whitespace-pre-line border ${
-                    m.role === 'user'
-                      ? 'bg-[#5BB98C]/10 border-[#5BB98C]/20 text-white rounded-tr-none'
-                      : 'bg-[#1D2024] border-white/5 text-[#F5F5F5] rounded-tl-none'
-                  }`}>
-                    {m.content}
+                  <div
+                    className={`max-w-[85%] p-3.5 rounded-2xl space-y-1 ${
+                      m.role === 'user'
+                        ? 'bg-primary text-primary-foreground font-medium rounded-br-none'
+                        : 'bg-white/[0.03] border border-border text-foreground rounded-bl-none'
+                    }`}
+                  >
+                    <p className="leading-relaxed whitespace-pre-wrap">{m.content}</p>
                   </div>
                 </div>
               ))}
 
-              {/* Proposed Generated Tasks Cards (if any) */}
-              {generatedTasks.length > 0 && (
-                <div className="space-y-2 mt-2">
-                  {generatedTasks.map((t, idx) => (
-                    <div
-                      key={idx}
-                      className="p-3 border border-white/[0.04] bg-[#1D2024] rounded-xl flex items-center justify-between text-left"
-                    >
-                      <div className="min-w-0 pr-2">
-                        <span className="text-[8px] bg-blue-500/20 text-blue-400 font-bold uppercase rounded px-1 py-0.2">AI TASK</span>
-                        <p className="text-[10px] font-semibold text-white mt-1">{t.title}</p>
-                        <p className="text-[8px] text-[#A7ADB5] mt-0.5 truncate">{t.description}</p>
-                      </div>
-                      <button
-                        onClick={() => handleImportTask(t, idx)}
-                        className="flex-shrink-0 p-1.5 rounded-lg bg-[#5BB98C]/15 border border-[#5BB98C]/20 hover:bg-[#5BB98C] hover:text-[#111315] text-[#5BB98C] transition-all cursor-pointer"
-                        title="Import task"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Loader */}
               {loading && (
-                <div className="flex gap-2.5 max-w-[85%] text-left">
-                  <div className="h-6 w-6 rounded-full bg-[#1D2024] text-white flex items-center justify-center text-[9px] border border-white/5 animate-pulse">
-                    AI
-                  </div>
-                  <div className="p-3 rounded-2xl bg-[#1D2024] border border-white/5 text-[#7E848C] flex items-center gap-1.5 rounded-tl-none">
-                    <Loader className="h-3 w-3 animate-spin text-[#5BB98C]" /> Thinking...
-                  </div>
+                <div className="flex items-center gap-2 text-muted-foreground text-xs p-2">
+                  <Loader className="h-4 w-4 animate-spin text-primary" /> AI thinking...
                 </div>
               )}
 
+              {/* Generated tasks action widgets */}
+              {generatedTasks.length > 0 && (
+                <div className="p-3.5 rounded-2xl border border-primary/20 bg-primary/5 space-y-2.5">
+                  <span className="text-[9px] font-bold text-primary uppercase tracking-wider block">Recommended Tasks</span>
+                  <div className="space-y-2">
+                    {generatedTasks.map((t, idx) => (
+                      <div key={idx} className="p-2.5 rounded-xl border border-border bg-card flex items-center justify-between gap-2">
+                        <div className="min-w-0 text-left space-y-0.5">
+                          <span className="text-xs font-bold text-foreground block truncate">{t.title}</span>
+                          <span className="text-[9px] text-muted-foreground block truncate">{t.description}</span>
+                        </div>
+                        <button
+                          onClick={() => handleConfirmTask(t, idx)}
+                          className="px-2.5 py-1 rounded-lg bg-primary text-primary-foreground font-bold text-[9px] shrink-0 cursor-pointer"
+                        >
+                          Add Task
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Prompt Template Library selectors */}
             {promptTemplates.length > 0 && (
-              <div className="px-4 py-2 bg-[#171A1D] border-t border-white/[0.04] flex gap-1.5 overflow-x-auto whitespace-nowrap scrollbar-thin">
+              <div className="px-4 py-2 border-t border-border bg-card flex gap-1.5 overflow-x-auto whitespace-nowrap scrollbar-thin">
                 {promptTemplates.map((tmpl) => (
                   <button
                     key={tmpl.id}
                     type="button"
                     onClick={() => setPrompt(tmpl.content)}
-                    className="text-[9px] bg-[#1D2024] hover:bg-[#23272B] border border-white/[0.06] text-[#A7ADB5] hover:text-[#5BB98C] px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer flex-shrink-0"
+                    className="text-[9px] bg-background hover:bg-white/5 border border-border text-muted-foreground hover:text-primary px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer flex-shrink-0"
                   >
                     {tmpl.title}
                   </button>
@@ -400,31 +367,31 @@ export function FloatingAIPanel() {
             )}
 
             {/* Prompt Input Form */}
-            <form onSubmit={handleSendPrompt} className="p-4 border-t border-white/[0.06] bg-[#1D2024]/40 flex gap-2">
+            <form onSubmit={handleSendPrompt} className="p-4 border-t border-border bg-card flex gap-2">
               <input
                 type="text"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="Ask workspace copilot..."
                 disabled={loading}
-                className="flex-1 px-3 py-2 border border-white/[0.06] bg-[#1D2024] text-xs text-white placeholder-[#7E848C] rounded-xl outline-none focus:border-[#5BB98C] transition-colors disabled:opacity-50"
+                className="flex-1 px-3 py-2 border border-border bg-background text-xs text-foreground placeholder-muted-foreground rounded-xl outline-none focus:border-primary transition-colors disabled:opacity-50 font-medium"
               />
               {prompt.trim() && (
                 <button
                   type="button"
                   onClick={handleSaveTemplate}
                   title="Save prompt as template"
-                  className="p-2 rounded-xl bg-[#1D2024] border border-white/[0.06] hover:bg-[#23272B] text-[#5BB98C] flex items-center justify-center transition-colors cursor-pointer"
+                  className="p-2 rounded-xl bg-background border border-border hover:bg-white/5 text-primary flex items-center justify-center transition-colors cursor-pointer"
                 >
-                  <Plus className="h-3.5 w-3.5" />
+                  <Plus className="h-4 w-4" />
                 </button>
               )}
               <button
                 type="submit"
                 disabled={loading || !prompt.trim()}
-                className="p-2 rounded-xl bg-[#5BB98C] hover:bg-[#5BB98C]/90 text-[#111315] flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
+                className="p-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
               >
-                <Send className="h-3.5 w-3.5" />
+                <Send className="h-4 w-4" />
               </button>
             </form>
           </motion.div>
