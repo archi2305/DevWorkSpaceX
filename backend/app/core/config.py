@@ -28,12 +28,30 @@ class Settings(BaseModel):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
     
     # CORS
-    CORS_ORIGINS: List[str] = [
-        origin.strip()
-        for origin in os.getenv("CORS_ORIGINS", os.getenv("ALLOWED_ORIGINS", os.getenv("FRONTEND_URL", "http://localhost:3000,http://127.0.0.1:3000"))).split(",")
-        if origin.strip()
-    ]
-    ALLOWED_ORIGINS: List[str] = CORS_ORIGINS  # Alias for compatibility
+    @property
+    def cors_origins_list(self) -> List[str]:
+        defaults = [
+            "https://devworkspacex-frontend.onrender.com",
+            "https://devworkspacex.onrender.com",
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:3001"
+        ]
+        raw = os.getenv("CORS_ORIGINS") or os.getenv("ALLOWED_ORIGINS") or os.getenv("FRONTEND_URL")
+        if raw:
+            for item in raw.split(","):
+                cleaned = item.strip()
+                if cleaned and cleaned not in defaults:
+                    defaults.append(cleaned)
+        return defaults
+
+    @property
+    def CORS_ORIGINS(self) -> List[str]:
+        return self.cors_origins_list
+
+    @property
+    def ALLOWED_ORIGINS(self) -> List[str]:
+        return self.cors_origins_list
 
     # OAuth redirect base (frontend URL)
     OAUTH_REDIRECT_BASE_URL: str = os.getenv("OAUTH_REDIRECT_BASE_URL", os.getenv("FRONTEND_URL", "http://localhost:3000"))
