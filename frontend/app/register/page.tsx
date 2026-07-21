@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { authService } from '@/services/auth'
+import { formatApiError } from '@/lib/error'
 
 export default function RegisterPage() {
   const [fullName, setFullName] = useState('')
@@ -30,8 +31,7 @@ export default function RegisterPage() {
       // Successful registration: Redirect to login page
       router.push('/login')
     } catch (err: any) {
-      const errMsg = err.response?.data?.detail || 'Registration failed. Please check inputs.'
-      setError(errMsg)
+      setError(formatApiError(err, 'Registration failed. Please check inputs and try again.'))
     } finally {
       setLoading(false)
     }

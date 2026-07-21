@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
+import { formatApiError } from '@/lib/error'
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -20,8 +21,7 @@ export default function LoginPage() {
     try {
       await login({ email, password })
     } catch (err: any) {
-      const errMsg = err.response?.data?.detail || 'Invalid email or password. Please try again.'
-      setError(errMsg)
+      setError(formatApiError(err, 'Invalid email or password. Please try again.'))
     } finally {
       setLoading(false)
     }
